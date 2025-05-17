@@ -1,5 +1,9 @@
 #include "creature.hh"
+
 #include "enums.hh"
+#include "player.hh"
+
+#include <math.h>
 
 // TSkill REGULAR FUNCTIONS
 //==============================================================================
@@ -20,7 +24,7 @@ int TSkill::Get(void){
 int TSkill::GetProgress(void){
 	int Result = 0;
 	if(this->NextLevel > this->LastLevel){
-		Result = (this->NextLevel - this->Exp) * 100 / (this->NextLevel - this->LastLevel);
+		Result = (this->Exp - this->LastLevel) * 100 / (this->NextLevel - this->LastLevel);
 
 		// TODO(fusion): This feels too much for reporting a mostly *impossible* error.
 		if(Result < 0 || Result > 100){
@@ -245,18 +249,21 @@ TSkillLevel::~TSkillLevel(void){
 }
 
 void TSkillLevel::Increase(int Amount){
-	if (Amount < 0) {
+	if(Amount < 0){
 		error("TSkillLevel::Increase: Amount negativ (%d).\n", Amount);
 		return;
 	}
 
 	// BUG(fusion): No bounds check as in `TSkillLevel::Decrease`?
 
+	// TODO(fusion): This could probably be an oversight but the decompiled
+	// function was calling `GetExpForLevel` twice instead of using `NextLevel`
+	// which makes me wonder whether `NextLevel` is properly initialized.
 	int Range = 0;
 	this->Exp += Amount;
 	while(this->Exp >= this->NextLevel){
 		this->Act += 1;
-		this->LastLevel = this->GetExpForLevel(this->Act);
+		this->LastLevel = this->NextLevel;
 		this->NextLevel = this->GetExpForLevel(this->Act + 1);
 		if(this->NextLevel < 0){
 			// BUG(fusion): We don't check if `Master` is valid here?
@@ -294,7 +301,6 @@ void TSkillLevel::Decrease(int Amount){
 		return;
 	}
 
-	int Range = 0;
 	if(Amount < this->Exp){
 		this->Exp -= Amount;
 	}else{
@@ -302,12 +308,14 @@ void TSkillLevel::Decrease(int Amount){
 	}
 
 	// TODO(fusion): This could probably be an oversight but the decompiled
-	// function was calling `GetExpForLevel` instead of using `LastLevel`
+	// function was calling `GetExpForLevel` twice instead of using `LastLevel`
 	// which makes me wonder whether `LastLevel` is properly initialized.
+	int Range = 0;
 	while(this->Exp < this->LastLevel){
 		this->Act -= 1;
 		this->NextLevel = this->LastLevel;
 		this->LastLevel = this->GetExpForLevel(this->Act);
+		Range -= 1;
 	}
 
 	if(Range != 0){
@@ -330,14 +338,14 @@ int TSkillLevel::GetExpForLevel(int Level){
 		return 0;
 	}
 
-	if(Level > 500){
-		error("TSkillLevel::GetExpForLevel: Level=%d; Formel gegen Überlauf sichern.\n", Level);
-		return -1;
-	}
-
 	if(this->Delta <= 0){
 		error("TSkillLevel::GetExpForLevel: Ungültiger Delta-Wert %d.\n", this->Delta);
 		return 0;
+	}
+
+	if(Level > 500){
+		error("TSkillLevel::GetExpForLevel: Level=%d; Formel gegen Überlauf sichern.\n", Level);
+		return -1; // TODO(fusion): Shouldn't this be 0?
 	}
 
 	return ((((Level - 6) * Level + 17) * Level - 12) / 6) * this->Delta;
@@ -358,25 +366,302 @@ bool TSkillLevel::Jump(int Range){
 	this->Master->Combat.CheckCombatValues();
 
 	if(this->Master->Type == PLAYER){
-		// TODO(fusion): Probably `TSkill::Get` inlined?
-		int Level = this->Act;
-		if(Level < this->Min)
-			Level = this->Min;
-		Level += this->MDAct + this->DAct;
-		// ==
-
-		int FromLevel = Level - Range;
-		int ToLevel = Level;
+		int ToLevel = this->Get();
+		int FromLevel = ToLevel - Range;
 		if(Range > 0){
-			SendMessage(this->Master->Connection, TALK_ANONYMOUS_BROADCAST,
+			SendMessage(this->Master->Connection, TALK_EVENT_MESSAGE,
 					"You advanced from Level %d to Level %d.", FromLevel, ToLevel);
 		}else if(Range < 0){
-			SendMessage(this->Master->Connection, TALK_ANONYMOUS_BROADCAST,
+			SendMessage(this->Master->Connection, TALK_EVENT_MESSAGE,
 					"You were downgraded from Level %d to Level %d.", FromLevel, ToLevel);
 		}
 	}
 
 	return true;
+}
+
+// TSkillProbe
+//==============================================================================
+void TSkillProbe::Increase(int Amount){
+	if(Amount < 0){
+		error("TSkillProbe::Increase: Amount negativ (%d).\n", Amount);
+		return;
+	}
+
+	int OldProgress = this->GetProgress();
+
+	// TODO(fusion): This could probably be an oversight but the decompiled
+	// function was calling `GetExpForLevel` twice instead of using `NextLevel`
+	// which makes me wonder whether `NextLevel` is properly initialized.
+	int Range = 0;
+	this->Exp += Amount;
+	while(this->Exp >= this->NextLevel){
+		this->Act += 1;
+		this->LastLevel = this->NextLevel;
+		this->NextLevel = this->GetExpForLevel(this->Act + 1);
+		if(this->NextLevel < 0){
+			// BUG(fusion): We don't check if `Master` is valid here?
+			error("TSkillProbe::Increase: Skill vor Überlauf (%s, Skill %d).\n", this->Master->Name, this->SkNr);
+			this->NextLevel = this->Exp;
+			this->Exp -= 1000;
+			break;
+		}
+		Range += 1;
+	}
+
+	if(Range != 0){
+		this->Jump(Range);
+	}else{
+		TCreature *Master = this->Master;
+		if(Master && Master->Type == PLAYER){
+			int NewProgress = this->GetProgress();
+			if(NewProgress != OldProgress){
+				if(this->SkNr == SKILL_MAGIC_LEVEL){
+					SendPlayerData(Master->Connection);
+				}else{
+					SendPlayerSkills(Master->Connection);
+				}
+			}
+		}
+	}
+}
+
+void TSkillProbe::Decrease(int Amount){
+	if(Amount < 0){
+		error("TSkillProbe::Decrease: Amount negativ (%d).\n", Amount);
+		return;
+	}
+
+	int OldProgress = this->GetProgress();
+
+	if(Amount < this->Exp){
+		this->Exp -= Amount;
+	}else{
+		this->Exp = 0;
+	}
+
+	// TODO(fusion): This could probably be an oversight but the decompiled
+	// function was calling `GetExpForLevel` twice instead of using `LastLevel`
+	// which makes me wonder whether `LastLevel` is properly initialized.
+	int Range = 0;
+	while(this->Exp < this->LastLevel && this->Act > this->Min){
+		this->Act -= 1;
+		this->NextLevel = this->LastLevel;
+		this->LastLevel = this->GetExpForLevel(this->Act);
+		Range -= 1;
+	}
+
+	if(Range != 0){
+		this->Jump(Range);
+	}else{
+		TCreature *Master = this->Master;
+		if(Master && Master->Type == PLAYER){
+			int NewProgress = this->GetProgress();
+			if(NewProgress != OldProgress){
+				if(this->SkNr == SKILL_MAGIC_LEVEL){
+					SendPlayerData(Master->Connection);
+				}else{
+					SendPlayerSkills(Master->Connection);
+				}
+			}
+		}
+	}
+}
+
+int TSkillProbe::GetExpForLevel(int Level){
+	if(Level < 0 || Level < this->Min){
+		error("TSkillProbe::GetExpForLevel: Ungültiger Level %d.\n", Level);
+		return 0;
+	}
+
+	if(this->Delta <= 0){
+		error("TSkillProbe::GetExpForLevel: Ungültiger Delta-Wert %d.\n", this->Delta);
+		return 0;
+	}
+
+	// TODO(fusion): This part of the decompiled code was a bit weird. I had to
+	// look into the disassembly to figure the string parameter of `error` below
+	// and it is weird that we keep going even with invalid values of `FactorPercent`.
+	int FactorPercent = this->FactorPercent;
+	if(FactorPercent < 1000){
+		const char *MasterName = "---";
+		if(this->Master != NULL){
+			MasterName = this->Master->Name;
+		}
+		error("TSkillProbe::GetExpForLevel: Ungültiger FactorPercent-Wert %d bei %s.\n", FactorPercent, MasterName);
+	}
+
+	if(FactorPercent < 1050){
+		error("TSkillProbe::GetExpForLevel: Ungültiger FactorPercent-Wert %d. Rechne mit 1000 weiter.\n", FactorPercent);
+		return (Level - this->Min) * this->Delta;
+	}
+
+	double Base = (double)FactorPercent / 1000.0;
+	double Power = pow(Base, (double)(Level - this->Min));
+	double Result = (double)this->Delta * ((Power - 1.0) / (Base - 1.0));
+	return (int)Result;
+}
+
+void TSkillProbe::ChangeSkill(int FactorPercent, int Delta){
+	double Progress = 0.0;
+	if(this->LastLevel < this->NextLevel){
+		Progress = (double)(this->Exp - this->LastLevel)
+				/ (double)(this->NextLevel - this->LastLevel);
+	}
+
+	double Base = (double)FactorPercent / 1000.0;
+
+	// NOTE(fusion): Similar to `this->GetExpForLevel(this->Act)` but inlined?
+	double LastLevelPower = pow(Base, (double)(this->Act - this->Min));
+	double LastLevel = (double)Delta * ((LastLevelPower - 1.0) / (Base - 1.0));
+
+	// NOTE(fusion): Similar to `this->GetExpForLevel(this->Act + 1)` but inlined?
+	double NextLevelPower = pow(Base, (double)(this->Act - this->Min + 1));
+	double NextLevel = (double)Delta * ((NextLevelPower - 1.0) / (Base - 1.0));
+
+	// NOTE(fusion): Renormalize experience.
+	double Exp = LastLevel + Progress * (NextLevel - LastLevel);
+
+	this->FactorPercent = FactorPercent;
+	this->LastLevel = (int)LastLevel;
+	this->NextLevel = (int)NextLevel;
+	this->Delta = Delta;
+	this->Exp = (int)Exp;
+
+	TCreature *Master = this->Master;
+	if(Master != NULL && Master->Type == PLAYER){
+		if(this->SkNr == SKILL_MAGIC_LEVEL){
+			SendPlayerData(Master->Connection);
+		}else{
+			SendPlayerSkills(Master->Connection);
+		}
+	}
+}
+
+int TSkillProbe::ProbeValue(int Max, bool Increase){
+	if(Increase){
+		this->Increase(1);
+	}
+
+	// TODO(fusion): Some optimizations made the decompilation output for this
+	// `RandomFactor` look very weird. It looks correct but we should come back
+	// to it.
+	int RandomFactor = ((rand() % 100) + (rand() % 100)) / 2;
+	int MaxValue = Max * (this->Get() * 5 + 50);
+	int Result = (RandomFactor * MaxValue) / 10000;
+	return Result;
+}
+
+bool TSkillProbe::Probe(int Diff, int Prob, bool Increase){
+	if(Increase){
+		this->Increase(1);
+	}
+
+	// TODO(fusion): Not sure what's going on here.
+	bool Result = true;
+	if(Diff != 0){
+		if(this->Act >= (rand() % Diff)){
+			Result = (rand() % 100) <= Prob;
+		}else{
+			Result = false;
+		}
+	}
+	return Result;
+}
+
+bool TSkillProbe::SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue){
+	this->Cycle = Cycle;
+	this->Count = Count;
+	this->MaxCount = MaxCount;
+
+	if(this->Master == NULL){
+		error("TSkillProbe::SetTimer: GetMaster liefert NULL zurueck!\n");
+		return false;
+	}
+
+	if(this->Master->Type == PLAYER){
+		((TPlayer*)this->Master)->CheckState();
+		SendPlayerData(this->Master->Connection);
+	}
+
+	return true;
+}
+
+bool TSkillProbe::Jump(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillProbe::Jump: GetMaster liefert NULL zurueck!\n");
+		return false;
+	}
+
+	if(Master->Type == PLAYER){
+		if(this->SkNr == SKILL_MAGIC_LEVEL){
+			SendPlayerData(Master->Connection);
+		}else{
+			SendPlayerSkills(Master->Connection);
+		}
+
+		if(Range > 0){
+			switch(this->SkNr){
+				case SKILL_MAGIC_LEVEL:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE,
+							"You advanced to magic level %d.", this->Get());
+					break;
+				}
+				case SKILL_SHIELDING:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in shielding.");
+					break;
+				}
+				case SKILL_DISTANCE:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in distance fighting.");
+					break;
+				}
+				case SKILL_SWORD:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in sword fighting.");
+					break;
+				}
+				case SKILL_CLUB:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in club fighting.");
+					break;
+				}
+				case SKILL_AXE:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in axe fighting.");
+					break;
+				}
+				case SKILL_FIST:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in fist fighting.");
+					break;
+				}
+				case SKILL_FISHING:{
+					SendMessage(Master->Connection, TALK_EVENT_MESSAGE, "You advanced in fishing.");
+					break;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+void TSkillProbe::Event(int Range){
+	if(this->Cycle == 0){
+		TCreature *Master = this->Master;
+		if(Master == NULL){
+			error("TSkillProbe::Event: GetMaster liefert NULL zurueck!\n");
+			return;
+		}
+
+		this->MDAct = 0;
+		if(Master->Type == PLAYER){
+			// TODO(fusion): This is weird because `SKILL_GO_STRENGTH` should
+			// be TSkillGoStrength, instead of TSkillProbe.
+			if(this->SkNr == SKILL_GO_STRENGTH){
+				((TPlayer*)Master)->CheckState();
+			}
+
+			SendPlayerSkills(Master->Connection);
+		}
+	}
 }
 
 // Creature Functions
