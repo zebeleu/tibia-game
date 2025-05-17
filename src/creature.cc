@@ -90,19 +90,10 @@ void TSkill::Load(int Act, int Max, int Min, int DAct, int MDAct,
 
 	TCreature *Master = this->Master;
 	if(Master && Cycle != 0){
-		int SkNr = this->SkNr;
-		if(SkNr >= NARRAY(Master->Skills)){
-			error("TSkillBase::SetTimer: Ungueltige SkNr: %d\n", SkNr);
-			return;
-		}
-
-		// TODO(fusion): I'm not entirely sure wtf is going on here.
-		TSkill *Other = Master->Skills[SkNr];
-		Master->DelTimer(SkNr);
-		if(Other->SetTimer(Cycle, Count, MaxCount, FactorPercent)){
-			Master->TimerList[Master->FirstFreeTimer] = Other;
-			Master->FirstFreeTimer += 1;
-		}
+		// NOTE(fusion): It seems we had `TSkillBase::SetTimer` inlined here.
+		// For whatever reason I hadn't noticed the error message referencing
+		// it, LOL.
+		Master->SetTimer(this->SkNr, Cycle, Count, MaxCount, FactorPercent);
 	}
 }
 
@@ -664,6 +655,158 @@ void TSkillProbe::Event(int Range){
 	}
 }
 
+// TSkillBase
+//==============================================================================
+TSkillBase::TSkillBase(void){
+	STATIC_ASSERT(NARRAY(this>Skills) == NARRAY(this->TimerList));
+	for(int i = 0; i < NARRAY(this->Skills); i += 1){
+		this->Skills[i] = NULL;
+		this->TimerList[i] = NULL;
+	}
+	this->FirstFreeTimer = 0;
+}
+
+TSkillBase::~TSkillBase(void){
+	for(int i = 0; i < NARRAY(this->Skills); i += 1){
+		delete this->Skills[i];
+	}
+}
+
+bool TSkillBase::NewSkill(uint16 SkillNo, TCreature *Creature){
+	if(SkillNo >= NARRAY(this->Skills)){
+		error("TSkillBase::NewSkill: unbekannte SkillNummer %d\n", SkillNo);
+		return false;
+	}
+
+	if(this->Skills[SkillNo] != NULL){
+		delete this->Skills[SkillNo];
+		this->Skills[SkillNo] = NULL;
+	}
+
+	TSkill *Skill = NULL;
+	switch(SkillNo){
+		case SKILL_LEVEL:			Skill = new TSkillLevel(SkillNo, Creature); break;
+		case SKILL_MAGIC_LEVEL:		ATTR_FALLTHROUGH;
+		case SKILL_SHIELDING:		ATTR_FALLTHROUGH;
+		case SKILL_DISTANCE:		ATTR_FALLTHROUGH;
+		case SKILL_SWORD:			ATTR_FALLTHROUGH;
+		case SKILL_CLUB:			ATTR_FALLTHROUGH;
+		case SKILL_AXE:				ATTR_FALLTHROUGH;
+		case SKILL_FIST:			ATTR_FALLTHROUGH;
+		case SKILL_FISHING:			Skill = new TSkillProbe(SkillNo, Creature); break;
+		case SKILL_HITPOINTS:		Skill = new TSkillHitpoints(SkillNo, Creature); break;
+		case SKILL_MANA:			Skill = new TSkillMana(SkillNo, Creature); break;
+		case SKILL_GO_STRENGTH:		Skill = new TSkillGoStrength(SkillNo, Creature); break;
+		case SKILL_CARRY_WEIGHT:	Skill = new TSkillCarryStrength(SkillNo, Creature); break;
+		case SKILL_FED:				Skill = new TSkillFed(SkillNo, Creature); break;
+		case SKILL_LIGHT:			Skill = new TSkillLight(SkillNo, Creature); break;
+		case SKILL_ILLUSION:		Skill = new TSkillIllusion(SkillNo, Creature); break;
+		case SKILL_POISON:			Skill = new TSkillPoison(SkillNo, Creature); break;
+		case SKILL_BURNING:			Skill = new TSkillBurning(SkillNo, Creature); break;
+		case SKILL_ENERGY:			Skill = new TSkillEnergy(SkillNo, Creature); break;
+		case SKILL_SOUL:			Skill = new TSkillSoulpoints(SkillNo, Creature); break;
+		default:					Skill = new TSkill(SkillNo, Creature);	break;
+	}
+
+	ASSERT(Skill != NULL);
+	this->Skills[SkillNo] = Skill;
+	return true;
+}
+
+bool TSkillBase::SetSkills(int Race){
+	if(Race < 0 || Race >= 512){
+		error("TSkillBase::SetSkills: Ungültige Rassennummer %d.\n", Race);
+		return false;
+	}
+
+	// TODO(fusion): This is referencing some global table with probably all
+	// types of creatures.
+	int NumSkills = RaceData[Race].Skills;
+	for(int i = 0; i < NumSkills; i += 1){
+		// TODO(fusion): We'd need to implement the `vector` container being used
+		// across the codebase.
+		//TSkillData *SkillData = RaceData[Race].Skill(i);
+
+		// BUG(fusion): We don't check if `Skill` is valid? Could be NULL. We
+		// don't seem to set all `Skill` fields either so there is something
+		// else going on, probably.
+		TSkill *Skill = this->Skills[SkillData->Nr];
+		Skill->Act = SkillData->Actual;
+		Skill->Min = SkillData->Minimum;
+		Skill->Max = SkillData->Maximum;
+		Skill->LastLevel = 0;
+		Skill->NextLevel = SkillData->NextLevel;
+		Skill->Delta = SkillData->NextLevel;
+		Skill->FactorPercent = SkillData->FactorPercent;
+		Skill->MaxCount = 0;
+		Skill->AddLevel = SkillData->AddLevel;
+	}
+
+	return true;
+}
+
+void TSkillBase::ProcessSkills(void){
+	int Index = 0;
+	int End = this->FirstFreeTimer;
+	while(Index < End){
+		TSkill *Skill = this->TimerList[Index];
+		if(Skill && !Skill->Process()){
+			// NOTE(fusion): A little swap and pop action.
+			End -= 1;
+			this->TimerList[Index] = this->TimerList[End];
+			this->TimerList[End] = NULL;
+		}else{
+			Index += 1;
+		}
+	}
+	this->FirstFreeTimer = (uint16)End;
+}
+
+bool TSkillBase::SetTimer(uint16 SkNr, int Cycle, int Count, int MaxCount, int AdditionalValue){
+	if(SkNr >= NARRAY(this->Skills)){
+		error("TSkillBase::SetTimer: Ungueltige SkNr: %d\n", SkNr);
+		return false;
+	}
+
+	this->DelTimer(SkNr);
+
+	// BUG(fusion): We don't check if `Skill` is valid here.
+	TSkill *Skill = this->Skills[SkNr];
+	bool Result = Skill->SetTimer(Cycle, Count, MaxCount, AdditionalValue);
+	if(Result){
+		// NOTE(fusion): A little push back action.
+		// BUG(fusion): We don't check if there is room in `TimerList`. I'd assume
+		// it is naturally bound by the maximum number of skills?
+		this->TimerList[this->FirstFreeTimer] = Skill;
+		this->FirstFreeTimer += 1;
+	}
+
+	return Result;
+}
+
+void TSkillBase::DelTimer(uint16 SkNr){
+	if(SkNr >= NARRAY(this->Skills)){
+		error("TSkillBase::DelTimer: Ungueltige SkNr: %d\n", SkNr);
+		return;
+	}
+
+	TSkill *Skill = this->Skills[SkNr];
+	if(Skill != NULL){
+		Skill->DelTimer();
+
+		int End = this->FirstFreeTimer;
+		for(int Index = 0; Index < End; i += 1){
+			if(Skill == this->TimerList[Index]){
+				// NOTE(fusion): A little swap and pop action.
+				End -= 1;
+				this->TimerList[Index] = this->TimerList[End];
+				this->TimerList[End] = NULL;
+				break;
+			}
+		}
+	}
+}
+
 // Creature Functions
 //==============================================================================
 // TODO(fusion): This was the first function I attempted to cleanup but soon
@@ -709,6 +852,7 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 
 	// NOTE(fusion): Maintain largest exhaust?
 	int EarliestSpellTime = Delay + ServerMilliseconds;
-	if(Creature->EarliestSpellTime < EarliestSpellTime)
+	if(Creature->EarliestSpellTime < EarliestSpellTime){
 		Creature->EarliestSpellTime = EarliestSpellTime;
+	}
 }

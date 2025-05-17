@@ -87,7 +87,13 @@ struct TSkillProbe: TSkill {
 struct TSkillBase{
 	// REGULAR FUNCTIONS
 	// =========================================================================
-	// TODO
+	TSkillBase(void);
+	~TSkillBase(void);
+	bool NewSkill(uint16 SkillNo, TCreature *Creature);
+	bool SetSkills(int Race);
+	void ProcessSkills(void);
+	bool SetTimer(uint16 SkNr, int Cycle, int Count, int MaxCount, int AdditionalValue);
+	void DelTimer(uint16 SkNr);
 
 	// DATA
 	// =========================================================================
