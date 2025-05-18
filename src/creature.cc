@@ -8,7 +8,12 @@
 // TSkill REGULAR FUNCTIONS
 //==============================================================================
 TSkill::TSkill(int SkNr, TCreature *Master){
+	// TODO(fusion): I'm not sure we're calling `Reset` here but the decompiled
+	// function sets the same values as `TSkill::Reset` which makes me wonder
+	// whether it is inlined. It's probably using `TSkill::Reset()` directly
+	// instead of virtual dispatch, if that is the case.
 	this->Reset();
+
 	this->SkNr = (uint16)SkNr;
 	this->Master = Master;
 }
@@ -169,13 +174,12 @@ bool TSkill::Process(void){
 	}else if(this->Count <= 0){
 		this->Count = this->MaxCount;
 		// NOTE(fusion): `Range` should move `Cycle` towards ZERO.
-		int Range = (this->Cycle < 1) ? +1 : -1;
+		int Range = (this->Cycle < 0) ? +1 : -1;
 		this->Cycle += Range;
 		this->Event(Range);
 	}else{
 		this->Count -= 1;
 	}
-
 	return Result;
 }
 
@@ -233,12 +237,6 @@ void TSkill::Reset(void){
 
 // TSkillLevel
 //==============================================================================
-TSkillLevel::~TSkillLevel(void){
-	if(this->Master != NULL){
-		this->Master->DelTimer(this->SkNr);
-	}
-}
-
 void TSkillLevel::Increase(int Amount){
 	if(Amount < 0){
 		error("TSkillLevel::Increase: Amount negativ (%d).\n", Amount);
@@ -655,6 +653,451 @@ void TSkillProbe::Event(int Range){
 	}
 }
 
+// TSkillAdd
+//==============================================================================
+void TSkillAdd::Advance(int Range){
+	int Increment = Range * this->AddLevel;
+	int Max = this->Max + Increment;
+	int Act = this->Act + Increment;
+
+	// TODO(fusion): I'm not sure this is right. Do we fill health and mana when
+	// the player levels up?
+	if(Act < Max){
+		Act = Max;
+	}
+
+	this->Act = Act;
+	this->Max = Max;
+}
+
+// TSkillHitpoints
+//==============================================================================
+void TSkillHitpoints::Set(int Value){
+	TCreature *Master = this->Master;
+	if(Master != NULL && Master->IsDead && Value > 0){
+		error("TSkillHitpoints::Set: HP von toter Kreatur sollen erhöht werden.\n");
+		return;
+	}
+
+	if(Value > this->Max){
+		Value = this->Max;
+	}
+	this->Act = Value;
+
+	if(Master != NULL){
+		if(Master->Type == PLAYER){
+			SendPlayerData(Master->Connection);
+		}
+		AnnounceChangedCreature(Master->ID, 1);
+	}
+}
+
+// TSkillMana
+//==============================================================================
+void TSkillMana::Set(int Value){
+	if(Value > this->Max){
+		Value = this->Max;
+	}
+	this->Act = Value;
+
+	TCreature *Master = this->Master;
+	if(Master != NULL && Master->Type == PLAYER){
+		SendPlayerData(Master->Connection);
+	}
+}
+
+// TSkillGoStrength
+//==============================================================================
+bool TSkillGoStrength::SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue){
+	// TODO(fusion): The decompiled version of this function was kind of confusing
+	// with `Master` being checked multiple times and `CheckState` being called up
+	// to two times. I've done some cleanup that should keep the same behavior but
+	// we should always keep an eye out for bugs.
+
+	this->Cycle = Cycle;
+	this->Count = Count;
+	this->MaxCount = MaxCount;
+
+	if(Cycle == 0){
+		this->MDAct = 0;
+	}
+
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillGoStrength::SetTimer: GetMaster liefert NULL zurueck!\n");
+		return false;
+	}
+
+	if(Master->Type == PLAYER){
+		((TPlayer*)Master)->CheckState();
+	}
+	AnnounceChangedCreature(Master->ID, 4);
+	return true;
+}
+
+void TSkillGoStrength::Event(int Range){
+	if(this->Cycle != 0){
+		return;
+	}
+
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillGoStrength::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	// TODO(fusion): Again, shouldn't `SkNr` always refer to `GO_STRENGTH` here?
+	this->MDAct = 0;
+	if(this->SkNr == SKILL_GO_STRENGTH && Master->Type == PLAYER){
+		((TPlayer*)Master)->CheckState();
+	}
+	AnnounceChangedCreature(Master->ID, 4);
+}
+
+// TSkillCarryStrength
+//==============================================================================
+void TSkillCarryStrength::Set(int Value){
+	if(Value > this->Max){
+		Value = this->Max;
+	}
+	this->Act = Value;
+
+	TCreature *Master = this->Master;
+	if(Master != NULL && Master->Type == PLAYER){
+		SendPlayerData(Master->Connection);
+	}
+}
+
+// TSkillSoulpoints
+//==============================================================================
+void TSkillSoulpoints::Set(int Value){
+	if(Value > this->Max){
+		Value = this->Max;
+	}
+	this->Act = Value;
+
+	TCreature *Master = this->Master;
+	if(Master != NULL && Master->Type == PLAYER){
+		SendPlayerData(Master->Connection);
+	}
+}
+
+int TSkillSoulpoints::TimerValue(void){
+	return (this->Cycle - 1) * this->MaxCount + this->Count;
+}
+
+void TSkillSoulpoints::Event(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillSoulpoints::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	// TODO(fusion): Shouldn't this be the same as `Master->Skills[SKILL_SOUL]`?
+	// Not sure what's going on here.
+	if(!Master->IsDead){
+		Master->Skills[SKILL_SOUL]->Set(Other->Act + 1);
+	}
+}
+
+// TSkillFed
+//==============================================================================
+void TSkillFed::Event(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillFed::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	if(Master->IsDead || IsProtectionZone(Master->posx, Master->posy, Master->posz)){
+		return;
+	}
+
+	uint8 Profession = 0;
+	if(Master->Type == PLAYER){
+		Profession = ((TPlayer*)Master)->GetActiveProfession();
+	}
+
+	int SecsPerHP = 12;
+	int SecsPerMana = 6;
+	switch(Profession){
+		case PROFESSION_NONE:
+		case PROFESSION_KNIGHT:{
+			SecsPerHP = 6;
+			SecsPerMana = 6;
+			break;
+		}
+
+		case PROFESSION_PALADIN:{
+			SecsPerHP = 8;
+			SecsPerMana = 4;
+			break;
+		}
+
+		case PROFESSION_SORCERER:
+		case PROFESSION_DRUID:{
+			SecsPerHP = 12;
+			SecsPerMana = 3;
+			break;
+		}
+
+		case PROFESSION_ELITE_KNIGHT:{
+			SecsPerHP = 4;
+			SecsPerMana = 6;
+			break;
+		}
+
+		case PROFESSION_ROYAL_PALADIN:{
+			SecsPerHP = 6;
+			SecsPerMana = 3;
+			break;
+		}
+
+		case PROFESSION_MASTER_SORCERER:
+		case PROFESSION_ELDER_DRUID:{
+			SecsPerHP = 12;
+			SecsPerMana = 2;
+			break;
+		}
+
+		default:{
+			error("TSkillFed::Event: Unbekannter Beruf %d.\n", Profession);
+			break;
+		}
+	}
+
+	// TODO(fusion): Not sure about this.
+	int Timer = this->TimerValue();
+
+	if(Timer % SecsPerHP == 0){
+		Master->Skills[SKILL_HITPOINTS]->Change(1);
+	}
+
+	if(Timer % SecsPerMana == 0){
+		Master->Skills[SKILL_MANA]->Change(2);
+	}
+}
+
+// TSkillLight
+//==============================================================================
+bool TSkillLight::SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue){
+	// TODO(fusion): I think the decompiled version of most `SetTimer` functions
+	// look weird because they're calling the base class method `TSkill::SetTimer()`
+	// which is getting inlined.
+	this->Cycle = Cycle;
+	this->Count = Count;
+	this->MaxCount = MaxCount;
+
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillLight::SetTimer: GetMaster liefert NULL zurueck!\n");
+		return false;
+	}
+
+	if(Master->Type == PLAYER){
+		((TPlayer*)Master)->CheckState();
+	}
+
+	// TODO(fusion): The decompiled function had this logic, but WTF.
+	//	if(GetCreature(Master->ID) != NULL){
+	//		AnnounceChangedCreature(Master->ID, 2);
+	//	}
+	AnnounceChangedCreature(Master->ID, 2);
+	return true;
+}
+
+void TSkillLight::Event(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillLight::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	AnnounceChangedCreature(Master->ID, 2);
+}
+
+// TSkillIllusion
+//==============================================================================
+bool TSkillIllusion::SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue){
+	this->Cycle = Cycle;
+	this->Count = Count;
+	this->MaxCount = MaxCount;
+
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillIllusion::SetTimer: GetMaster liefert NULL zurueck!\n");
+		return false;
+	}
+
+	if(Master->Type == PLAYER){
+		((TPlayer*)Master)->CheckState();
+	}
+
+	// TODO(fusion): The decompiled function had this logic, but WTF.
+	//	if(GetCreature(Master->ID) != NULL){
+	//		AnnounceChangedCreature(Master->ID, 3);
+	//	}
+	AnnounceChangedCreature(Master->ID, 3);
+	return true;
+}
+
+void TSkillIllusion::Event(int Range){
+	if(this->Cycle == 0){
+		TCreature *Master = this->Master;
+		if(Master == NULL){
+			error("TSkillIllusion::Event: GetMaster liefert NULL zurueck!\n");
+			return;
+		}
+
+		if(this->Get() <= 0){
+			Master->Outfit = Master->OrgOutfit;
+			AnnounceChangedCreature(Master->ID, 3);
+			// TODO(fusion): I'm not sure this is correct.
+			NotifyAllCreatures(&Master->CrObject, 2, &NONE);
+		}
+	}
+}
+
+// TSkillPoison
+//==============================================================================
+bool TSkillPoison::Process(void){
+	bool Result = this->Cycle == 0;
+	if(Result){
+		TCreature *Master = this->Master;
+		if(Master != NULL && Master->Type == PLAYER){
+			((TPlayer*)Master)->CheckState();
+		}
+	}else if(this->Count <= 0){
+		this->Count = this->MaxCount;
+
+		// NOTE(fusion): Not sure what's going on here.
+		int Range = (this->Cycle * this->FactorPercent) / 1000;
+		if(Range == 0){
+			// NOTE(fusion): This seems the opposite from `TSkill::Process`.
+			Range = (this->Cycle > 0) ? + 1 : -1;
+		}
+
+		this->Cycle -= Range;
+		this->Event(Range);
+	}else{
+		this->Count -= 1;
+	}
+	return Result;
+}
+
+bool TSkillPoison::SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue){
+	this->Cycle = Cycle;
+	this->Count = Count;
+	this->MaxCount = MaxCount;
+
+	TCreature *Master = this->Master;
+	if(Master != NULL && Master->Type == PLAYER){
+		((TPlayer*)Master)->CheckState();
+	}
+
+	if(AdditionalValue == -1){
+		AdditionalValue = 50;
+	}
+
+	if(AdditionalValue < 10){
+		AdditionalValue = 10;
+	}
+
+	if(AdditionalValue > 1000){
+		AdditionalValue = 1000;
+	}
+
+	this->FactorPercent = AdditionalValue;
+	return true;
+}
+
+void TSkillPoison::Event(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillPoison::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	if(Range < 0){
+		Range = -Range;
+	}
+
+	Master->Damage(GetCreature(Master->PoisonDamageOrigin), Range, 2);
+
+	// NOTE(fusion): I think this is checking whether `Master` is still upon some
+	// poison field to determine whether we should extend the poison effect?
+	Object Obj = GetFirstObject(Master->posx, Master->posy, Master->posz);
+	while(Obj != NONE){
+		// NOTE(fusion): I think `ObjectType` is analogous to `ItemType` in
+		// OpenTibia terms.
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(AVOID)){
+			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == 2){
+				this->Cycle += 1;
+			}
+		}
+
+		Obj = Obj.getNextObject();
+	}
+}
+
+void TSkillPoison::Reset(void){
+	TSkill::Reset();
+	this->FactorPercent = 0x32;
+}
+
+// TSkillBurning
+//==============================================================================
+void TSkillBurning::Event(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillBurning::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	Master->Damage(GetCreature(Master->FireDamageOrigin), 10, 4);
+
+	// NOTE(Fusion): Something similar to `TSkillPoison::Event` except we're
+	// looking for a different field type.
+	Object Obj = GetFirstObject(Master->posx, Master->posy, Master->posz);
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(AVOID)){
+			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == 4){
+				this->Cycle += 1;
+			}
+		}
+
+		Obj = Obj.getNextObject();
+	}
+}
+
+// TSkillEnergy
+//==============================================================================
+void TSkillEnergy::Event(int Range){
+	TCreature *Master = this->Master;
+	if(Master == NULL){
+		error("TSkillEnergy::Event: GetMaster liefert NULL zurueck!\n");
+		return;
+	}
+
+	Master->Damage(GetCreature(Master->EnergyDamageOrigin), 25, 8);
+
+	// NOTE(Fusion): Something similar to `TSkillPoison::Event` except we're
+	// looking for a different field type.
+	Object Obj = GetFirstObject(Master->posx, Master->posy, Master->posz);
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(AVOID)){
+			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == 8){
+				this->Cycle += 1;
+			}
+		}
+
+		Obj = Obj.getNextObject();
+	}
+}
+
 // TSkillBase
 //==============================================================================
 TSkillBase::TSkillBase(void){
@@ -749,6 +1192,7 @@ void TSkillBase::ProcessSkills(void){
 	int Index = 0;
 	int End = this->FirstFreeTimer;
 	while(Index < End){
+		// TODO(fusion): Probably remove if `Skill == NULL`?
 		TSkill *Skill = this->TimerList[Index];
 		if(Skill && !Skill->Process()){
 			// NOTE(fusion): A little swap and pop action.

@@ -12,6 +12,19 @@ enum CreatureType: int {
 	NPC         = 2,
 };
 
+// NOTE(fusion): Not in debug symbols.
+enum PROFESSION: uint8 {
+	PROFESSION_NONE				= 0,
+	PROFESSION_KNIGHT			= 1,
+	PROFESSION_PALADIN			= 2,
+	PROFESSION_SORCERER			= 3,
+	PROFESSION_DRUID			= 4,
+	PROFESSION_ELITE_KNIGHT		= 11,
+	PROFESSION_ROYAL_PALADIN	= 12,
+	PROFESSION_MASTER_SORCERER	= 13,
+	PROFESSION_ELDER_DRUID		= 14,
+};
+
 enum RESULT: int {
 	ERROR					= -1,
 	NOERROR					= 0,
@@ -162,8 +175,7 @@ enum RIGHT: int {
 	NO_STATISTICS						= 81,
 };
 
-// NOTE(fusion): This didn't exist int the decompiled version but is handy when
-// accessing a creature's `Skills` table.
+// NOTE(fusion): Not in debug symbols.
 enum Skill: int {
 	SKILL_LEVEL				= 0,
 	SKILL_MAGIC_LEVEL		= 1,

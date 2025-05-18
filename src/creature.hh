@@ -24,7 +24,7 @@ struct TSkill{
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
 	virtual ~TSkill(void);																// VTABLE[ 0]
-	//virtual ~TSkill(void); // Duplicate destructor that also calls operator delete.	// VTABLE[ 1]
+	// Duplicate destructor that also calls operator delete.							// VTABLE[ 1]
 	virtual void Set(int Value);														// VTABLE[ 2]
 	virtual void Increase(int Amount);													// VTABLE[ 3]
 	virtual void Decrease(int Amount);													// VTABLE[ 4]
@@ -64,7 +64,6 @@ struct TSkill{
 };
 
 struct TSkillLevel: TSkill {
-	~TSkillLevel(void) override;
 	void Increase(int Amount) override;
 	void Decrease(int Amount) override;
 	int GetExpForLevel(int Level) override;
@@ -72,7 +71,6 @@ struct TSkillLevel: TSkill {
 };
 
 struct TSkillProbe: TSkill {
-	~TSkillProbe(void) override;
 	void Increase(int Amount) override;
 	void Decrease(int Amount) override;
 	int GetExpForLevel(int Level) override;
@@ -81,6 +79,62 @@ struct TSkillProbe: TSkill {
 	bool Probe(int Diff, int Prob, bool Increase) override;
 	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
 	bool Jump(int Range) override;
+	void Event(int Range) override;
+};
+
+struct TSkillAdd: TSkill {
+	void Advance(int Range) override;
+};
+
+struct TSkillHitpoints: TSkillAdd {
+	void Set(int Value) override;
+};
+
+struct TSkillMana: TSkillAdd {
+	void Set(int Value) override;
+};
+
+struct TSkillGoStrength: TSkillAdd {
+	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
+	void Event(int Range) override;
+};
+
+struct TSkillCarryStrength: TSkillAdd {
+	void Set(int Value) override;
+};
+
+struct TSkillSoulpoints: TSkillAdd {
+	void Set(int Value) override;
+	int TimerValue(void) override;
+	void Event(int Range) override;
+};
+
+struct TSkillFed: TSkill {
+	void Event(int Range) override;
+};
+
+struct TSkillLight: TSkill {
+	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
+	void Event(int Range) override;
+};
+
+struct TSkillIllusion: TSkill {
+	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
+	void Event(int Range) override;
+};
+
+struct TSkillPoison: TSkill {
+	bool Process(void) override;
+	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
+	void Event(int Range) override;
+	void Reset(void) override;
+};
+
+struct TSkillBurning: TSkill {
+	void Event(int Range) override;
+};
+
+struct TSkillEnergy: TSkill {
 	void Event(int Range) override;
 };
 
@@ -149,7 +203,17 @@ struct TCreature: TSkillBase {
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
-	// TODO
+	virtual ~TCreature(void);															// VTABLE[ 0]
+	// Duplicate destructor that also calls operator delete.							// VTABLE[ 1]
+	virtual void Death(void);															// VTABLE[ 2]
+	virtual void MovePossible(void);													// VTABLE[ 3]
+	virtual void IsPeaceful(void);														// VTABLE[ 4]
+	virtual void GetMaster(void);														// VTABLE[ 5]
+	virtual void TalkStimulus(void);													// VTABLE[ 6]
+	virtual void DamageStimulus(void);													// VTABLE[ 7]
+	virtual void IdleStimulus(void);													// VTABLE[ 8]
+	virtual void CreatureMoveStimulus(void);											// VTABLE[ 9]
+	virtual void AttackStimulus(void);													// VTABLE[10]
 
 	// DATA
 	// =========================================================================
