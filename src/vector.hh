@@ -39,7 +39,9 @@ struct vector{
 		}
 	}
 
-	T *operator(int index){
+	// TODO(fusion): Probably missing some inlined destructor?
+
+	T *at(int index){
 		// TODO(fusion): This is probably not the best way to achieve this.
 
 		while(index < this->start){
@@ -56,11 +58,7 @@ struct vector{
 				// TODO(fusion): Do we actually need to swap elements here? I'm
 				// assuming some non-trivial structures that would invoke their
 				// destructors when `this->entry` gets deleted just below.
-				{
-					T tmp = entry[new_index];
-					entry[new_index] = this->entry[old_index];
-					this->entry[old_index] = tmp;
-				}
+				std::swap(entry[new_index], this->entry[old_index]);
 			}
 
 			if(this->entry != NULL){
@@ -83,11 +81,7 @@ struct vector{
 				int new_index = old_index;
 
 				// TODO(fusion): Same as above.
-				{
-					T tmp = entry[new_index];
-					entry[new_index] = this->entry[old_index];
-					this->entry[old_index] = tmp;
-				}
+				std::swap(entry[new_index], this->entry[old_index]);
 			}
 
 			if(this->entry != NULL){

@@ -1166,9 +1166,7 @@ bool TSkillBase::SetSkills(int Race){
 	// types of creatures.
 	int NumSkills = RaceData[Race].Skills;
 	for(int i = 0; i < NumSkills; i += 1){
-		// TODO(fusion): We'd need to implement the `vector` container being used
-		// across the codebase.
-		//TSkillData *SkillData = RaceData[Race].Skill(i);
+		TSkillData *SkillData = RaceData[Race].Skill.at(i);
 
 		// BUG(fusion): We don't check if `Skill` is valid? Could be NULL. We
 		// don't seem to set all `Skill` fields either so there is something

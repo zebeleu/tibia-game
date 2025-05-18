@@ -1,5 +1,4 @@
 ## TODO NEXT
-- priority_queue (?)
 - TCreature
 - TPlayer
 - TNonPlayer
