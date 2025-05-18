@@ -1,6 +1,5 @@
 ## TODO NEXT
-- ALL TSkill structures
-- vector container (?)
+- priority_queue (?)
 - TCreature
 - TPlayer
 - TNonPlayer
