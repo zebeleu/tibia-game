@@ -515,14 +515,6 @@ struct THouse {
     int Help;
 };
 
-struct matrix<long_unsigned_int> { // Original name: matrix<long unsigned int>
-    int xmin;
-    int ymin;
-    int dx;
-    int dy;
-    ulong *entry;
-};
-
 struct TWaitinglistEntry {
     struct TWaitinglistEntry *Next;
     char Name[30];
@@ -698,14 +690,6 @@ struct TShortwayPoint {
     struct TShortwayPoint *NextToExpand;
 };
 
-struct matrix<TShortwayPoint> {
-    int xmin;
-    int ymin;
-    int dx;
-    int dy;
-    struct TShortwayPoint *entry;
-};
-
 struct TCronEntry {
     struct Object Obj;
     ulong RoundNr;
@@ -766,16 +750,6 @@ struct TCondition {
     int Number;
 };
 
-struct matrix3d<TSector*> {
-    int xmin;
-    int ymin;
-    int zmin;
-    int dx;
-    int dy;
-    int dz;
-    struct TSector **entry;
-};
-
 struct TSector {
     struct Object MapCon[32][32];
     ulong TimeStamp;
@@ -796,14 +770,6 @@ struct THelpDepot {
     ulong CharacterID;
     struct Object Box;
     int DepotNr;
-};
-
-struct matrix<int> {
-    int xmin;
-    int ymin;
-    int dx;
-    int dy;
-    int *entry;
 };
 
 struct listIterator<storeunit<TPlayerIndexLeafNode,_100>_> { // Original name: listIterator<storeunit<TPlayerIndexLeafNode, 100> >

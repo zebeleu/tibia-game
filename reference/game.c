@@ -16459,63 +16459,6 @@ void _GLOBAL__I_InstanceAttributeNames(void)
     return;
 }
 
-// DWARF original prototype: void matrix3d(matrix3d<TSector*> * this, int xmin, int xmax, int ymin,
-// int ymax, int zmin, int zmax, TSector * init)
-
-void __thiscall
-matrix3d<TSector*>::matrix3d
-          (matrix3d<TSector*> *this,int xmin,int xmax,int ymin,int ymax,int zmin,int zmax,
-          TSector *init)
-
-{
-    int iVar1;
-    TSector **ppTVar2;
-    int iVar3;
-    int i;
-    int iVar4;
-    
-    this->xmin = xmin;
-    this->ymin = ymin;
-    this->zmin = zmin;
-    iVar4 = (xmax - xmin) + 1;
-    this->dx = iVar4;
-    iVar3 = (ymax - ymin) + 1;
-    this->dy = iVar3;
-    iVar1 = (zmax - zmin) + 1;
-    this->dz = iVar1;
-    if (((iVar4 < 1) || (iVar3 < 1)) || (iVar1 < 1)) {
-        error("matrix3d: Ungueltige Feldgroesse %d..%d, %d..%d, %d..%d.\n",xmin,xmax,ymin,ymax,zmin,
-              zmax);
-        iVar4 = this->dx;
-        if (iVar4 < 1) {
-            this->dx = 1;
-            iVar4 = 1;
-        }
-        iVar3 = this->dy;
-        if (iVar3 < 1) {
-            this->dy = 1;
-            iVar3 = 1;
-        }
-        iVar1 = this->dz;
-        if (iVar1 < 1) {
-            this->dz = 1;
-            iVar1 = 1;
-        }
-    }
-    ppTVar2 = (TSector **)operator_new__(iVar4 * iVar3 * iVar1 * 4);
-    iVar4 = 0;
-    this->entry = ppTVar2;
-    if (0 < this->dy * this->dx * this->dz) {
-        do {
-            this->entry[iVar4] = init;
-            iVar4 = iVar4 + 1;
-        } while (iVar4 < this->dy * this->dx * this->dz);
-    }
-    return;
-}
-
-
-
 void __static_initialization_and_destruction_0(int __initialize_p,int __priority)
 
 {
@@ -28293,43 +28236,6 @@ void _GLOBAL__I__Z7GetName6Object(void)
     __static_initialization_and_destruction_0(1,0xffff);
     return;
 }
-
-
-
-// DWARF original prototype: void matrix(matrix<int> * this, int xmin, int xmax, int ymin, int ymax)
-
-void __thiscall matrix<int>::matrix(matrix<int> *this,int xmin,int xmax,int ymin,int ymax)
-
-{
-    int iVar1;
-    int *piVar2;
-    int iVar3;
-    
-    iVar3 = (xmax - xmin) + 1;
-    this->xmin = xmin;
-    iVar1 = (ymax - ymin) + 1;
-    this->ymin = ymin;
-    this->dx = iVar3;
-    this->dy = iVar1;
-    if ((iVar3 < 1) || (iVar1 < 1)) {
-        error("matrix: Ungueltige Feldgroesse %d..%d, %d..%d.\n",xmin,xmax,ymin,ymax);
-        iVar3 = this->dx;
-        if (iVar3 < 1) {
-            this->dx = 1;
-            iVar3 = 1;
-        }
-        iVar1 = this->dy;
-        if (iVar1 < 1) {
-            this->dy = 1;
-            iVar1 = 1;
-        }
-    }
-    piVar2 = (int *)operator_new__(iVar3 * iVar1 * 4);
-    this->entry = piVar2;
-    return;
-}
-
-
 
 void RandomShuffle<int>(int *Buffer,int Size)
 
@@ -56434,40 +56340,6 @@ void __thiscall TCreature::AttackStimulus(TCreature *this,ulong param_1)
     return;
 }
 
-// DWARF original prototype: void matrix(matrix<long_unsigned_int> * this, int xmin, int xmax, int
-// ymin, int ymax, ulong init)
-
-void __thiscall matrix<>::matrix(matrix<> *this,int xmin,int xmax,int ymin,int ymax,ulong init)
-
-{
-    int iVar1;
-    ulong *puVar2;
-    int i;
-    int iVar3;
-    
-    iVar3 = (xmax - xmin) + 1;
-    iVar1 = (ymax - ymin) + 1;
-    this->dy = iVar1;
-    this->xmin = xmin;
-    this->ymin = ymin;
-    this->dx = iVar3;
-    if ((iVar3 < 1) || (iVar1 < 1)) {
-        error("matrix: Ungueltige Feldgroesse %d..%d, %d..%d.\n",xmin,xmax,ymin,ymax);
-        this->dx = 1;
-        this->dy = 1;
-    }
-    puVar2 = (ulong *)operator_new__(this->dy * this->dx * 4);
-    iVar1 = 0;
-    this->entry = puVar2;
-    if (0 < this->dy * this->dx) {
-        do {
-            this->entry[iVar1] = init;
-            iVar1 = iVar1 + 1;
-        } while (iVar1 < this->dy * this->dx);
-    }
-    return;
-}
-
 void __static_initialization_and_destruction_0(int __initialize_p,int __priority)
 
 {
@@ -73691,52 +73563,6 @@ void _GLOBAL__I__ZN9TShortwayC2EP9TCreatureii(void)
 
 {
     __static_initialization_and_destruction_0(1,0xffff);
-    return;
-}
-
-
-
-// DWARF original prototype: void matrix(matrix<TShortwayPoint> * this, int xmin, int xmax, int
-// ymin, int ymax)
-
-void __thiscall matrix<>::matrix(matrix<> *this,int xmin,int xmax,int ymin,int ymax)
-
-{
-    int iVar1;
-    TShortwayPoint *pTVar2;
-    TShortwayPoint *pTVar3;
-    int iVar4;
-    
-    iVar4 = (xmax - xmin) + 1;
-    iVar1 = (ymax - ymin) + 1;
-    this->xmin = xmin;
-    this->ymin = ymin;
-    this->dx = iVar4;
-    this->dy = iVar1;
-    if ((iVar4 < 1) || (iVar1 < 1)) {
-        error("matrix: Ungueltige Feldgroesse %d..%d, %d..%d.\n",xmin,xmax,ymin,ymax);
-        iVar4 = this->dx;
-        if (iVar4 < 1) {
-            this->dx = 1;
-            iVar4 = 1;
-        }
-        iVar1 = this->dy;
-        if (iVar1 < 1) {
-            this->dy = 1;
-            iVar1 = 1;
-        }
-    }
-    iVar4 = iVar4 * iVar1;
-    pTVar2 = (TShortwayPoint *)operator_new__(iVar4 * 0x1c);
-    pTVar3 = pTVar2;
-    while (iVar4 = iVar4 + -1, iVar4 != -1) {
-        pTVar3->Waylength = -1;
-        pTVar3->Heuristic = -1;
-        pTVar3->Predecessor = (TShortwayPoint *)0x0;
-        pTVar3->NextToExpand = (TShortwayPoint *)0x0;
-        pTVar3 = pTVar3 + 1;
-    }
-    this->entry = pTVar2;
     return;
 }
 
