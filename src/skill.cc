@@ -66,7 +66,7 @@ void TSkill::Change(int Amount){
 
 void TSkill::SetMDAct(int MDAct){
 	this->MDAct = MDAct;
-	if(this->SkNr == 4 && this->Master && this->Master->Type == PLAYER){
+	if(this->SkNr == SKILL_GO_STRENGTH && this->Master && this->Master->Type == PLAYER){
 		// TODO(fusion): Same as `TSkill::Process`.
 		((TPlayer*)this->Master)->CheckState();
 	}

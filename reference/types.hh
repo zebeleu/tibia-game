@@ -353,18 +353,6 @@ struct TToDoEntry {
     };
 };
 
-// TODO(fusion): The storage per creature of TToDoEntry's?
-struct vector<TToDoEntry> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    TToDoEntry init;
-    TToDoEntry *entry;
-};
-
 struct TXTEASymmetricKey {
     int (**_vptr.TXTEASymmetricKey)(...); // VTABLE?
     uint8 m_SymmetricKey[16];
@@ -497,24 +485,8 @@ struct list<storeunit<TPlayerIndexInternalNode,_100>_> { // Original name: list<
     struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *lastNode;
 };
 
-struct priority_queue_entry<long_unsigned_int,long_unsigned_int> { // Original name: priority_queue_entry<long unsigned int,long unsigned int>
-    ulong Key;
-    ulong Data;
-};
-
 struct THouseGuest {
     char Name[60];
-};
-
-struct vector<THouseGuest> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct THouseGuest init;
-    struct THouseGuest *entry;
 };
 
 struct THouse {
@@ -541,17 +513,6 @@ struct THouse {
     struct vector<THouseGuest> Guest;
     int Guests;
     int Help;
-};
-
-struct vector<THouse> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct THouse init;
-    struct THouse *entry;
 };
 
 struct matrix<long_unsigned_int> { // Original name: matrix<long unsigned int>
@@ -586,41 +547,14 @@ struct listnode<storeunit<TWaitinglistEntry,_100>_> { // Original name: listnode
     struct storeunit<TWaitinglistEntry,100> data;
 };
 
-struct vector<TCreature*> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TCreature *init;
-    struct TCreature **entry;
-};
-
 struct ObjectType {
     int TypeID;
-};
-
-struct priority_queue_entry<long_unsigned_int,TAttackWave*> { // Original name: priority_queue_entry<long unsigned int,TAttackWave*>
-    ulong Key;
-    struct TAttackWave *Data;
 };
 
 struct TItemData {
     struct ObjectType Type;
     int Maximum;
     int Probability;
-};
-
-struct vector<TItemData> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TItemData init;
-    struct TItemData *entry;
 };
 
 struct TAttackWave {
@@ -646,17 +580,6 @@ struct TSkillData {
     int NextLevel;
     int FactorPercent;
     int AddLevel;
-};
-
-struct vector<TSkillData> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TSkillData init;
-    struct TSkillData *entry;
 };
 
 struct store<TWaitinglistEntry,100> {
@@ -688,18 +611,6 @@ struct listIterator<TDynamicStringTableBlock> {
     struct listnode<TDynamicStringTableBlock> *actNode;
 };
 
-
-struct vector<TNonplayer*> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TNonplayer *init;
-    struct TNonplayer **entry;
-};
-
 struct TNonplayer {
     struct TCreature super_TCreature; // INHERITANCE?
     enum STATE State;
@@ -713,18 +624,6 @@ struct TReportedStatement {
     int Channel;
     char Text[256];
 };
-
-struct vector<TReportedStatement> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TReportedStatement init;
-    struct TReportedStatement *entry;
-};
-
 
 struct TListener {
     ulong StatementID;
@@ -743,17 +642,6 @@ struct TDelayedMail {
     int DepotNumber;
     uchar *Packet;
     int PacketSize;
-};
-
-struct vector<TDelayedMail> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TDelayedMail init;
-    struct TDelayedMail *entry;
 };
 
 struct list<storeunit<TPlayerIndexLeafNode,_100>_> { // Original name: list<storeunit<TPlayerIndexLeafNode, 100> >
@@ -776,17 +664,6 @@ struct listIterator<storeunit<TWaitinglistEntry,_100>_> { // Original name: list
     struct listnode<storeunit<TWaitinglistEntry,_100>_> *actNode;
 };
 
-struct vector<priority_queue_entry<long_unsigned_int,_long_unsigned_int>_> { // Original name: vector<priority_queue_entry<long unsigned int, long unsigned int> >
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct priority_queue_entry<long_unsigned_int,long_unsigned_int> init;
-    struct priority_queue_entry<long_unsigned_int,long_unsigned_int> *entry;
-};
-
 struct TSpellData {
     enum SpellShapeType Shape;
     int ShapeParam1;
@@ -799,17 +676,6 @@ struct TSpellData {
     int ImpactParam3;
     int ImpactParam4;
     int Delay;
-};
-
-struct vector<TSpellData> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TSpellData init;
-    struct TSpellData *entry;
 };
 
 struct storeunit<TNode,256> {
@@ -847,17 +713,6 @@ struct TCronEntry {
     int Next;
 };
 
-struct vector<TCronEntry> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TCronEntry init;
-    struct TCronEntry *entry;
-};
-
 struct TMonsterhome {
     int Race;
     int x;
@@ -868,17 +723,6 @@ struct TMonsterhome {
     int ActMonsters;
     int RegenerationTime;
     int Timer;
-};
-
-struct vector<TMonsterhome> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TMonsterhome init;
-    struct TMonsterhome *entry;
 };
 
 struct TStaticStringTableBlock {
@@ -895,17 +739,6 @@ struct listnode<TStaticStringTableBlock> {
 struct list<TStaticStringTableBlock> {
     struct listnode<TStaticStringTableBlock> *firstNode;
     struct listnode<TStaticStringTableBlock> *lastNode;
-};
-
-struct vector<priority_queue_entry<long_unsigned_int,_TAttackWave*>_> { // Original name: vector<priority_queue_entry<long unsigned int, TAttackWave*> >
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct priority_queue_entry<long_unsigned_int,TAttackWave*> init;
-    struct priority_queue_entry<long_unsigned_int,TAttackWave*> *entry;
 };
 
 struct listIterator<TStaticStringTableBlock> {
@@ -925,39 +758,12 @@ struct TObjectType {
     int AttributeOffsets[18];
 };
 
-struct vector<TObjectType> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TObjectType init;
-    struct TObjectType *entry;
-};
-
 struct TCondition {
     int Type;
     ulong Text;
     struct TNode *Expression;
     int Property;
     int Number;
-};
-
-struct vector<TCondition> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TCondition init;
-    struct TCondition *entry;
-};
-
-struct priority_queue<long_unsigned_int,TAttackWave*> { // Original name: priority_queue<long unsigned int,TAttackWave*>
-    struct vector<priority_queue_entry<long_unsigned_int,_TAttackWave*>_> *Entry;
-    int Entries;
 };
 
 struct matrix3d<TSector*> {
@@ -977,17 +783,6 @@ struct TSector {
     uchar MapFlags;
 };
 
-struct vector<long_unsigned_int> { // Original name: vector<long unsigned int>
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    ulong init;
-    ulong *entry;
-};
-
 struct TChannel {
     ulong Moderator;
     char ModeratorName[30];
@@ -997,32 +792,10 @@ struct TChannel {
     int InvitedPlayers;
 };
 
-struct vector<TChannel> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TChannel init;
-    struct TChannel *entry;
-};
-
 struct THelpDepot {
     ulong CharacterID;
     struct Object Box;
     int DepotNr;
-};
-
-struct vector<THelpDepot> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct THelpDepot init;
-    struct THelpDepot *entry;
 };
 
 struct matrix<int> {
@@ -1097,17 +870,6 @@ struct TPlayerData {
     int NumberOfMutings;
 };
 
-struct vector<TPlayer*> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TPlayer *init;
-    struct TPlayer **entry;
-};
-
 struct TPlayer {
     struct TCreature super_TCreature;
     ulong AccountID;
@@ -1156,17 +918,6 @@ struct TParty {
     int InvitedPlayers;
 };
 
-struct vector<TParty> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TParty init;
-    struct TParty *entry;
-};
-
 struct listIterator<storeunit<TNode,_256>_> { // Original name: listIterator<storeunit<TNode, 256> >
     struct listnode<storeunit<TNode,_256>_> *actNode;
 };
@@ -1178,17 +929,6 @@ struct TMark {
     int z;
 };
 
-struct vector<TMark> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TMark init;
-    struct TMark *entry;
-};
-
 struct store<TNode,256> {
     struct list<storeunit<TNode,_256>_> *Units;
     union storeitem<TNode> *firstFreeItem;
@@ -1197,17 +937,6 @@ struct store<TNode,256> {
 struct TMoveUseAction {
     enum ActionType Action;
     int Parameters[5];
-};
-
-struct vector<TMoveUseAction> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TMoveUseAction init;
-    struct TMoveUseAction *entry;
 };
 
 struct list<TDynamicStringTableBlock> {
@@ -1222,32 +951,10 @@ struct TMoveUseRule {
     int LastAction;
 };
 
-struct vector<TMoveUseRule> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TMoveUseRule init;
-    struct TMoveUseRule *entry;
-};
-
 struct TMoveUseCondition {
     enum ModifierType Modifier;
     enum ConditionType Condition;
     int Parameters[5];
-};
-
-struct vector<TMoveUseCondition> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TMoveUseCondition init;
-    struct TMoveUseCondition *entry;
 };
 
 struct TAction {
@@ -1259,17 +966,6 @@ struct TAction {
     struct TNode *Expression3;
 };
 
-struct vector<TAction> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TAction init;
-    struct TAction *entry;
-};
-
 struct TBehaviour {
     struct vector<TCondition> Condition;
     struct vector<TAction> Action;
@@ -1277,37 +973,10 @@ struct TBehaviour {
     int Actions;
 };
 
-struct vector<TBehaviour> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TBehaviour init;
-    struct TBehaviour *entry;
-};
-
 struct THouseArea {
     ushort ID;
     int SQMPrice;
     int DepotNr;
-};
-
-struct vector<THouseArea> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct THouseArea init;
-    struct THouseArea *entry;
-};
-
-struct priority_queue<long_unsigned_int,long_unsigned_int> { // Original name: priority_queue<long unsigned int,long unsigned int>
-    struct vector<priority_queue_entry<long_unsigned_int,_long_unsigned_int>_> *Entry;
-    int Entries;
 };
 
 struct listIterator<storeunit<TPlayerIndexInternalNode,_100>_> { // Original name: listIterator<storeunit<TPlayerIndexInternalNode, 100> >
@@ -1318,17 +987,6 @@ struct listIterator<storeunit<TPlayerIndexInternalNode,_100>_> { // Original nam
 struct TDepotInfo {
     char Town[20];
     int Size;
-};
-
-struct vector<TDepotInfo> {
-    int min;
-    int max;
-    int start;
-    int space;
-    int block;
-    bool initialized;
-    struct TDepotInfo init;
-    struct TDepotInfo *entry;
 };
 
 struct fifoIterator<TStatement> {
