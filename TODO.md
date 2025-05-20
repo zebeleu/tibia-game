@@ -1,5 +1,6 @@
 ## TODO NEXT
-- CONFIG
+- TReadScript / TWriteScript
+- THREADS
 - TCreature
 - TPlayer
 - TNonPlayer

@@ -353,6 +353,16 @@ enum ToDoType: int {
 	TDChangeState	= 9,
 };
 
+enum TOKEN: int {
+	ENDOFFILE		= 0,
+	IDENTIFIER		= 1,
+	NUMBER			= 2,
+	STRING			= 3,
+	BYTES			= 4,
+	COORDINATE		= 5,
+	SPECIAL			= 6,
+};
+
 enum TYPEATTRIBUTE: int {
 	WAYPOINTS					= 0,
 	CAPACITY					= 1,

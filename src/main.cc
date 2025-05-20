@@ -207,7 +207,7 @@ void LoadWorldConfig(void){
 
 static void InitAll(void){
 	try{
-		//ReadConfig();
+		ReadConfig();
 		//SetQueryManagerLoginData(1, WorldName);
 		LoadWorldConfig();
 		InitSHM(!BeADaemon);
