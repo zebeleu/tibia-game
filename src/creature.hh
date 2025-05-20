@@ -2,6 +2,8 @@
 #define TIBIA_CREATURE_HH_ 1
 
 #include "main.hh"
+#include "connection.hh"
+#include "containers.hh"
 #include "skill.hh"
 
 struct TCreature;
@@ -13,6 +15,12 @@ struct TCombatEntry{
 };
 
 struct TCombat{
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	// TODO
+
+	// DATA
+	// =========================================================================
 	TCreature *Master;
 	uint32 EarliestAttackTime;
 	uint32 EarliestDefendTime;
@@ -34,6 +42,59 @@ struct TCombat{
 	int ActCombatEntry;
 	TCombatEntry CombatList[20];
 	int LearningPoints;
+};
+
+struct TToDoEntry {
+    ToDoType Code;
+    union{
+        struct{
+            uint32 Time;
+        } Wait;
+
+        struct{
+            int x;
+            int y;
+            int z;
+        } Go;
+
+        struct{
+            int Direction;
+        } Rotate;
+
+        struct{
+            uint32 Obj;
+            int x;
+            int y;
+            int z;
+            int Count;
+        } Move;
+
+        struct{
+            uint32 Obj;
+            uint32 Partner;
+        } Trade;
+
+        struct{
+            uint32 Obj1;
+            uint32 Obj2;
+            int Dummy;
+        } Use;
+
+        struct{
+            uint32 Obj;
+        } Turn;
+
+        struct{
+            uint32 Text; // POINTER? Probably a reference from `AddDynamicString`?
+            int Mode;
+            uint32 Addressee;
+            bool CheckSpamming;
+        } Talk;
+
+        struct{
+            int NewState;
+        } ChangeState;
+    };
 };
 
 struct TOutfit{

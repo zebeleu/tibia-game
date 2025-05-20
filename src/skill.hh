@@ -64,6 +64,7 @@ struct TSkill{
 };
 
 struct TSkillLevel: TSkill {
+	TSkillLevel(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	void Increase(int Amount) override;
 	void Decrease(int Amount) override;
 	int GetExpForLevel(int Level) override;
@@ -71,6 +72,7 @@ struct TSkillLevel: TSkill {
 };
 
 struct TSkillProbe: TSkill {
+	TSkillProbe(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	void Increase(int Amount) override;
 	void Decrease(int Amount) override;
 	int GetExpForLevel(int Level) override;
@@ -83,47 +85,57 @@ struct TSkillProbe: TSkill {
 };
 
 struct TSkillAdd: TSkill {
+	TSkillAdd(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	void Advance(int Range) override;
 };
 
 struct TSkillHitpoints: TSkillAdd {
+	TSkillHitpoints(int SkNr, TCreature *Master) : TSkillAdd(SkNr, Master) {}
 	void Set(int Value) override;
 };
 
 struct TSkillMana: TSkillAdd {
+	TSkillMana(int SkNr, TCreature *Master) : TSkillAdd(SkNr, Master) {}
 	void Set(int Value) override;
 };
 
 struct TSkillGoStrength: TSkillAdd {
+	TSkillGoStrength(int SkNr, TCreature *Master) : TSkillAdd(SkNr, Master) {}
 	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
 	void Event(int Range) override;
 };
 
 struct TSkillCarryStrength: TSkillAdd {
+	TSkillCarryStrength(int SkNr, TCreature *Master) : TSkillAdd(SkNr, Master) {}
 	void Set(int Value) override;
 };
 
 struct TSkillSoulpoints: TSkillAdd {
+	TSkillSoulpoints(int SkNr, TCreature *Master) : TSkillAdd(SkNr, Master) {}
 	void Set(int Value) override;
 	int TimerValue(void) override;
 	void Event(int Range) override;
 };
 
 struct TSkillFed: TSkill {
+	TSkillFed(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	void Event(int Range) override;
 };
 
 struct TSkillLight: TSkill {
+	TSkillLight(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
 	void Event(int Range) override;
 };
 
 struct TSkillIllusion: TSkill {
+	TSkillIllusion(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
 	void Event(int Range) override;
 };
 
 struct TSkillPoison: TSkill {
+	TSkillPoison(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	bool Process(void) override;
 	bool SetTimer(int Cycle, int Count, int MaxCount, int AdditionalValue) override;
 	void Event(int Range) override;
@@ -131,10 +143,12 @@ struct TSkillPoison: TSkill {
 };
 
 struct TSkillBurning: TSkill {
+	TSkillBurning(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	void Event(int Range) override;
 };
 
 struct TSkillEnergy: TSkill {
+	TSkillEnergy(int SkNr, TCreature *Master) : TSkill(SkNr, Master) {}
 	void Event(int Range) override;
 };
 

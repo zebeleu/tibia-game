@@ -3,6 +3,7 @@
 
 #include "main.hh"
 #include "creature.hh"
+#include "containers.hh"
 
 struct TPlayerData {
 	uint32 CharacterID;
@@ -43,7 +44,7 @@ struct TPlayerData {
 	int InventorySize;
 	uint8 *Depot[9];
 	int DepotSize[9];
-	ulong AccountID;
+	uint32 AccountID;
 	int Sex;
 	char Name[30];
 	uint8 Rights[12];
@@ -76,7 +77,7 @@ struct TPlayer: TCreature {
 	// DATA
 	// =========================================================================
 	//TCreature super_TCreature;	// IMPLICIT
-	ulong AccountID;
+	uint32 AccountID;
 	char Guild[31];
 	char Rank[31];
 	char Title[31];
@@ -98,10 +99,10 @@ struct TPlayer: TCreature {
 	uint8 SpellList[256];
 	int QuestValues[500];
 	Object OpenContainer[16];
-	vector<long_unsigned_int> AttackedPlayers;
+	vector<uint32> AttackedPlayers;
 	int NumberOfAttackedPlayers;
 	bool Aggressor;
-	vector<long_unsigned_int> FormerAttackedPlayers;
+	vector<uint32> FormerAttackedPlayers;
 	int NumberOfFormerAttackedPlayers;
 	bool FormerAggressor;
 	uint32 FormerLogoutRound;

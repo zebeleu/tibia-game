@@ -1,89 +1,4 @@
-struct Object {
-    uint32 ObjectID;
-};
 
-struct TSkill {
-    int (**_vptr.TSkill)(...); // VTABLE?
-    int DAct;
-    int MDAct;
-    uint16 SkNr;
-    TCreature *Master;
-    int Act;
-    int Max;
-    int Min;
-    int FactorPercent;
-    int LastLevel;
-    int NextLevel;
-    int Delta;
-    int Exp;
-    int Cycle;
-    int MaxCycle;
-    int Count;
-    int MaxCount;
-    int AddLevel;
-};
-
-struct TSkillAdd {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillHitpoints {
-    TSkillAdd super_TSkillAdd; // INHERITANCE?
-};
-
-struct TSkillSoulpoints {
-    TSkillAdd super_TSkillAdd; // INHERITANCE?
-};
-
-struct TSkillProbe {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillMana {
-    TSkillAdd super_TSkillAdd; // INHERITANCE?
-};
-
-struct TSkillGoStrength {
-    TSkillAdd super_TSkillAdd; // INHERITANCE?
-};
-
-struct TSkillLight {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillEnergy {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillCarryStrength {
-    TSkillAdd super_TSkillAdd; // INHERITANCE?
-};
-
-struct TSkillPoison {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillBurning {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillFed {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillIllusion {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillLevel {
-    TSkill super_TSkill; // INHERITANCE?
-};
-
-struct TSkillBase {
-    TSkill *Skills[25];
-    TSkill *TimerList[25];
-    uint16 FirstFreeTimer;
-};
 
 struct TImpact {
     int (**_vptr.TImpact)(...); // VTABLE?
@@ -145,142 +60,6 @@ struct TDamageImpact {
     bool AllowDefense;
 };
 
-struct TCombatEntry {
-    uint32 ID;
-    uint32 Damage;
-    int TimeStamp;
-};
-
-struct TCombat {
-    TCreature *Master;
-    uint32 EarliestAttackTime;
-    uint32 EarliestDefendTime;
-    uint32 LastDefendTime;
-    uint32 LatestAttackTime;
-    uint32 AttackMode;
-    uint32 ChaseMode;
-    uint32 SecureMode;
-    uint32 AttackDest;
-    bool Following;
-    Object Shield;
-    Object Close;
-    Object Missile;
-    Object Throw;
-    Object Wand;
-    Object Ammo;
-    bool Fist;
-    uint32 CombatDamage;
-    int ActCombatEntry;
-    TCombatEntry CombatList[20];
-    int LearningPoints;
-};
-
-struct TOutfit {
-    int OutfitID;
-	union{
-		uint16 ObjectType;
-		uint8 Colors[4];
-	};
-};
-
-struct TCreature {
-    int (**_vptr.TCreature)(...); // CREATURE VTABLE?
-    TSkillBase super_TSkillBase; // INHERITANCE?
-    TCombat Combat;
-    uint32 ID;
-    TCreature *NextHashEntry;
-    uint32 NextChainCreature;
-    char Name[31];
-    char Murderer[31];
-    TOutfit OrgOutfit;
-    TOutfit Outfit;
-    int startx;
-    int starty;
-    int startz;
-    int posx;
-    int posy;
-    int posz;
-    int Sex;
-    int Race;
-    int Direction;
-    int Radius;
-    CreatureType Type;
-    bool IsDead;
-    int LoseInventory;
-    bool LoggingOut;
-    bool LogoutAllowed;
-    uint32 EarliestLogoutRound;
-    uint32 EarliestProtectionZoneRound;
-    uint32 EarliestYellRound;
-    uint32 EarliestTradeChannelRound;
-    uint32 EarliestSpellTime;
-    uint32 EarliestMultiuseTime;
-    uint32 EarliestWalkTime;
-    uint32 LifeEndRound;
-    TKnownCreature *FirstKnowingConnection;
-    int SummonedCreatures;
-    uint32 FireDamageOrigin;
-    uint32 PoisonDamageOrigin;
-    uint32 EnergyDamageOrigin;
-    Object CrObject;
-    vector<TToDoEntry> ToDoList;
-    int ActToDo;
-    int NrToDo;
-    uint32 NextWakeup;
-    bool Stop;
-    bool LockToDo;
-    uint8 Profession;
-    TConnection *Connection;
-};
-
-
-struct TKnownCreature {
-    KNOWNCREATURESTATE State;
-    uint32 CreatureID;
-    TKnownCreature *Next;
-    TConnection *Connection;
-};
-
-struct TConnection {
-    uint8 InData[2048];
-    int InDataSize;
-    bool SigIOPending;
-    bool WaitingForACK;
-    uint8 OutData[16384];
-    uint8 field5_0x4806;
-    uint8 field6_0x4807;
-    int NextToSend;
-    int NextToCommit;
-    int NextToWrite;
-    bool Overflow;
-    bool WillingToSend;
-    uint8 field12_0x4816;
-    uint8 field13_0x4817;
-    TConnection *NextSendingConnection;
-    uint32 RandomSeed;
-	CONNECTIONSTATE State;
-    pid_t PID;
-    int Socket;
-    char IPAddress[16];
-    TXTEASymmetricKey SymmetricKey;
-    bool ConnectionIsOk;
-    bool ClosingIsDelayed;
-    uint8 field23_0x4852;
-    uint8 field24_0x4853;
-    uint32 TimeStamp;
-    uint32 TimeStampAction;
-    int TerminalType;
-    int TerminalVersion;
-    int TerminalOffsetX;
-    int TerminalOffsetY;
-    int TerminalWidth;
-    int TerminalHeight;
-    uint32 CharacterID;
-    char Name[31];
-    uint8 field35_0x4897;
-    TKnownCreature KnownCreatureTable[150];
-};
-
 struct TCircle {
     int x[32];
     int y[32];
@@ -298,59 +77,6 @@ struct TSpellList {
     int Mana;
     int SoulPoints;
     int Amount;
-};
-
-struct TToDoEntry {
-    ToDoType Code;
-    union{
-        struct{
-            uint32 Time;
-        } Wait;
-
-        struct{
-            int x;
-            int y;
-            int z;
-        } Go;
-
-        struct{
-            int Direction;
-        } Rotate;
-
-        struct{
-            uint32 Obj;
-            int x;
-            int y;
-            int z;
-            int Count;
-        } Move;
-
-        struct{
-            uint32 Obj;
-            uint32 Partner;
-        } Trade;
-
-        struct{
-            uint32 Obj1;
-            uint32 Obj2;
-            int Dummy;
-        } Use;
-
-        struct{
-            uint32 Obj;
-        } Turn;
-
-        struct{
-            uint32 Text; // POINTER?
-            int Mode;
-            uint32 Addressee;
-            bool CheckSpamming;
-        } Talk;
-
-        struct{
-            int NewState;
-        } ChangeState;
-    };
 };
 
 struct TXTEASymmetricKey {
@@ -403,20 +129,6 @@ struct TPreparedQuery {
     char *DBTypes;
     char *CTypes;
     char *Name;
-};
-
-struct TSharedMemory {
-    int Command;
-    char CommandBuffer[256];
-    ulong RoundNr;
-    ulong ObjectCounter;
-    ulong Errors;
-    int PlayersOnline;
-    int NewbiesOnline;
-    int PrintBufferPosition;
-    char PrintBuffer[200][128];
-    enum GAMESTATE GameState;
-    pid_t GameThreadPID;
 };
 
 struct TPlayerIndexNode {
@@ -539,16 +251,6 @@ struct listnode<storeunit<TWaitinglistEntry,_100>_> { // Original name: listnode
     struct storeunit<TWaitinglistEntry,100> data;
 };
 
-struct ObjectType {
-    int TypeID;
-};
-
-struct TItemData {
-    struct ObjectType Type;
-    int Maximum;
-    int Probability;
-};
-
 struct TAttackWave {
     int x;
     int y;
@@ -562,16 +264,6 @@ struct TAttackWave {
     ulong Message;
     int ExtraItems;
     struct vector<TItemData> ExtraItem;
-};
-
-struct TSkillData {
-    int Nr;
-    int Actual;
-    int Minimum;
-    int Maximum;
-    int NextLevel;
-    int FactorPercent;
-    int AddLevel;
 };
 
 struct store<TWaitinglistEntry,100> {
@@ -656,19 +348,7 @@ struct listIterator<storeunit<TWaitinglistEntry,_100>_> { // Original name: list
     struct listnode<storeunit<TWaitinglistEntry,_100>_> *actNode;
 };
 
-struct TSpellData {
-    enum SpellShapeType Shape;
-    int ShapeParam1;
-    int ShapeParam2;
-    int ShapeParam3;
-    int ShapeParam4;
-    enum SpellImpactType Impact;
-    int ImpactParam1;
-    int ImpactParam2;
-    int ImpactParam3;
-    int ImpactParam4;
-    int Delay;
-};
+
 
 struct storeunit<TNode,256> {
     union storeitem<TNode> item[256];
@@ -732,14 +412,6 @@ struct listIterator<TStaticStringTableBlock> {
 struct list<storeunit<TNode,_256>_> { // Original name: list<storeunit<TNode, 256> >
     struct listnode<storeunit<TNode,_256>_> *firstNode;
     struct listnode<storeunit<TNode,_256>_> *lastNode;
-};
-
-struct TObjectType {
-    char *Name;
-    char *Description;
-    uchar Flags[9];
-    ulong Attributes[62];
-    int AttributeOffsets[18];
 };
 
 struct TCondition {
@@ -1205,53 +877,6 @@ struct TNPC {
 struct TBehaviourDatabase {
     struct vector<TBehaviour> Behaviour;
     int Behaviours;
-};
-
-struct TMonster {
-    struct TNonplayer super_TNonplayer;
-    int Home;
-    ulong Master;
-    ulong Target;
-};
-
-struct TRaceData {
-    char Name[30];
-    char Article[3];
-    struct TOutfit Outfit;
-    struct ObjectType MaleCorpse;
-    struct ObjectType FemaleCorpse;
-    enum BloodType Blood;
-    int ExperiencePoints;
-    int FleeThreshold;
-    int Attack;
-    int Defend;
-    int Armor;
-    int Poison;
-    int SummonCost;
-    int LoseTarget;
-    int Strategy[4];
-    bool KickBoxes;
-    bool KickCreatures;
-    bool SeeInvisible;
-    bool Unpushable;
-    bool DistanceFighting;
-    bool NoSummon;
-    bool NoIllusion;
-    bool NoConvince;
-    bool NoBurning;
-    bool NoPoison;
-    bool NoEnergy;
-    bool NoHit;
-    bool NoLifeDrain;
-    bool NoParalyze;
-    int Skills;
-    struct vector<TSkillData> Skill;
-    int Talks;
-    struct vector<long_unsigned_int> Talk;
-    int Items;
-    struct vector<TItemData> Item;
-    int Spells;
-    struct vector<TSpellData> Spell;
 };
 
 struct TQueryManagerConnection {

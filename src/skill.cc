@@ -796,7 +796,7 @@ void TSkillSoulpoints::Event(int Range){
 	// TODO(fusion): Shouldn't this be the same as `Master->Skills[SKILL_SOUL]`?
 	// Not sure what's going on here.
 	if(!Master->IsDead){
-		Master->Skills[SKILL_SOUL]->Set(Other->Act + 1);
+		Master->Skills[SKILL_SOUL]->Change(1);
 	}
 }
 
@@ -1157,7 +1157,7 @@ bool TSkillBase::NewSkill(uint16 SkillNo, TCreature *Creature){
 }
 
 bool TSkillBase::SetSkills(int Race){
-	if(Race < 0 || Race >= 512){
+	if(Race < 0 || Race >= NARRAY(RaceData)){
 		error("TSkillBase::SetSkills: Ungültige Rassennummer %d.\n", Race);
 		return false;
 	}
@@ -1237,7 +1237,7 @@ void TSkillBase::DelTimer(uint16 SkNr){
 		Skill->DelTimer();
 
 		int End = this->FirstFreeTimer;
-		for(int Index = 0; Index < End; i += 1){
+		for(int Index = 0; Index < End; Index += 1){
 			if(Skill == this->TimerList[Index]){
 				// NOTE(fusion): A little swap and pop action.
 				End -= 1;

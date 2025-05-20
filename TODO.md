@@ -1,4 +1,5 @@
 ## TODO NEXT
+- CONFIG
 - TCreature
 - TPlayer
 - TNonPlayer

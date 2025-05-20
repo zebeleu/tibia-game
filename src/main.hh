@@ -75,6 +75,64 @@ STATIC_ASSERT(sizeof(int) == 4);
 #	define ASSERT(expr) ((void)(expr))
 #endif
 
+// TODO(fusion): We should re-implement the multi-process structure used by the
+// original code but only for reference. Making it compile on Windows shouldn't
+// be too difficult either. Overall this design is outdated and should be reviewed.
+//	Nevertheless, we should focus on getting it working as intended, on the target
+// platform (which is Linux 32-bits) before attempting to refine it.
+STATIC_ASSERT(OS_LINUX);
+#include <sys/types.h>
+//
+
+// config.cc
+extern int Beat;
+
+// shm.cc
+void StartGame(void);
+void CloseGame(void);
+void EndGame(void);
+bool LoginAllowed(void);
+bool GameRunning(void);
+bool GameStarting(void);
+bool GameEnding(void);
+pid_t GetGameThreadPID(void);
+int GetPrintlogPosition(void);
+char *GetPrintlogLine(int Line);
+void IncrementObjectCounter(void);
+void DecrementObjectCounter(void);
+uint32 GetObjectCounter(void);
+void IncrementPlayersOnline(void);
+void DecrementPlayersOnline(void);
+int GetPlayersOnline(void);
+void IncrementNewbiesOnline(void);
+void DecrementNewbiesOnline(void);
+int GetNewbiesOnline(void);
+void SetRoundNr(uint32 RoundNr);
+uint32 GetRoundNr(void);
+void SetCommand(int Command, char *Text);
+int GetCommand(void);
+char *GetCommandBuffer(void);
+void InitSHM(bool Verbose);
+void ExitSHM(void);
+void InitSHMExtern(bool Verbose);
+void ExitSHMExtern(void);
+
+// time.cc
+extern uint32 RoundNr;
+extern uint32 ServerMilliseconds;
+void GetRealTime(int *Hour, int *Minute);
+void GetTime(int *Hour, int *Minute);
+void GetDate(int *Year, int *Cycle, int *Day);
+void GetAmbiente(int *Brightness, int *Color);
+uint32 GetRoundAtTime(int Hour, int Minute);
+uint32 GetRoundForNextMinute(void);
+
+// util.cc
+typedef void TErrorFunction(const char *Text);
+typedef void TPrintFunction(int Level, const char *Text);
+void SetErrorFunction(TErrorFunction *Function);
+void SetPrintFunction(TPrintFunction *Function);
 void error(char *Text, ...) ATTR_PRINTF(1, 2);
+void print(int Level, char *Text, ...) ATTR_PRINTF(1, 2);
 
 #endif //TIBIA_MAIN_HH_
