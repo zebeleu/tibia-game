@@ -1,7 +1,7 @@
 #ifndef TIBIA_CREATURE_HH_
 #define TIBIA_CREATURE_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include "connection.hh"
 #include "containers.hh"
 #include "skill.hh"

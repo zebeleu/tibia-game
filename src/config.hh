@@ -1,7 +1,7 @@
 #ifndef TIBIA_CONFIG_HH_
 #define TIBIA_CONFIG_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include "enums.hh"
 
 struct TDatabaseSettings {

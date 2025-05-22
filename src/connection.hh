@@ -1,7 +1,7 @@
 #ifndef TIBIA_CONNECTION_HH_
 #define TIBIA_CONNECTION_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include "enums.hh"
 
 struct TConnection;

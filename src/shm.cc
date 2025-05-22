@@ -1,4 +1,4 @@
-#include "main.hh"
+#include "common.hh"
 
 // NOTE(fusion): This looks like an interface to external tools. Looking at the
 // `bin` directory this program was in, there are other programs that probably

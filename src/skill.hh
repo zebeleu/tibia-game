@@ -1,7 +1,7 @@
 #ifndef TIBIA_SKILL_HH_
 #define TIBIA_SKILL_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 
 struct TCreature;
 

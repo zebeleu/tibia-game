@@ -1,4 +1,4 @@
-#include "main.hh"
+#include "common.hh"
 #include "config.hh"
 
 #include <signal.h>

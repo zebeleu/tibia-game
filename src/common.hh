@@ -1,5 +1,5 @@
-#ifndef TIBIA_MAIN_HH_
-#define TIBIA_MAIN_HH_ 1
+#ifndef TIBIA_COMMON_HH_
+#define TIBIA_COMMON_HH_ 1
 
 #include <float.h>
 #include <limits.h>
@@ -86,6 +86,7 @@ typedef int pid_t;
 //
 
 // shm.cc
+// =============================================================================
 void StartGame(void);
 void CloseGame(void);
 void EndGame(void);
@@ -116,8 +117,10 @@ void InitSHMExtern(bool Verbose);
 void ExitSHMExtern(void);
 
 // time.cc
+// =============================================================================
 extern uint32 RoundNr;
 extern uint32 ServerMilliseconds;
+
 void GetRealTime(int *Hour, int *Minute);
 void GetTime(int *Hour, int *Minute);
 void GetDate(int *Year, int *Cycle, int *Day);
@@ -126,6 +129,7 @@ uint32 GetRoundAtTime(int Hour, int Minute);
 uint32 GetRoundForNextMinute(void);
 
 // util.cc
+// =============================================================================
 typedef void TErrorFunction(const char *Text);
 typedef void TPrintFunction(int Level, const char *Text);
 void SetErrorFunction(TErrorFunction *Function);
@@ -133,4 +137,6 @@ void SetPrintFunction(TPrintFunction *Function);
 void error(char *Text, ...) ATTR_PRINTF(1, 2);
 void print(int Level, char *Text, ...) ATTR_PRINTF(1, 2);
 
-#endif //TIBIA_MAIN_HH_
+//
+
+#endif //TIBIA_COMMON_HH_

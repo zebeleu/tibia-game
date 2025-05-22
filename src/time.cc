@@ -1,4 +1,4 @@
-#include "main.hh"
+#include "common.hh"
 
 // IMPORTANT(fusion): `RoundNr` is just the number of seconds since startup which
 // is why `GetRoundAtTime` and `GetRoundForNextMinute` straight up uses it as

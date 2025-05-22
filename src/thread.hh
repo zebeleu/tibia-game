@@ -1,7 +1,7 @@
 #ifndef TIBIA_THREAD_HH_
 #define TIBIA_THREAD_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include <pthread.h>
 
 typedef pthread_t ThreadHandle;

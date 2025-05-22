@@ -1,7 +1,7 @@
 #ifndef TIBIA_MAP_HH_
 #define TIBIA_MAP_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 
 // TODO(fusion): I'm not sure whether to put these.
 

@@ -1,7 +1,7 @@
 #ifndef TIBIA_SCRIPT_HH_
 #define TIBIA_SCRIPT_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include "enums.hh"
 
 struct TReadScriptFile {

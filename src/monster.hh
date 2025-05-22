@@ -1,7 +1,7 @@
 #ifndef TIBIA_MONSTER_HH_
 #define TIBIA_MONSTER_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include "creature.hh"
 #include "containers.hh"
 #include "enums.hh"

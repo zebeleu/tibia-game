@@ -1,7 +1,7 @@
 #ifndef TIBIA_PLAYER_HH_
 #define TIBIA_PLAYER_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 #include "creature.hh"
 #include "containers.hh"
 

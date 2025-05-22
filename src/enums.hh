@@ -1,7 +1,7 @@
 #ifndef TIBIA_ENUMS_HH_
 #define TIBIA_ENUMS_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 
 // TODO(fusion): Probably cleanup these names? Prefix values? Its crazy that
 // there are no collision problems (possibly yet).

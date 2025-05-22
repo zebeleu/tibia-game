@@ -1,7 +1,7 @@
 #ifndef TIBIA_CONTAINERS_HH_
 #define TIBIA_CONTAINERS_HH_ 1
 
-#include "main.hh"
+#include "common.hh"
 
 // NOTE(fusion): What the actual fuck. This is an ever growing dynamic array
 // with each access through `operator()` growing it to make sure the requested
