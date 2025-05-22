@@ -80,7 +80,7 @@ void TReadStream::readString(char *Buffer, int MaxLength){
 			this->readBytes(Buffer, Length);
 			Buffer[Length] = 0;
 		}else{
-			this->readBytes(Buffer, MaxLength - 1);
+			this->readBytes((uint8*)Buffer, MaxLength - 1);
 			this->skip(Length - MaxLength + 1);
 			Buffer[MaxLength - 1] = 0;
 		}
@@ -175,4 +175,176 @@ void TReadBuffer::skip(int Count){
 	}
 
 	this->Position += Count;
+}
+
+// TWriteStream
+// =============================================================================
+void TWriteStream::writeFlag(bool Flag){
+	this->writeByte((uint8)Flag);
+}
+
+void TWriteStream::writeWord(uint16 Word){
+	this->writeByte((uint8)(Word));
+	this->writeByte((uint8)(Word >> 8));
+}
+
+void TWriteStream::writeQuad(uint32 Quad){
+	this->writeByte((uint8)(Quad));
+	this->writeByte((uint8)(Quad >> 8));
+	this->writeByte((uint8)(Quad >> 16));
+	this->writeByte((uint8)(Quad >> 24));
+}
+
+void TWriteStream::writeString(const char *String){
+	if(String == NULL){
+		this->writeWord(0);
+		return;
+	}
+
+	int StringLength = (int)strlen(String);
+	ASSERT(StringLength >= 0);
+	if(StringLength < 0xFFFF){
+		this->writeWord((uint16)StringLength);
+	}else{
+		this->writeWord(0xFFFF);
+		this->writeQuad((uint32)StringLength);
+	}
+
+	if(StringLength > 0){
+		this->writeBytes((const uint8*)String, StringLength);
+	}
+}
+
+void TWriteStream::writeBytes(const uint8 *Buffer, int Count){
+	if(Buffer == NULL){
+		error("TWriteStream::writeBytes: Übergebener Puffer existiert nicht.\n");
+		throw "internal error";
+	}
+
+	for(int i = 0; i < Count; i += 1){
+		this->writeByte(Buffer[i]);
+	}
+}
+
+// TWriteBuffer
+// =============================================================================
+TWriteBuffer::TWriteBuffer(uint8 *Data, int Size){
+	if(Data == NULL){
+		error("TWriteBuffer::TWriteBuffer: data ist NULL.\n");
+		Size = 0;
+	}else if(Size < 0){
+		error("TWriteBuffer::TWriteBuffer: Ungültige Datengröße %d.\n", Size);
+		Size = 0;
+	}
+
+	this->Data = Data;
+	this->Size = Size;
+	this->Position = 0;
+}
+
+void TWriteBuffer::writeByte(uint8 Byte){
+	if((this->Size - this->Position) < 1){
+		throw "buffer full";
+	}
+
+	this->Data[this->Position] = Byte;
+	this->Position += 1;
+}
+
+void TWriteBuffer::writeWord(uint16 Word){
+	if((this->Size - this->Position) < 2){
+		throw "buffer full";
+	}
+
+	this->Data[this->Position] = (uint8)(Word);
+	this->Data[this->Position + 1] = (uint8)(Word >> 8);
+	this->Position += 2;
+}
+
+void TWriteBuffer::writeQuad(uint32 Quad){
+	if((this->Size - this->Position) < 4){
+		throw "buffer full";
+	}
+
+	this->Data[this->Position] = (uint8)(Quad);
+	this->Data[this->Position + 1] = (uint8)(Quad >> 8);
+	this->Data[this->Position + 2] = (uint8)(Quad >> 16);
+	this->Data[this->Position + 3] = (uint8)(Quad >> 24);
+	this->Position += 4;
+}
+
+void TWriteBuffer::writeBytes(uint8 *Buffer, int Count){
+	if((this->Size - this->Position) < Count){
+		throw "buffer full";
+	}
+
+	memcpy(&this->Data[this->Position], Buffer, Count);
+	this->Position += Count;
+}
+
+// TDynamicWriteBuffer
+// =============================================================================
+TDynamicWriteBuffer::TDynamicWriteBuffer(int InitialSize)
+	: TWriteBuffer(new uint8[InitialSize], InitialSize)
+{
+	// no-op
+}
+
+void TDynamicWriteBuffer::resizeBuffer(void){
+	ASSERT(this->Size > 0);
+	int Size = this->Size * 2;
+	uint8 *Data = new uint8[Size];
+	if(this->Data != NULL){
+		memcpy(Data, this->Data, this->Size);
+		delete[] this->Data;
+	}
+
+	this->Data = Data;
+	this->Size = Size;
+}
+
+void TDynamicWriteBuffer::writeByte(uint8 Byte){
+	while((this->Size - this->Position) < 1){
+		this->resizeBuffer();
+	}
+
+	this->Data[this->Position] = Byte;
+	this->Position += 1;
+}
+
+void TDynamicWriteBuffer::writeWord(uint16 Word){
+	while((this->Size - this->Position) < 2){
+		this->resizeBuffer();
+	}
+
+	this->Data[this->Position] = (uint8)(Word);
+	this->Data[this->Position + 1] = (uint8)(Word >> 8);
+	this->Position += 2;
+}
+
+void TDynamicWriteBuffer::writeQuad(uint32 Quad){
+	while((this->Size - this->Position) < 4){
+		this->resizeBuffer();
+	}
+
+	this->Data[this->Position] = (uint8)(Quad);
+	this->Data[this->Position + 1] = (uint8)(Quad >> 8);
+	this->Data[this->Position + 2] = (uint8)(Quad >> 16);
+	this->Data[this->Position + 3] = (uint8)(Quad >> 24);
+	this->Position += 4;
+}
+
+void TDynamicWriteBuffer::writeBytes(uint8 *Buffer, int Count){
+	while((this->Size - this->Position) < Count){
+		this->resizeBuffer();
+	}
+
+	memcpy(&this->Data[this->Position], Buffer, Count);
+	this->Position += Count;
+}
+
+TDynamicWriteBuffer::~TDynamicWriteBuffer(void){
+	if(this->Data != NULL){
+		delete[] this->Data;
+	}
 }

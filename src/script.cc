@@ -9,6 +9,8 @@
 //	- TWriteScriptFile::error
 //	- TReadBinaryFile::open
 //	- TReadBinaryFile::error
+//	- TWriteBinaryFile::open
+//	- TWriteBinaryFile::error
 static char ErrorString[100];
 
 // Helper Functions
@@ -158,8 +160,9 @@ void TReadScriptFile::open(const char *FileName){
 
 	this->File[Depth] = fopen(this->Filename[Depth], "rb");
 	if(this->File[Depth] == NULL){
+		int ErrCode = errno;
 		::error("TReadScriptFile::open: Kann Datei %s nicht öffnen.\n", this->Filename[Depth]);
-		::error("Fehler %d: %s.\n", errno, strerror(errno));
+		::error("Fehler %d: %s.\n", ErrCode, strerror(ErrCode));
 		throw "Cannot open script-file";
 	}
 
@@ -650,8 +653,9 @@ void TWriteScriptFile::open(char *FileName){
 
 	this->File = fopen(FileName, "wb");
 	if(this->File == NULL){
+		int ErrCode = errno;
 		::error("TWriteScriptFile: Kann Datei %s nicht anlegen.\n", FileName);
-		::error("Fehler %d: %s.\n", errno, strerror(errno));
+		::error("Fehler %d: %s.\n", ErrCode, strerror(ErrCode));
 		throw "Cannot create script-file";
 	}
 
@@ -871,15 +875,6 @@ void TReadBinaryFile::seek(int Offset){
 
 // TReadBinaryFile VIRTUAL FUNCTIONS
 //==============================================================================
-TReadBinaryFile::~TReadBinaryFile(void){
-	if(this->File != NULL){
-		::error("TReadBinaryFile::~TReadBinaryFile: Datei %s ist noch offen.\n", this->Filename);
-		if(fclose(this->File) != 0){
-			::error("TReadBinaryFile::~TReadBinaryFile: Fehler %d beim Schließen der Datei.\n", errno);
-		}
-	}
-}
-
 uint8 TReadBinaryFile::readByte(void){
 	uint8 Byte;
 	int Result = (int)fread(&Byte, 1, 1, this->File);
@@ -894,6 +889,7 @@ uint8 TReadBinaryFile::readByte(void){
 		if(fclose(this->File) != 0){
 			::error("TReadBinaryFile::readByte: Fehler %d beim Schließen der Datei.\n", errno);
 		}
+		this->File = NULL;
 		SaveFile(this->Filename);
 
 		this->error("Error while reading byte");
@@ -914,6 +910,7 @@ void TReadBinaryFile::readBytes(uint8 *Buffer, int Count){
 		if(fclose(this->File) != 0){
 			::error("TReadBinaryFile::readBytes: Fehler %d beim Schließen der Datei.\n", errno);
 		}
+		this->File = NULL;
 		SaveFile(this->Filename);
 
 		this->error("Error while reading bytes");
@@ -934,4 +931,112 @@ void TReadBinaryFile::skip(int Count){
 	}
 
 	this->seek(this->getPosition() + Count);
+}
+
+TReadBinaryFile::~TReadBinaryFile(void){
+	if(this->File != NULL){
+		::error("TReadBinaryFile::~TReadBinaryFile: Datei %s ist noch offen.\n", this->Filename);
+		if(fclose(this->File) != 0){
+			::error("TReadBinaryFile::~TReadBinaryFile: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+	}
+}
+
+// TWriteBinaryFile
+//==============================================================================
+TWriteBinaryFile::TWriteBinaryFile(void){
+	this->File = NULL;
+}
+
+void TWriteBinaryFile::open(char *FileName){
+	if(this->File != NULL){
+		this->error("File still open");
+	}
+
+	this->File = fopen(FileName, "wb");
+	if(this->File == NULL){
+		int ErrCode = errno;
+		::error("TWriteBinaryFile::open: Kann Datei %s nicht anlegen.\n", FileName);
+		::error("Fehler %d: %s.\n", ErrCode, strerror(ErrCode));
+
+		snprintf(ErrorString, sizeof(ErrorString),
+				"Cannot create file %s.", FileName);
+
+		throw ErrorString;
+	}
+
+	strcpy(this->Filename, FileName);
+}
+
+void TWriteBinaryFile::close(void){
+	// TODO(fusion): Check if file is NULL?
+	if(fclose(this->File) != 0){
+		int ErrCode = errno;
+		::error("TWriteBinaryFile::close: Fehler beim Schließen der Datei.\n");
+		::error("# Datei: %s, Fehlercode: %d (%s)\n",
+				this->Filename, ErrCode, strerror(ErrCode));
+	}
+	this->File = NULL;
+}
+
+void TWriteBinaryFile::error(char *Text){
+	if(this->File != NULL){
+		if(fclose(this->File) != 0){
+			::error("TWriteBinaryFile::error: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		this->File = NULL;
+	}
+
+	snprintf(ErrorString, sizeof(ErrorString),
+			"error in binary-file \"%s\": %s.",
+			this->Filename, Text);
+
+	throw ErrorString;
+}
+
+void TWriteBinaryFile::writeByte(uint8 Byte){
+	int Result = (int)fwrite(&Byte, 1, 1, this->File);
+	if(Result != 1){
+		int ErrCode = errno;
+		::error("TWriteBinaryFile::writeByte: Fehler beim Schreiben eines Bytes\n");
+		::error("# Datei: %s, Rückgabewert: %d, Fehlercode: %d (%s)\n",
+				this->Filename, Result, ErrCode, strerror(ErrCode));
+
+		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
+		if(fclose(this->File) != 0){
+			::error("TWriteBinaryFile::writeByte: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		this->File = NULL;
+		SaveFile(this->Filename);
+
+		this->error("Error while writing byte");
+	}
+}
+
+void TWriteBinaryFile::writeBytes(uint8 *Buffer, int Count){
+	int Result = (int)fwrite(Buffer, 1, Count, this->File);
+	if(Result != Count){
+		int ErrCode = errno;
+		::error("TWriteBinaryFile::writeBytes: Fehler beim Schreiben von %d Bytes\n", Count);
+		::error("# Datei: %s, Rückgabewert: %d, Fehlercode: %d (%s)\n",
+				this->Filename, Result, ErrCode, strerror(ErrCode));
+
+		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
+		if(fclose(this->File) != 0){
+			::error("TWriteBinaryFile::writeBytes: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		this->File = NULL;
+		SaveFile(this->Filename);
+
+		this->error("Error while writing bytes");
+	}
+}
+
+TWriteBinaryFile::~TWriteBinaryFile(void){
+	if(this->File != NULL){
+		::error("TWriteBinaryFile::~TWriteBinaryFile: Datei %s ist noch offen.\n", this->Filename);
+		if(fclose(this->File) != 0){
+			::error("TWriteBinaryFile::~TWriteBinaryFile: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+	}
 }

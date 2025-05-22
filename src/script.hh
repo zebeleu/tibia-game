@@ -114,22 +114,46 @@ struct TReadBinaryFile: TReadStream {
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
-	// TODO(fusion): `TReadStream` itself doesn't have a destructor on its VTABLE
-	// which makes me think there is something else going on here or the compiler
-	// optimized it away because it was never used but it seems problematic.
-	virtual ~TReadBinaryFile(void) override;											// VTABLE[8]
-	// Duplicate destructor that also calls operator delete.							// VTABLE[9]
-
 	uint8 readByte(void) override;
 	void readBytes(uint8 *Buffer, int Count) override;
 	bool eof(TReadBinaryFile *this) override;
 	void skip(int Count) override;
+
+	// TODO(fusion): Appended virtual functions. These are not in the base class
+	// VTABLE which can be problematic if we intend to use polymorphism, although
+	// that doesn't seem to be case.
+	virtual ~TReadBinaryFile(void) override;											// VTABLE[8]
+	// Duplicate destructor that also calls operator delete.							// VTABLE[9]
 
 	// DATA
 	// =========================================================================
 	FILE *File;
 	char Filename[4096];
 	int FileSize;
+};
+
+struct TWriteBinaryFile: TWriteStream {
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	TWriteBinaryFile(void);
+	void open(char *FileName);
+	void close(void);
+	void error(char *Text);
+
+	// VIRTUAL FUNCTIONS
+	// =========================================================================
+	void writeByte(uint8 Byte) override;
+	void writeBytes(uint8 *Buffer, int Count) override;
+
+	// TODO(fusion): Appended virtual functions. These are not in the base class
+	// VTABLE which can be problematic if we intend to use polymorphism, although
+	// that doesn't seem to be case.
+	virtual ~TWriteBinaryFile(void);
+
+	// DATA
+	// =========================================================================
+	FILE *File;
+	char Filename[4096];
 };
 
 #endif //TIBIA_SCRIPT_HH_

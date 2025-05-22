@@ -166,9 +166,59 @@ struct TReadBuffer: TReadStream {
 
 	// DATA
 	// =========================================================================
+	const uint8 *Data;
+	int Size;
+	int Position;
+};
+
+struct TWriteStream {
+	// VIRTUAL FUNCTIONS
+	// =========================================================================
+	virtual void writeFlag(bool Flag);													// VTABLE[0]
+	virtual void writeByte(uint8 Byte) = 0;												// VTABLE[1]
+	virtual void writeWord(uint16 Word);												// VTABLE[2]
+	virtual void writeQuad(uint16 Quad);												// VTABLE[3]
+	virtual void writeString(const char *String);										// VTABLE[4]
+	virtual void writeBytes(const uint8 *Buffer, int Count);							// VTABLE[5]
+};
+
+struct TWriteBuffer: TWriteStream {
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	TWriteBuffer(uint8 *Data, int Size);
+
+	// VIRTUAL FUNCTIONS
+	// =========================================================================
+	void writeByte(uint8 Byte) override;
+	void writeWord(uint16 Word) override;
+	void writeQuad(uint32 Quad) override;
+	void writeBytes(uint8 *Buffer, int Count) override;
+
+	// DATA
+	// =========================================================================
 	uint8 *Data;
 	int Size;
 	int Position;
+};
+
+struct TDynamicWriteBuffer: TWriteBuffer {
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	TDynamicWriteBuffer(int InitialSize);
+	void resizeBuffer(void);
+
+	// VIRTUAL FUNCTIONS
+	// =========================================================================
+	void writeByte(uint8 Byte) override;
+	void writeWord(uint16 Word) override;
+	void writeQuad(uint32 Quad) override;
+	void writeBytes(uint8 *Buffer, int Count) override;
+
+	// TODO(fusion): Appended virtual functions. These are not in the base class
+	// VTABLE which can be problematic if we intend to use polymorphism, although
+	// that doesn't seem to be case.
+	virtual ~TDynamicWriteBuffer(void);													// VTABLE[6]
+	// Duplicate destructor that also calls operator delete.							// VTABLE[7]
 };
 
 #endif //TIBIA_COMMON_HH_

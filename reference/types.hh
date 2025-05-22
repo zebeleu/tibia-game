@@ -639,21 +639,6 @@ struct fifoIterator<TListener> {
     int Position;
 };
 
-struct TWriteStream {
-    int (**_vptr.TWriteStream)(...);
-};
-
-struct TWriteBuffer {
-    struct TWriteStream super_TWriteStream;
-    uchar *Data;
-    int Size;
-    int Position;
-};
-
-struct TDynamicWriteBuffer {
-    struct TWriteBuffer super_TWriteBuffer;
-};
-
 struct TDirectReplyData {
     ulong CharacterID;
     char Message[100];
@@ -784,15 +769,6 @@ struct TReaderThreadReply {
     int SectorZ;
     uchar *Data;
     int Size;
-};
-
-struct TWriteBinaryFile {
-    struct TWriteStream super_TWriteStream;
-    undefined field1_0x1;
-    undefined field2_0x2;
-    undefined field3_0x3;
-    FILE *File;
-    char Filename[4096];
 };
 
 struct TNPC {

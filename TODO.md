@@ -1,7 +1,5 @@
 ## TODO NEXT
-- TWriteStream
-- TWriteBuffer
-- TWriteBinaryFile
+- SaveFile ??
 - TCreature
 - TPlayer
 - TNonPlayer
