@@ -1,6 +1,8 @@
 ## TODO NEXT
-- TReadScript / TWriteScript
 - THREADS
+- TReadStream/TWriteStream
+- TReadBuffer/TWriteBuffer
+- TReadBinaryFile/TWriteBinaryFile
 - TCreature
 - TPlayer
 - TNonPlayer

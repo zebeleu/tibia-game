@@ -82,7 +82,17 @@ struct TReadScriptFile {
 struct TWriteScriptFile {
 	// REGULAR FUNCTIONS
 	// =========================================================================
-	//TWriteScriptFile(void);
+	TWriteScriptFile(void);
+	~TWriteScriptFile(void);
+	void open(char *FileName);
+	void close(void);
+	void error(char *Text);
+	void writeLn(void);
+	void writeText(char *Text);
+	void writeNumber(int Number);
+	void writeString(char *Text);
+	void writeCoordinate(int x ,int y ,int z);
+	void writeBytesequence(uint8 *Sequence, int Length);
 
 	// DATA
 	// =========================================================================

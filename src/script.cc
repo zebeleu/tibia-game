@@ -1,6 +1,15 @@
 #include "script.hh"
 
-// =============================================================================
+// NOTE(fusion): Throwing a character array on the stack as an exception won't
+// work because it implicitly decays into a character pointer which would then
+// point to invalid data when actually parsed. It is the reason `ErrorString` is
+// declared statically, or else you'd need to throw some heap allocated string
+// which then becomes ambiguous whether you should free it or not. Used in:
+//	- TReadScriptFile::error
+//	- TWriteScriptFile::error
+static char ErrorString[100];
+
+// Helper Functions
 // =============================================================================
 // TODO(fusion): Move to `util.cc`?
 
@@ -104,9 +113,8 @@ static char *findLast(char *s, char c){
 	return Last;
 }
 
-// =============================================================================
-// =============================================================================
-
+// TWriteScriptFile
+//==============================================================================
 TReadScriptFile::TReadScriptFile(void){
 	this->RecursionDepth = -1;
 	this->Bytes = (uint8*)this->String;
@@ -172,8 +180,6 @@ void TReadScriptFile::close(void){
 }
 
 void TReadScriptFile::error(const char *Text){
-	static char ErrorString[100];
-
 	int Depth = this->RecursionDepth;
 	ASSERT(Depth >= 0 && Depth <= NARRAY(this->File));
 
@@ -614,4 +620,171 @@ int main(int argc, char **argv){
 	}
 
 	return EXIT_FAILURE;
+}
+
+// TWriteScriptFile
+//==============================================================================
+TWriteScriptFile::TWriteScriptFile(void){
+	this->File = NULL;
+}
+
+TWriteScriptFile::~TWriteScriptFile(void){
+	if(this->File != NULL){
+		::error("TWriteScriptFile::~TWriteScriptFile: Datei %s ist noch offen.\n", this->Filename);
+		if(fclose(this->File) != 0){
+			::error("TWriteScriptFile::~TWriteScriptFile: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+	}
+}
+
+void TWriteScriptFile::open(char *FileName){
+	if(this->File != NULL){
+		::error("TWriteScriptFile::open: Altes Skript ist noch offen.\n");
+		if(fclose(this->File) != 0){
+			::error("TWriteScriptFile::open: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		this->File = NULL;
+	}
+
+	this->File = fopen(FileName, "wb");
+	if(this->File == NULL){
+		::error("TWriteScriptFile: Kann Datei %s nicht anlegen.\n", FileName);
+		::error("Fehler %d: %s.\n", errno, strerror(errno));
+		throw "Cannot create script-file";
+	}
+
+	strcpy(this->Filename, FileName);
+	this->Line = 0;
+}
+
+void TWriteScriptFile::close(void){
+	if(this->File == NULL){
+		::error("TWriteScriptFile::close: Kein Skript offen.\n");
+		return;
+	}
+
+	if(fclose(this->File) != 0){
+		::error("TWriteScriptFile::close: Fehler %d beim Schließen der Datei.\n", errno);
+	}
+	this->File = NULL;
+}
+
+void TWriteScriptFile::error(char *Text){
+	if(this->File != NULL){
+		if(fclose(this->File) != 0){
+			::error("TWriteScriptFile::error: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		this->File = NULL;
+	}
+
+	snprintf(ErrorString, sizeof(ErrorString),
+			"error in script-file \"%s\", line %d: %s",
+			this->Filename, this->Line);
+
+	throw ErrorString;
+}
+
+void TWriteScriptFile::writeLn(void){
+	if(this->File == NULL){
+		::error("TWriteScriptFile::writeLn: Kein Skript zum Schreiben geöffnet.\n");
+		throw "Cannot write linefeed";
+	}
+
+	putc('\n', this->File);
+}
+
+void TWriteScriptFile::writeText(char *Text){
+	if(this->File == NULL){
+		::error("TWriteScriptFile::writeText: Kein Skript zum Schreiben geöffnet.\n");
+		throw "Cannot write text";
+	}
+
+	if(Text == NULL){
+		::error("TWriteScriptFile::writeText: Text ist NULL.\n");
+		throw "Cannot write text";
+	}
+
+	for(int i = 0; Text[i] != 0; i += 1){
+		putc(Text[i], this->File);
+	}
+}
+
+void TWriteScriptFile::writeNumber(int Number){
+	if(this->File == NULL){
+		::error("TWriteScriptFile::writeNumber: Kein Skript zum Schreiben geöffnet.\n");
+		throw "Cannot write number";
+	}
+
+	char s[32];
+	snprintf(s, sizeof(s), "%d", Number);
+	this->writeText(s);
+}
+
+void TWriteScriptFile::writeString(char *Text){
+	if(this->File == NULL){
+		::error();
+		throw "Cannot write string";
+	}
+
+	if(Text == NULL){
+		::error("TWriteScriptFile::writeString: Text ist NULL.\n");
+		throw "Cannot write string";
+	}
+
+	putc('"', this->File);
+	for(int i = 0; Text[i] != 0; i += 1){
+		if(Text[i] == '\"' || Text[i] == '\\'){
+			putc('\\', this->File);
+			putc(Text[i], this->File);
+		}else if(Text[i] == '\n'){
+			putc('\\', this->File);
+			putc('n', this->File);
+		}else{
+			putc(Text[i], this->File);
+		}
+	}
+	putc('"', this->File);
+}
+
+void TWriteScriptFile::writeCoordinate(int x ,int y ,int z){
+	if(this->File == NULL){
+		::error("TWriteScriptFile::writeCoordinate: Kein Skript zum Schreiben geöffnet.\n");
+		throw "Cannot write coordinate";
+	}
+
+	// TODO(fusion): This is weird because we support loading negative coordinates values.
+	if(x < 0 || y < 0 || z < 0){
+		::error("TWriteScriptFile::writeCoordinate: Ungültige Koordinaten [%d,%d,%d].\n", x, y, z);
+		throw "Invalid coordinates";
+	}
+
+	char s[64];
+	snprintf(s, sizeof(s), "[%u,%u,%u]", x, y, z);
+	this->writeText(s);
+}
+
+void TWriteScriptFile::writeBytesequence(uint8 *Sequence, int Length){
+	if(this->File == NULL){
+		::error("TWriteScriptFile::writeBytesequence: Kein Skript zum Schreiben geöffnet.\n");
+		throw "Cannot write bytesequence";
+	}
+
+	if(Sequence == NULL){
+		::error("TWriteScriptFile::writeBytesequence: Sequence ist NULL.\n");
+		throw "Cannot write bytesequence";
+	}
+
+	if(Length <= 0){
+		::error("TWriteScriptFile::writeBytesequence: Ungültige Sequenzlänge.\n");
+		throw "Cannot write bytesequence";
+	}
+
+	for(int i = 0; i < Length; i += 1){
+		if(i > 0){
+			putc('-', this->File);
+		}
+
+		snprintf(s, sizeof(s), "%u", Sequence[i]);
+		this->writeText(s);
+	}
 }
