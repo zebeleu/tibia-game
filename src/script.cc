@@ -7,6 +7,8 @@
 // which then becomes ambiguous whether you should free it or not. Used in:
 //	- TReadScriptFile::error
 //	- TWriteScriptFile::error
+//	- TReadBinaryFile::open
+//	- TReadBinaryFile::error
 static char ErrorString[100];
 
 // Helper Functions
@@ -113,7 +115,7 @@ static char *findLast(char *s, char c){
 	return Last;
 }
 
-// TWriteScriptFile
+// TReadScriptFile
 //==============================================================================
 TReadScriptFile::TReadScriptFile(void){
 	this->RecursionDepth = -1;
@@ -787,4 +789,149 @@ void TWriteScriptFile::writeBytesequence(uint8 *Sequence, int Length){
 		snprintf(s, sizeof(s), "%u", Sequence[i]);
 		this->writeText(s);
 	}
+}
+
+// TReadBinaryFile REGULAR FUNCTIONS
+//==============================================================================
+TReadBinaryFile::TReadBinaryFile(void){
+	this->File = NULL;
+}
+
+void TReadBinaryFile::open(char *FileName){
+	if(this->File != NULL){
+		this->error("File still open");
+	}
+
+	this->File = fopen(FileName, "rb");
+	if(this->File == NULL){
+		snprintf(ErrorString, sizeof(ErrorString),
+				"Cannot open file %s", FileName);
+		throw ErrorString;
+	}
+
+	strcpy(this->Filename, FileName);
+	this->FileSize = -1;
+}
+
+int TReadBinaryFile::close(void){
+	// TODO(fusion): Check if file is NULL?
+	if(fclose(this->File) != 0){
+		int ErrCode = errno;
+		::error("TReadBinaryFile::close: Fehler beim Schließen der Datei.\n");
+		::error("# Datei: %s, Fehlercode: %d (%s)\n",
+				this->Filename, ErrCode, strerror(ErrCode));
+	}
+	this->File = NULL;
+}
+
+void TReadBinaryFile::error(char *Text){
+	if(this->File != NULL){
+		if(fclose(this->File) != 0){
+			::error("TReadBinaryFile::error: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		this->File = NULL;
+	}
+
+	snprintf(ErrorString, sizeof(ErrorString),
+			"error in binary-file \"%s\": %s.",
+			this->Filename, Text);
+
+	throw ErrorString;
+}
+
+int TReadBinaryFile::getPosition(void){
+	// TODO(fusion): Check if file is NULL?
+	return (int)ftell(this->File);
+}
+
+int TReadBinaryFile::getSize(void){
+	// TODO(fusion): Check if file is NULL?
+	int Size = this->FileSize;
+	if(Size == -1){
+		long Position = ftell(this->File);
+		fseek(this->File, 0, SEEK_END);
+		Size = (int)ftell(this->File);
+		fseek(this->File, Position, SEEK_SET);
+		this->FileSize = Size;
+	}
+	return Size;
+}
+
+void TReadBinaryFile::seek(int Offset){
+	if(this->File == NULL){
+		this->error("File not open for seek");
+	}
+
+	if(Offset < 0){
+		this->error("Negative offset for seek");
+	}
+
+	fseek(this->File, (long)Offset, 0);
+}
+
+// TReadBinaryFile VIRTUAL FUNCTIONS
+//==============================================================================
+TReadBinaryFile::~TReadBinaryFile(void){
+	if(this->File != NULL){
+		::error("TReadBinaryFile::~TReadBinaryFile: Datei %s ist noch offen.\n", this->Filename);
+		if(fclose(this->File) != 0){
+			::error("TReadBinaryFile::~TReadBinaryFile: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+	}
+}
+
+uint8 TReadBinaryFile::readByte(void){
+	uint8 Byte;
+	int Result = (int)fread(&Byte, 1, 1, this->File);
+	if(Result != 1){
+		int ErrCode = errno;
+		int Position = this->getPosition();
+		::error("TReadBinaryFile::readByte: Fehler beim Lesen eines Bytes\n");
+		::error("# Datei: %s, Position: %d, Rückgabewert: %d, Fehlercode: %d (%s)\n",
+				this->Filename, Position, Result, ErrCode, strerror(ErrCode));
+
+		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
+		if(fclose(this->File) != 0){
+			::error("TReadBinaryFile::readByte: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		SaveFile(this->Filename);
+
+		this->error("Error while reading byte");
+	}
+	return Byte;
+}
+
+void TReadBinaryFile::readBytes(uint8 *Buffer, int Count){
+	int Result = (int)fread(Buffer, 1, Count, this->File);
+	if(Result != Count){
+		int ErrCode = errno;
+		int Position = this->getPosition();
+		::error("TReadBinaryFile::readBytes: Fehler beim Lesen von %d Bytes\n", Count);
+		::error("# Datei: %s, Position %d, Rückgabewert: %d, Fehlercode: %d (%s)\n",
+				this->Filename, Position, Result, ErrCode, strerror(ErrCode));
+
+		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
+		if(fclose(this->File) != 0){
+			::error("TReadBinaryFile::readBytes: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+		SaveFile(this->Filename);
+
+		this->error("Error while reading bytes");
+	}
+}
+
+bool TReadBinaryFile::eof(TReadBinaryFile *this){
+	if(this->File == NULL){
+		this->error("File not open for eof check");
+	}
+
+	return this->getSize() <= this->getPosition();
+}
+
+void TReadBinaryFile::skip(int Count){
+	if(this->File == NULL){
+		this->error("File not open for skip");
+	}
+
+	this->seek(this->getPosition() + Count);
 }

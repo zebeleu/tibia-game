@@ -643,17 +643,6 @@ struct TWriteStream {
     int (**_vptr.TWriteStream)(...);
 };
 
-struct TReadStream {
-    int (**_vptr.TReadStream)(...);
-};
-
-struct TReadBuffer {
-    struct TReadStream super_TReadStream;
-    uchar *Data;
-    int Size;
-    int Position;
-};
-
 struct TWriteBuffer {
     struct TWriteStream super_TWriteStream;
     uchar *Data;
@@ -804,16 +793,6 @@ struct TWriteBinaryFile {
     undefined field3_0x3;
     FILE *File;
     char Filename[4096];
-};
-
-struct TReadBinaryFile {
-    struct TReadStream super_TReadStream;
-    undefined field1_0x1;
-    undefined field2_0x2;
-    undefined field3_0x3;
-    FILE *File;
-    char Filename[4096];
-    int FileSize;
 };
 
 struct TNPC {
