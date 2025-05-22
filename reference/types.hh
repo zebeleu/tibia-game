@@ -96,15 +96,6 @@ struct TDatabasePoolConnection {
     bool TransactionRunning;
 };
 
-struct TDatabaseSettings {
-    char Product[30];
-    char Database[30];
-    char Login[30];
-    char Password[30];
-    char Host[30];
-    char Port[6];
-};
-
 struct Semaphore {
     int value;
     struct pthread_mutex_t mutex;
@@ -828,12 +819,6 @@ struct TWriteBinaryFile {
     char Filename[4096];
 };
 
-struct TWriteScriptFile {
-    FILE *File;
-    char Filename[4096];
-    int Line;
-};
-
 struct TReadBinaryFile {
     struct TReadStream super_TReadStream;
     undefined field1_0x1;
@@ -842,21 +827,6 @@ struct TReadBinaryFile {
     FILE *File;
     char Filename[4096];
     int FileSize;
-};
-
-struct TReadScriptFile {
-    enum TOKEN Token;
-    FILE *File[3];
-    char Filename[3][4096];
-    int Line[3];
-    char String[4000];
-    int RecursionDepth;
-    uchar *Bytes;
-    int Number;
-    int CoordX;
-    int CoordY;
-    int CoordZ;
-    char Special;
 };
 
 struct TNPC {
@@ -889,12 +859,6 @@ struct TQueryManagerConnection {
     undefined field6_0x2d;
     undefined field7_0x2e;
     undefined field8_0x2f;
-};
-
-struct TQueryManagerSettings {
-    char Host[50];
-    int Port;
-    char Password[30];
 };
 
 struct TQueryManagerPoolConnection {

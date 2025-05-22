@@ -1,0 +1,617 @@
+#include "script.hh"
+
+// =============================================================================
+// =============================================================================
+// TODO(fusion): Move to `util.cc`?
+
+static bool isSpace(int c){
+	return c == ' '
+		|| c == '\t'
+		|| c == '\n'
+		|| c == '\r'
+		|| c == '\v'
+		|| c == '\f';
+}
+
+static bool isAlpha(int c){
+	// TODO(fusion): This is most likely wrong! We're assuming a direct conversion
+	// from `char` to `int` which will cause sign extension for negative values. This
+	// wouldn't be a problem if we expected to parse only streams of `char[]` but can
+	// be problematic for the output of `getc` which returns bytes as `unsigned char`
+	// converted to `int`.
+	//	TLDR: The parameter `c` should be `uint8`.
+	return ('A' <= c && c <= 'Z')
+		|| ('a' <= c && c <= 'z')
+		|| c == -0x1C	// E4 => ä
+		|| c == -0x0A	// F6 => ö
+		|| c == -0x04	// FC => ü
+		|| c == -0x3C	// C4 => Ä
+		|| c == -0x2A	// D6 => Ö
+		|| c == -0x24	// DC => Ü
+		|| c == -0x21;	// DF => ß
+}
+
+static bool isEngAlpha(int c){
+	return ('A' <= c && c <= 'Z')
+		|| ('a' <= c && c <= 'z');
+}
+
+static bool isDigit(int c){
+	return ('0' <= c && c <= '9');
+}
+
+static int toLower(int c){
+	// TODO(fusion): Same problem as `isAlpha`.
+	if(('A' <= c && c <= 'Z') || (0xC0 <= c && c <= 0xDE && c != 0xD7)){
+		c += 32;
+	}
+	return c;
+}
+
+static int toUpper(int c){
+	// TODO(fusion): Same problem as `isAlpha`.
+	if(('A' <= c && c <= 'Z') || (0xE0 <= c && c <= 0xFE && c != 0xF7)){
+		c -= 32;
+	}
+	return c;
+}
+
+static char *strLower(char *s){
+	for(int i = 0; s[i] != 0; i += 1){
+		s[i] = (char)toLower(s[i]);
+	}
+	return s;
+}
+
+static char *strUpper(char *s){
+	for(int i = 0; s[i] != 0; i += 1){
+		s[i] = (char)toUpper(s[i]);
+	}
+	return s;
+}
+
+static int stricmp(const char *s1, const char *s2, int Pos){
+	for(int i = 0; i < Pos; i += 1){
+		int c1 = toLower(s1[i]);
+		int c2 = toLower(s2[i]);
+		if(c1 > c2){
+			return 1;
+		}else if(c1 < c2){
+			return -1;
+		}else{
+			ASSERT(c1 == c2);
+			if(c1 == 0){
+				return 0;
+			}
+		}
+	}
+}
+
+static char *findFirst(char *s, char c){
+	return strchr(s, (int)c);
+}
+
+static char *findLast(char *s, char c){
+	char *Current = s;
+	char *Last = NULL;
+	while(true){
+		Current = strchr(Current, (int)c);
+		if(Current == NULL)
+			break;
+		Last = Current;
+		Current += 1; // skip character
+	}
+	return Last;
+}
+
+// =============================================================================
+// =============================================================================
+
+TReadScriptFile::TReadScriptFile(void){
+	this->RecursionDepth = -1;
+	this->Bytes = (uint8*)this->String;
+}
+
+TReadScriptFile::~TReadScriptFile(void){
+	if(this->RecursionDepth != -1){
+		::error("TReadScriptFile::~TReadScriptFile: Datei ist noch offen.\n");
+		for(int Depth = this->RecursionDepth; Depth >= 0; Depth -= 1){
+			// TODO(fusion): Probably `TReadScriptFile::close` inlined?
+			if(fclose(this->File[Depth]) != 0){
+				::error("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", errno);
+			}
+		}
+		this->RecursionDepth = -1;
+	}
+}
+
+void TReadScriptFile::open(const char *FileName){
+	int Depth = this->RecursionDepth + 1;
+	if((Depth + 1) >= NARRAY(this->File)){
+		::error("TReadScriptFile::open: Rekursionstiefe zu groß.\n");
+		throw "Recursion depth too high";
+	}
+
+	ASSERT(Depth >= 0);
+
+	// TODO(fusion): More `strcpy`s...
+	if(Depth > 0 && FileName[0] != '/'){
+		strcpy(this->Filename[Depth], this->Filename[Depth - 1]);
+		if(char *Slash = findLast(this->Filename[Depth], '/')){
+			strcpy(Slash + 1, FileName);
+		}else{
+			strcpy(this->Filename[Depth], FileName);
+		}
+	}else{
+		strcpy(this->Filename[Depth], FileName);
+	}
+
+	this->File[Depth] = fopen(this->Filename[Depth], "rb");
+	if(this->File[Depth] == NULL){
+		::error("TReadScriptFile::open: Kann Datei %s nicht öffnen.\n", this->Filename[Depth]);
+		::error("Fehler %d: %s.\n", errno, strerror(errno));
+		throw "Cannot open script-file";
+	}
+
+	this->Line[Depth] = 1;
+	this->RecursionDepth = Depth;
+}
+
+void TReadScriptFile::close(void){
+	int Depth = this->RecursionDepth;
+	if(Depth <= -1){
+		::error("TReadScriptFile::close: Keine Datei offen.\n");
+		return;
+	}
+
+	ASSERT(Depth < NARRAY(this->File));
+	if(fclose(this->File[Depth]) != 0){
+		::error("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", errno);
+	}
+	this->RecursionDepth -= 1;
+}
+
+void TReadScriptFile::error(const char *Text){
+	static char ErrorString[100];
+
+	int Depth = this->RecursionDepth;
+	ASSERT(Depth >= 0 && Depth <= NARRAY(this->File));
+
+	const char *Filename = this->Filename[Depth];
+	if(const char *Slash = findLast(this->Filename[Depth], '/')){
+		Filename = Slash + 1;
+	}
+
+	snprintf(ErrorString, sizeof(ErrorString),
+			"error in script-file \"%s\", line %d: %s",
+			Filename, this->Line[Depth], Text);
+
+	// TODO(fusion): Reset? Also seems like `TReadScriptFile::close` was inlined.
+	for(; Depth >= 0; Depth -= 1){
+		if(fclose(this->File[Depth]) != 0){
+			::error("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+	}
+	this->RecursionDepth = -1;
+
+	throw ErrorString;
+}
+
+// NOTE(fusion): This function in particular was in pretty bad shape. It should
+// be one of the few that doesn't roughly match the original version. Nevertheless,
+// I think we should properly split this into a lexer and parser. We find ourselves
+// parsing strings and numbers multiple times here, whereas a simple lexer and
+// parser would simplify the work tremendously.
+// TODO(fusion): This needs to be tested to make sure it behaves like the original.
+void TReadScriptFile::nextToken(void){
+	if(this->RecursionDepth == -1){
+		::error("TReadScriptFile::nextToken: Kein Skript zum Lesen geöffnet.\n");
+		this->Token = ENDOFFILE;
+		return;
+	}
+
+	// NOTE(fusion): Reset any previous token state.
+	memset(this->String, 0, sizeof(this->String));
+	this->Number = 0;
+	this->CoordX = 0;
+	this->CoordY = 0;
+	this->CoordZ = 0;
+	this->Special = 0;
+
+	// NOTE(fusion): `TReadScriptFile::error` will format and throw an error
+	// string that must be handled up the call stack. It must be considered
+	// an exit point for parsing errors in this function.
+
+	while(true){
+		int Depth = this->RecursionDepth;
+		ASSERT(Depth >= 0 && Depth < NARRAY(this->File));
+		FILE *File = this->File[Depth];
+
+		int c;
+		do{
+			c = getc(File);
+			if(c == '\n'){
+				this->Line[Depth] += 1;
+			}
+		}while(isSpace(c));
+
+		if(c == EOF){
+			if(Depth == 0){
+				this->Token = ENDOFFILE;
+				return;
+			}
+
+			this->close();
+			continue;
+		}
+
+		switch(c){
+			case '#':{ // COMMENT
+				while(true){
+					int next = getc(File);
+					if(next == '\n' || next == EOF){
+						if(next == '\n'){
+							this->Line[Depth] += 1;
+						}
+						break;
+					}
+				}
+				break;
+			}
+
+			case '@':{ // INCLUDE
+				int next = getc(File);
+				if(next == EOF){
+					this->error("unexpected end of file");
+				}else if(next != '"'){
+					this->error("syntax error");
+				}
+
+				int StringLength = 0;
+				while(true){
+					// TODO(fusion): I don't think new lines are even allowed in
+					// file names but we should keep track of the line number even
+					// if they happen here.
+					next = getc(File);
+					if(next == EOF){
+						this->error("unexpected end of file");
+					}else if(next == '"'){
+						break;
+					}
+
+					if(StringLength >= (NARRAY(this->String) - 1)){
+						this->error("string too long");
+					}
+					this->String[StringLength] = (char)next;
+					StringLength += 1;
+				}
+
+				// TODO(fusion): Maybe check if the path is empty?
+				this->open(this->String);
+
+				// NOTE(fusion): This is the only place we parse a string without
+				// returning it as a token. We need to reset it to make sure any
+				// subsequent string-like token will be properly parsed.
+				memset(this->String, 0, sizeof(this->String));
+
+				break;
+			}
+
+			case '"':{ // STRING
+				int StringLength = 0;
+				while(true){
+					int next = getc(File);
+					if(next == EOF){
+						this->error("unexpected end of file");
+					}else if(next == '\\'){
+						next = getc(File);
+						if(next == EOF){
+							this->error("unexpected end of file");
+						}else if(next == 'n'){
+							next = '\n';
+						}
+					}else if(next == '\n'){
+						// TODO(fusion): Shouldn't we prevent non-escaped new
+						// lines inside strings?
+						this->Line[Depth] += 1;
+					}else if(next == '"'){
+						break;
+					}
+
+					if(StringLength >= (NARRAY(this->String) - 1)){
+						this->error("string too long");
+					}
+					this->String[StringLength] = (char)next;
+					StringLength += 1;
+				}
+				this->Token = STRING;
+				return;
+			}
+
+			case '[':{ // COORDINATE
+				// NOTE(fusion): X-Coordinate or SPECIAL '['.
+				int Sign = -1;
+				int Coord = 0;
+				int next = getc(File);
+				if(isDigit(next)){
+					Sign = 1;
+					Coord = next - '0';
+				}else if(next != '-'){
+					this->Token = SPECIAL;
+					this->Special = '[';
+					if(next != EOF){
+						ungetc(next, File);
+					}
+					return;
+				}
+
+				while(true){
+					next = getc(File);
+					if(next == EOF){
+						this->error("unexpected end of file");
+					}else if(isDigit(next)){
+						Coord *= 10;
+						Coord += next - '0';
+					}else if(next == ','){
+						break;
+					}else{
+						this->error("syntax error");
+					}
+				}
+
+				this->CoordX = Sign * Coord;
+
+				// NOTE(fusion): Y-Coordinate.
+				Sign = -1;
+				Coord = 0;
+				next = getc(File);
+				if(isDigit(next)){
+					Sign = 1;
+					Coord = next - '0';
+				}else if(next != '-'){
+					this->error("syntax error");
+				}
+
+				while(true){
+					next = getc(File);
+					if(next == EOF){
+						this->error("unexpected end of file");
+					}else if(isDigit(next)){
+						Coord *= 10;
+						Coord += next - '0';
+					}else if(next == ','){
+						break;
+					}else{
+						this->error("syntax error");
+					}
+				}
+
+				this->CoordY = Sign * Coord;
+
+				// NOTE(fusion): Z-Coordinate.
+				Sign = -1;
+				Coord = 0;
+				next = getc(File);
+				if(isDigit(next)){
+					Sign = 1;
+					Coord = next - '0';
+				}else if(next != '-'){
+					this->error("syntax error");
+				}
+
+				while(true){
+					next = getc(File);
+					if(next == EOF){
+						this->error("unexpected end of file");
+					}else if(isDigit(next)){
+						Coord *= 10;
+						Coord += next - '0';
+					}else if(next == ']'){
+						break;
+					}else{
+						this->error("syntax error");
+					}
+				}
+
+				this->CoordZ = Sign * Coord;
+				this->Token = COORDINATE;
+				return;
+			}
+
+			case '<':{
+				int next = getc(File);
+				if(next == '='){
+					this->Special = 'L';
+				}else if(next == '>'){
+					this->Special = 'N';
+				}else{
+					this->Special = '<';
+					if(next != EOF){
+						ungetc(next, File);
+					}
+				}
+				this->Token = SPECIAL;
+				return;
+			}
+
+			case '>':{
+				int next = getc(File);
+				if(next == '='){
+					this->Special = 'G';
+				}else{
+					this->Special = '>';
+					if(next != EOF){
+						ungetc(next, File);
+					}
+				}
+				this->Token = SPECIAL;
+				return;
+			}
+
+			case '-':{
+				int next = getc(File);
+				if(next == '>'){
+					this->Special = 'I';
+				}else{
+					this->Special = '-';
+					if(next != EOF){
+						ungetc(next, File);
+					}
+				}
+				this->Token = SPECIAL;
+				return;
+			}
+
+			default:{
+				if(isAlpha(c)){
+					int IdentLength = 1;
+					this->String[0] = (char)c;
+					while(true){
+						int next = getc(File);
+						if(isAlpha(next) || isDigit(next) || next == '_'){
+							if(IdentLength >= 30){
+								this->error("identifier too long");
+							}
+							this->String[IdentLength] = (char)next;
+							IdentLength += 1;
+						}else{
+							if(next != EOF){
+								ungetc(next, File);
+							}
+							break;
+						}
+					}
+					this->Token = IDENTIFIER;
+				}else if(isDigit(c)){
+					// NOTE(fusion): `this->Bytes` points to `this->String` (set
+					// in the constructor) which is why we check against the size
+					// of the `this->String` array. It doesn't seem to store the
+					// number of bytes but I've only seen it used with fixed size
+					// arrays like outfit colors or sector offsets.
+					//	Also, it doesn't make sense to have a null terminator in
+					// a byte string so the capacity check doesn't include it as
+					// in the case of regular strings.
+
+					// TODO(fusion): We're not checking for integer overflow at all.
+					int BytesLength = 0;
+					int Number = c - '0';
+					while(true){
+						int next = getc(File);
+						if(isDigit(next)){
+							Number *= 10;
+							Number += next - '0';
+						}else if(next == '-'){
+							if(BytesLength >= NARRAY(this->String)){
+								this->error("too many bytes");
+							}
+							this->Bytes[BytesLength] = (uint8)Number;
+							BytesLength += 1;
+
+							// NOTE(fusion): If there is a '-' after a number, there
+							// better be a second number.
+							next = getc(File);
+							if(next == EOF){
+								this->error("unexpected end of file");
+							}else if(!isDigit(next)){
+								this->error("syntax error");
+							}
+							Number = next - '0';
+						}else{
+							if(next != EOF){
+								ungetc(next, File);
+							}
+
+							if(BytesLength <= 0){
+								this->Token = NUMBER;
+								this->Number = Number;
+							}else{
+								if(BytesLength >= NARRAY(this->String)){
+									this->error("too many bytes");
+								}
+								this->Token = BYTES;
+								this->Bytes[BytesLength] = (uint8)Number;
+								BytesLength += 1;
+							}
+							break;
+						}
+					}
+				}else{
+					this->Token = SPECIAL;
+					this->Special = (char)c;
+				}
+				return;
+			}
+		}
+	}
+}
+
+char *TReadScriptFile::getIdentifier(void){
+	if(this->Token != IDENTIFIER){
+		this->error("identifier expected");
+	}
+	strLower(this->String);
+	return this->String;
+}
+
+int TReadScriptFile::getNumber(void){
+	if(this->Token != NUMBER){
+		this->error("number expected");
+	}
+	return this->Number;
+}
+
+char *TReadScriptFile::getString(void){
+	if(this->Token != STRING){
+		this->error("string expected");
+	}
+	return this->String;
+}
+
+uint8 *TReadScriptFile::getBytesequence(void){
+	if(this->Token != BYTES){
+		this->error("byte-sequence expected");
+	}
+	return this->Bytes;
+}
+
+void TReadScriptFile::getCoordinate(int *x, int *y, int *z){
+	if(this->Token != COORDINATE){
+		this->error("coordinates expected");
+	}
+	*x = this->CoordX;
+	*y = this->CoordY;
+	*z = this->CoordZ;
+}
+
+char TReadScriptFile::getSpecial(void){
+	if(this->Token != SPECIAL){
+		this->error("special-char expected");
+	}
+	return this->Special;
+}
+
+// TODO(fusion): REMOVE. This is a snippet to test the script lexer.
+int main(int argc, char **argv){
+	TReadScriptFile Script;
+	Script.open("local/alexander.npc");
+	while(true){
+		Script.nextToken();
+		if(Script.Token == ENDOFFILE){
+			printf("EOF\n");
+			Script.close();
+			break;
+		}
+
+		switch(Script.Token){
+			case IDENTIFIER:	printf("IDENTIFIER     \"%s\"\n", Script.String); break;
+			case NUMBER:		printf("NUMBER         %d\n", Script.Number); break;
+			case STRING:		printf("STRING         \"%s\"\n", Script.String); break;
+			case BYTES:			printf("BYTES          %u-%u-%u-%u-%u\n", Script.Bytes[0], Script.Bytes[1], Script.Bytes[2], Script.Bytes[3], Script.Bytes[4]); break;
+			case COORDINATE:	printf("COORD          [%d,%d,%d]\n", Script.CoordX, Script.CoordY, Script.CoordZ); break;
+			case SPECIAL:		printf("SPECIAL        '%c'\n", Script.Special); break;
+			default:			printf("UNKNOWN TOKEN  %d\n", Script.Token); break;
+		}
+	}
+
+	return EXIT_FAILURE;
+}

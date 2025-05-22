@@ -1,4 +1,5 @@
 #include "main.hh"
+#include "config.hh"
 
 #include <signal.h>
 #include <sys/time.h>

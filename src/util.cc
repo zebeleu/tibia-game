@@ -1,4 +1,4 @@
-#include "util.hh"
+#include "main.hh"
 
 static void (*ErrorFunction)(const char *Text) = NULL;
 static void (*PrintFunction)(int Level, const char *Text) = NULL;

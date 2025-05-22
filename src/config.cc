@@ -1,4 +1,4 @@
-#include "main.hh"
+#include "config.hh"
 
 char BINPATH[4096];
 char DATAPATH[4096];
