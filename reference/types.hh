@@ -96,12 +96,6 @@ struct TDatabasePoolConnection {
     bool TransactionRunning;
 };
 
-struct Semaphore {
-    int value;
-    struct pthread_mutex_t mutex;
-    struct pthread_cond_t condition;
-};
-
 struct TDatabaseConnectionPool {
     int NumberOfConnections;
     struct TDatabaseSettings DatabaseSettings;
@@ -784,13 +778,6 @@ struct TFindCreatures {
     ulong SkipID;
     int Mask;
     bool finished;
-};
-
-typedef int (ThreadFunction)(void *);
-struct TThreadStarter {
-    ThreadFunction *Function;
-    void *Argument;
-    bool Detach;
 };
 
 struct TReaderThreadOrder {
