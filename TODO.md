@@ -1,5 +1,4 @@
 ## TODO NEXT
-- SaveFile ??
 - TCreature
 - TPlayer
 - TNonPlayer

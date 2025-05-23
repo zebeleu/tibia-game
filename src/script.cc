@@ -117,6 +117,61 @@ static char *findLast(char *s, char c){
 	return Last;
 }
 
+static void SaveFile(const char *Filename){
+	if(Filename == NULL){
+		error("SaveFile: Filename ist NULL.\n");
+		return;
+	}
+
+	char BackupFilename[4096];
+
+	strcpy(BackupFilename, Filename);
+	strcat(BackupFilename, "#");
+
+	FILE *Source = fopen(Filename, "rb");
+	if(Source == NULL){
+		error("SaveFile: Quelldatei %s existiert nicht.\n", Filename);
+		return;
+	}
+
+	FILE *Dest = fopen(BackupFilename, "wb");
+	if(Dest == NULL){
+		error("SaveFile: Kann Zieldatei %s nicht anlegen.\n", BackupFilename);
+		fclose(Source);
+		return;
+	}
+
+	// NOTE(fusion): This function was in pretty bad shape after this point. The
+	// reason is probably because GHIDRA didn't make sense of it using `alloca`
+	// or some other mechanism to allocate a buffer on the stack to copy the whole
+	// file in one go. It's probably not a good idea to mimic that here so we'll
+	// do it gradually.
+
+	char Buffer[KB(16)];
+	while(true){
+		usize n = fread(Buffer, 1, sizeof(Buffer), Source);
+		if(n == 0){
+			if(ferror(Source)){
+				error("SaveFile: Fehler beim Lesen der Quelldatei %s.\n", Filename);
+			}
+			break;
+		}
+
+		if(fwrite(Buffer, 1, n, Dest) != n){
+			error("SaveFile: Fehler beim Schreiben der Zieldatei %s.\n", BackupFilename);
+			break;
+		}
+	}
+
+	if(fclose(Source) != 0){
+		error("SaveFile: Fehler %d beim Schließen der Quelldatei.\n", errno);
+	}
+
+	if(fclose(Dest) != 0){
+		error("SaveFile: Fehler %d beim Schließen der Zieldatei.\n", errno);
+	}
+}
+
 // TReadScriptFile
 //==============================================================================
 TReadScriptFile::TReadScriptFile(void){
