@@ -1,5 +1,6 @@
 #include "common.hh"
 #include "config.hh"
+#include "map.hh"
 
 #include <signal.h>
 #include <sys/time.h>
@@ -222,7 +223,7 @@ static void InitAll(void){
 		//InitWriter();
 		//InitReader();
 		//InitObjects();
-		//InitMap();
+		InitMap();
 		//InitInfo();
 		//InitMoveUse();
 		//InitMagic();
@@ -246,7 +247,7 @@ static void ExitAll(void){
 	//ExitMoveUse();
 	//ExitInfo();
 	//ExitHouses();
-	//ExitMap(SaveMapOn);
+	ExitMap(SaveMapOn);
 	//ExitObjects();
 	//ExitReader();
 	//ExitWriter();

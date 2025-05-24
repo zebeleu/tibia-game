@@ -57,7 +57,7 @@ struct TReadScriptFile {
 		return this->getSpecial();
 	}
 
-	void TReadScriptFile::readSymbol(char Symbol){
+	void readSymbol(char Symbol){
 		if(this->readSpecial() != Symbol){
 			this->error("symbol mismatch");
 		}

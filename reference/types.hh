@@ -355,13 +355,6 @@ struct TShortwayPoint {
     struct TShortwayPoint *NextToExpand;
 };
 
-struct TCronEntry {
-    struct Object Obj;
-    ulong RoundNr;
-    int Previous;
-    int Next;
-};
-
 struct TMonsterhome {
     int Race;
     int x;
@@ -405,13 +398,6 @@ struct TCondition {
     struct TNode *Expression;
     int Property;
     int Number;
-};
-
-struct TSector {
-    struct Object MapCon[32][32];
-    ulong TimeStamp;
-    uchar Status;
-    uchar MapFlags;
 };
 
 struct TChannel {
@@ -545,13 +531,6 @@ struct listIterator<storeunit<TNode,_256>_> { // Original name: listIterator<sto
     struct listnode<storeunit<TNode,_256>_> *actNode;
 };
 
-struct TMark {
-    char Name[20];
-    int x;
-    int y;
-    int z;
-};
-
 struct store<TNode,256> {
     struct list<storeunit<TNode,_256>_> *Units;
     union storeitem<TNode> *firstFreeItem;
@@ -606,11 +585,6 @@ struct listIterator<storeunit<TPlayerIndexInternalNode,_100>_> { // Original nam
     struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *actNode;
 };
 
-
-struct TDepotInfo {
-    char Town[20];
-    int Size;
-};
 
 struct fifoIterator<TStatement> {
     struct fifo<TStatement> *Fifo;
@@ -727,18 +701,6 @@ struct TKillStatisticsOrderData {
 struct TMoveUseDatabase {
     struct vector<TMoveUseRule> Rules;
     int NumberOfRules;
-};
-
-struct TObject {
-    ulong ObjectID;
-    struct Object NextObject;
-    struct Object Container;
-    struct ObjectType Type;
-    ulong Attributes[4];
-};
-
-struct TObjectBlock {
-    struct TObject Object[32768];
 };
 
 struct TFindCreatures {

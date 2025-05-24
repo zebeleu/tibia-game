@@ -1,4 +1,7 @@
 ## TODO NEXT
+- MAP.CC
+- OBJECTS.CC
+- STRINGS.CC
 - TCreature
 - TPlayer
 - TNonPlayer
@@ -9,6 +12,7 @@ The decompiled file has ~115K lines of C. If we take ~15K lines to be rubbish, t
 ## TODO AFTER FIRST PASS
 - Trim some rough edges.
 - Avoid unsafe libc functions like `strcpy`, `strncpy`, `strcat`, `sprintf` etc...
-- Handle connections inline with `poll` (probably?).
+- Handle connections inline with `poll`/`epoll` (probably?).
+- Remove exceptions.
 - Review signal usage for timing (SIGALRM, etc...).
 - Support Windows.

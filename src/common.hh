@@ -154,6 +154,8 @@ struct TReadBuffer: TReadStream {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TReadBuffer(uint8 *Data, int Size);
+	TReadBuffer(const TWriteBuffer &WriteBuffer)
+		: TReadBuffer(WriteBuffer.Data, WriteBuffer.Size) {}
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
@@ -177,7 +179,7 @@ struct TWriteStream {
 	virtual void writeFlag(bool Flag);													// VTABLE[0]
 	virtual void writeByte(uint8 Byte) = 0;												// VTABLE[1]
 	virtual void writeWord(uint16 Word);												// VTABLE[2]
-	virtual void writeQuad(uint16 Quad);												// VTABLE[3]
+	virtual void writeQuad(uint32 Quad);												// VTABLE[3]
 	virtual void writeString(const char *String);										// VTABLE[4]
 	virtual void writeBytes(const uint8 *Buffer, int Count);							// VTABLE[5]
 };
@@ -186,6 +188,7 @@ struct TWriteBuffer: TWriteStream {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TWriteBuffer(uint8 *Data, int Size);
+	void reset(void) { this->Position = 0; }
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================

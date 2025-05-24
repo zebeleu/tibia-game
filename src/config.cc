@@ -128,14 +128,10 @@ void ReadConfig(void){
 			return;
 		}
 
-		// TODO(fusion): Probably some `expectIdentifier` function inlined?
-		// It seems `getIdentifier` also does the same check so this one is
-		// redundant?
-		if(Script.Token != IDENTIFIER){
-			Script.error("Identifier expected");
-		}
-
-		char *Identifier = Script.getIdentifier();
+		// TODO(fusion): If the following `readSymbol` calls `nextToken`, then the
+		// buffer the identifier is in will get wiped. (UPDATE: Yes, the original
+		// version copies it into a local stack buffer, lol.)
+		const char *Identifier = Script.readIdentifier();
 		Script.readSymbol('=');
 
 		// TODO(fusion): Ughh... Get rid of all `strcpy`s. A malicious configuration
