@@ -735,7 +735,8 @@ static void ReadMapConfig(void){
 			break;
 		}
 
-		const char *Identifier = Script.readIdentifier();
+		char Identifier[MAX_IDENT_LENGTH];
+		strcpy(Identifier, Script.readIdentifier());
 		Script.readSymbol('=');
 
 		if(strcmp(Identifier, "sectorxmin") == 0){

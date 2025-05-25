@@ -128,10 +128,8 @@ void ReadConfig(void){
 			return;
 		}
 
-		// TODO(fusion): If the following `readSymbol` calls `nextToken`, then the
-		// buffer the identifier is in will get wiped. (UPDATE: Yes, the original
-		// version copies it into a local stack buffer, lol.)
-		const char *Identifier = Script.readIdentifier();
+		char Identifier[MAX_IDENT_LENGTH];
+		strcpy(Identifier, Script.readIdentifier());
 		Script.readSymbol('=');
 
 		// TODO(fusion): Ughh... Get rid of all `strcpy`s. A malicious configuration

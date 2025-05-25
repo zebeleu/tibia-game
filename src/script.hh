@@ -4,6 +4,8 @@
 #include "common.hh"
 #include "enums.hh"
 
+#define MAX_IDENT_LENGTH 30
+
 struct TReadScriptFile {
 	// REGULAR FUNCTIONS
 	// =========================================================================

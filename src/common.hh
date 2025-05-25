@@ -61,7 +61,7 @@ STATIC_ASSERT(sizeof(int) == 4);
 #endif
 
 #if COMPILER_MSVC
-#	define TRAP() __debugbreak();
+#	define TRAP() __debugbreak()
 #elif COMPILER_GCC || COMPILER_CLANG
 #	define TRAP() __builtin_trap()
 #else
@@ -136,6 +136,18 @@ void SetErrorFunction(TErrorFunction *Function);
 void SetPrintFunction(TPrintFunction *Function);
 void error(char *Text, ...) ATTR_PRINTF(1, 2);
 void print(int Level, char *Text, ...) ATTR_PRINTF(1, 2);
+
+bool isSpace(int c);
+bool isAlpha(int c);
+bool isEngAlpha(int c);
+bool isDigit(int c);
+int toLower(int c);
+int toUpper(int c);
+char *strLower(char *s);
+char *strUpper(char *s);
+int stricmp(const char *s1, const char *s2, int Pos);
+char *findFirst(char *s, char c);
+char *findLast(char *s, char c);
 
 struct TReadStream {
 	// VIRTUAL FUNCTIONS
