@@ -26,7 +26,6 @@ extern void CronExpire(Object Obj, int Delay);
 extern uint32 CronInfo(Object Obj, bool Delete);
 extern uint32 CronStop(Object Obj);
 extern void DeleteDynamicString(uint32 Number);
-extern bool FileExists(const char *FileName);
 extern TCreature *GetCreature(uint32 CreatureID);
 extern const char *GetDynamicString(uint32 Number);
 extern TConnection *GetFirstConnection(void);

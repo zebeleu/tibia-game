@@ -134,6 +134,8 @@ void SetErrorFunction(TErrorFunction *Function);
 void SetPrintFunction(TPrintFunction *Function);
 void error(const char *Text, ...) ATTR_PRINTF(1, 2);
 void print(int Level, const char *Text, ...) ATTR_PRINTF(2, 3);
+int random(int Min, int Max);
+bool FileExists(const char *FileName);
 
 bool isSpace(int c);
 bool isAlpha(int c);
@@ -146,6 +148,22 @@ char *strUpper(char *s);
 int stricmp(const char *s1, const char *s2, int Max = INT_MAX);
 char *findFirst(char *s, char c);
 char *findLast(char *s, char c);
+
+template<typename T>
+void RandomShuffle(T *Buffer, int Size){
+	if(Buffer == NULL){
+		error("RandomShuffle: Buffer ist NULL.\n");
+		return;
+	}
+
+	int Max = Size - 1;
+	for(int Min = 0; Min < Max; Min += 1){
+		int Swap = random(Min, Max);
+		if(Swap != Min){
+			std::swap(Buffer[Min], Buffer[Swap]);
+		}
+	}
+}
 
 struct TReadStream {
 	// VIRTUAL FUNCTIONS

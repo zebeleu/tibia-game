@@ -1,5 +1,7 @@
 #include "common.hh"
 
+#include <sys/stat.h>
+
 static void (*ErrorFunction)(const char *Text) = NULL;
 static void (*PrintFunction)(int Level, const char *Text) = NULL;
 
@@ -39,6 +41,27 @@ void print(int Level, const char *Text, ...){
 	}else{
 		printf("%s", s);
 	}
+}
+
+int random(int Min, int Max){
+	int Range = (Max - Min) + 1;
+	int Result = Min;
+	if(Range > 0){
+		Result += rand() % Range;
+	}
+	return Result;
+}
+
+bool FileExists(const char *FileName){
+	struct stat Buffer;
+	bool Result = true;
+	if(stat(FileName, &Buffer) != 0){
+		if(errno != ENOENT){
+			error("FileExists: Unerwarteter Fehlercode %d.\n", errno);
+		}
+		Result = false;
+	}
+	return Result;
 }
 
 // String Utility
