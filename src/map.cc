@@ -8,30 +8,6 @@
 
 #include <dirent.h>
 
-// NOTE(fusion): This is used by hash table entries and sectors to tell whether
-// they're currently loaded or swapped out to disk.
-enum : uint8 {
-	STATUS_FREE = 0,
-	STATUS_LOADED = 1,
-	STATUS_SWAPPED = 2,
-
-	// TODO(fusion): It seems this is only used with the `NONE` entry in the
-	// hash table. I haven't seen it used **yet** but It may have a purpose
-	// aside from preventing swap outs.
-	STATUS_PERMANENT = 255,
-};
-
-// NOTE(fusion): This is used to determine precedence order of different objects
-// in a tile.
-enum : int {
-	PRIORITY_BANK = 0,
-	PRIORITY_CLIP = 1,
-	PRIORITY_BOTTOM = 2,
-	PRIORITY_TOP = 3,
-	PRIORITY_CREATURE = 4,
-	PRIORITY_OTHER = 5,
-};
-
 static int OBCount;
 static int SectorXMin;
 static int SectorXMax;
@@ -1207,6 +1183,24 @@ void ExitMap(bool Save){
 
 // Object Functions
 // =============================================================================
+TObject *AccessObject(Object Obj){
+	if(Obj == NONE){
+		error("AccessObject: Ungültige Objektnummer Null.\n");
+		return HashTableData[0];
+	}
+
+	uint32 EntryIndex = Obj.ObjectID & HashTableMask;
+	if(HashTableType[EntryIndex] == STATUS_SWAPPED){
+		UnswapSector((uint32)((uintptr)HashTableData[EntryIndex]));
+	}
+
+	if(HashTableType[EntryIndex] == STATUS_LOADED && HashTableData[EntryIndex]->ObjectID == Obj.ObjectID){
+		return HashTableData[EntryIndex];
+	}else{
+		return HashTableData[0];
+	}
+}
+
 Object CreateObject(void){
 	static uint32 NextObjectID = 1;
 
@@ -1240,25 +1234,58 @@ Object CreateObject(void){
 	return Object(NextObjectID);
 }
 
-// DestroyObject
-// DeleteObject
+void DestroyObject(Object Obj){
+	if(!Obj.exists()){
+		error("DestroyObject: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
 
-TObject *AccessObject(Object Obj){
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(TEXT)){
+		DeleteDynamicString(Obj.getAttribute(TEXTSTRING));
+		DeleteDynamicString(Obj.getAttribute(EDITOR));
+	}
+
+	if(ObjType.getFlag(CONTAINER) || ObjType.getFlag(CHEST)){
+		while(true){
+			Object Inner = Obj.getAttribute(CONTENT);
+			if(Inner == NONE){
+				break;
+			}
+			DeleteObject(Inner);
+		}
+	}
+
+	if(ObjType.getFlag(EXPIRE)){
+		CronStop(Obj);
+	}
+
+	// TODO(fusion): I feel this should be checked up front?
 	if(Obj == NONE){
-		error("AccessObject: Ungültige Objektnummer Null.\n");
-		return HashTableData[0];
+		error("DestroyObject: Ungültige Objektnummer %d.\n", NONE.ObjectID);
+		return;
 	}
 
 	uint32 EntryIndex = Obj.ObjectID & HashTableMask;
-	if(HashTableType[EntryIndex] == STATUS_SWAPPED){
-		UnswapSector((uint32)((uintptr)HashTableData[EntryIndex]));
+	if(HashTableType[EntryIndex] != STATUS_LOADED){
+		error("DestroyObject: Objekt steht nicht im Speicher.\n");
+		return;
 	}
 
-	if(HashTableType[EntryIndex] == STATUS_LOADED && HashTableData[EntryIndex]->ObjectID == Obj.ObjectID){
-		return HashTableData[EntryIndex];
-	}else{
-		return HashTableData[0];
+	PutFreeObjectSlot(HashTableData[EntryIndex]);
+	HashTableType[EntryIndex] = STATUS_FREE;
+	HashTableFree += 1;
+	DecrementObjectCounter();
+}
+
+void DeleteObject(Object Obj){
+	if(!Obj.exists()){
+		error("DeleteObject: Übergebenes Objekt existiert nicht.\n");
+		return;
 	}
+
+	CutObject(Obj);
+	DestroyObject(Obj);
 }
 
 void ChangeObject(Object Obj, ObjectType NewType){
@@ -1336,6 +1363,41 @@ void ChangeObject(Object Obj, ObjectType NewType){
 	}
 
 	CronExpire(Obj, Delay);
+}
+
+void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value){
+	if(!Obj.exists()){
+		error("ChangeObject: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	Obj.setAttribute(Attribute, Value);
+}
+
+void ChangeObject(Object Obj, ObjectType NewType, uint32 Value){
+	if(!Obj.exists()){
+		error("ChangeObject: Übergebenes Objekt existiert nicht (1, NewType=%d).\n", NewType.TypeID);
+		return;
+	}
+
+	// TODO(fusion): Why are we checking if `Obj` exists a second time? There is
+	// no reason to assume `Obj.getContainer()` would change anything since the
+	// first call.
+	Object Con = Obj.getContainer();
+	if(!Obj.exists()){
+		error("ChangeObject: Übergebenes Objekt existiert nicht (2, NewType=%d).\n", NewType.TypeID);
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(CUMULATIVE)){
+		uint32 Amount = Obj.getAttribute(AMOUNT);
+		if(Amount > 1){
+			Move(0, Obj, Con, Amount - 1, true, NONE);
+		}
+	}
+
+	Change(Obj, NewType, Value);
 }
 
 int GetObjectPriority(Object Obj){
@@ -1439,6 +1501,46 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 	Obj.setContainer(Con);
 }
 
+// NOTE(fusion): This is the opposite of `PlaceObject`.
+void CutObject(Object Obj){
+	if(!Obj.exists()){
+		error("CutObject: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	Object Con = Obj.getContainer();
+	Object Cur = GetFirstContainerObject(Con);
+	if(Cur == Obj){
+		Object Next = Obj.getNextObject();
+		Con.setAttribute(CONTENT, Next.ObjectID);
+	}else{
+		Object Prev;
+		do{
+			Prev = Cur;
+			Cur = Cur.getNextObject();
+		}while(Cur != Obj);
+		Prev.setNextObject(Cur.getNextObject());
+	}
+
+	Obj.setNextObject(NONE);
+	Obj.setContainer(NONE);
+}
+
+void MoveObject(Object Obj, Object Con){
+	if(!Obj.exists()){
+		error("MoveObject: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	if(!Con.exists()){
+		error("MoveObject: Übergebener Zielcontainer existiert nicht.\n");
+		return;
+	}
+
+	CutObject(Obj);
+	PlaceObject(Obj, Con, false);
+}
+
 Object AppendObject(Object Con, ObjectType Type){
 	if(!Con.exists()){
 		error("AppendObject: Übergebener Container existiert nicht.\n");
@@ -1449,6 +1551,143 @@ Object AppendObject(Object Con, ObjectType Type){
 	ChangeObject(Obj, Type);
 	PlaceObject(Obj, Con, true);
 	return Obj;
+}
+
+Object SetObject(Object Con, ObjectType Type, uint32 CreatureID){
+	if(!Con.exists()){
+		error("SetObject: Übergebener Container existiert nicht.\n");
+		return NONE;
+	}
+
+	Object Obj = CreateObject();
+	ChangeObject(Obj, Type);
+	PlaceObject(Obj, Con, false);
+	if(Type.isCreatureContainer()){
+		if(CreatureID == 0){
+			error("SetObject: Ungültige Kreatur-ID.\n");
+		}
+		AccessObject(Obj)->Attributes[1] = CreatureID;
+	}
+	return Obj;
+}
+
+Object CopyObject(Object Con, Object Source){
+	if(!Source.exists()){
+		error("CopyObject: Vorlage existiert nicht.\n");
+		return NONE;
+	}
+
+	if(!Con.exists()){
+		error("CopyObject: Zielcontainer existiert nicht.\n");
+		return NONE;
+	}
+
+	ObjectType SourceType = Source.getObjectType();
+	if(SourceType.isCreatureContainer()){
+		error("CopyObject: Kreaturen dürfen nicht kopiert werden.\n");
+		return NONE;
+	}
+
+	Object NewObj = SetObject(Con, SourceType, 0);
+	for(int i = 0; i < NARRAY(TObject::Attributes); i += 1){
+		AccessObject(NewObj)->Attributes[i] = AccessObject(Source)->Attributes[i];
+	}
+
+	if(SourceType.getFlag(CONTAINER) || SourceType.getFlag(CHEST)){
+		NewObj.setAttribute(CONTENT, NONE.ObjectID);
+	}
+
+	if(SourceType.getFlag(TEXT)){
+		// NOTE(fusion): Both `NewObj` and `Source` share the same strings. We
+		// need to duplicate them so both objects can "own" and manage their own
+		// strings separately.
+		uint32 TextString = NewObj.getAttribute(TEXTSTRING);
+		if(TextString != 0){
+			TextString = AddDynamicString(GetDynamicString(TextString));
+			NewObj.setAttribute(TEXTSTRING, TextString);
+		}
+
+		uint32 Editor = NewObj.getAttribute(EDITOR);
+		if(Editor != 0){
+			Editor = AddDynamicString(GetDynamicString(TextString));
+			NewObj.setAttribute(EDITOR, Editor);
+		}
+	}
+
+	return NewObj;
+}
+
+Object SplitObject(Object Obj, int Count){
+	if(!Obj.exists()){
+		error("SplitObject: Übergebenes Objekt existiert nicht.\n");
+		return NONE;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(CUMULATIVE)){
+		error("SplitObject: Objekt ist nicht kumulierbar.\n");
+		return Obj; // TODO(fusion): Probably return NONE?
+	}
+
+	uint32 Amount = Obj.getAttribute(AMOUNT);
+	if(Count <= 0 || (uint32)Count > Amount){
+		error("SplitObject: Ungültiger Zähler %d.\n", Count);
+		return Obj; // TODO(fusion): Probably return NONE?
+	}
+
+	Object Res = Obj;
+	if((uint32)Count != Amount){
+		Res = CopyObject(Obj.getContainer(), Obj);
+		Res.setAttribute(AMOUNT, (uint32)Count);
+		Obj.setAttribute(AMOUNT, Amount - (uint32)Count);
+	}
+	return Res;
+}
+
+void MergeObjects(Object Obj, Object Dest){
+	if(!Obj.exists()){
+		error("MergeObjects: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	if(!Dest.exists()){
+		error("MergeObjects: Übergebenes Ziel existiert nicht.\n");
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	ObjectType DestType = Dest.getObjectType();
+	if(ObjType != DestType){
+		error("MergeObjects: Objekttypen %d und %d sind nicht identisch.\n",
+				ObjType.TypeID, DestType.TypeID);
+		return;
+	}
+
+	if(!ObjType.getFlag(CUMULATIVE)){
+		error("MergeObjects: Objekttyp %d ist nicht kumulierbar.\n", ObjType.TypeID);
+		return;
+	}
+
+	uint32 ObjAmount = Obj.getAttribute(AMOUNT);
+	if(ObjAmount == 0){
+		error("MergeObjects: Objekt enthält 0 Teile.\n");
+		ObjAmount = 1;
+	}
+
+	uint32 DestAmount = Dest.getAttribute(AMOUNT);
+	if(DestAmount == 0){
+		error("MergeObjects: Zielobjekt enthält 0 Teile.\n");
+		DestAmount = 1;
+	}
+
+	DestAmount += ObjAmount;
+	if(DestAmount > 100){
+		error("MergeObjects: Neues Objekt enthält mehr als 100 Teile.\n");
+		DestAmount = 100;
+	}
+
+	Dest.setAttribute(AMOUNT, DestAmount);
+	DeleteObject(Obj);
 }
 
 Object GetFirstContainerObject(Object Con){
@@ -1478,11 +1717,69 @@ Object GetContainerObject(Object Con, int Index){
 	}
 
 	Object Obj = GetFirstContainerObject(Con);
-	while(Obj != NONE && Index > 0){
+	while(Index > 0 && Obj != NONE){
+		Index -= 1;
 		Obj = Obj.getNextObject();
 	}
 
 	return Obj;
+}
+
+Object GetMapContainer(int x, int y, int z){
+	int SectorX = x / 32;
+	int SectorY = y / 32;
+	int SectorZ = z;
+
+	if(SectorX < SectorXMin || SectorXMax < SectorX
+			|| SectorY < SectorYMin || SectorYMax < SectorY
+			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
+		return NONE;
+	}
+
+	ASSERT(Sector != NULL);
+	TSector *ConSector = *Sector->at(SectorX, SectorY, SectorZ);
+	if(ConSector == NULL){
+		return NONE;
+	}
+
+	int OffsetX = x % 32;
+	int OffsetY = y % 32;
+	ConSector->TimeStamp = RoundNr;
+	return ConSector->MapCon[OffsetX][OffsetY];
+}
+
+Object GetMapContainer(Object Obj){
+	if(!Obj.exists()){
+		error("GetMapContainer: Übergebenes Objekt existiert nicht\n");
+		return NONE;
+	}
+
+	while(Obj != NONE){
+		if(Obj.getObjectType().isMapContainer())
+			break;
+		Obj = Obj.getContainer();
+	}
+
+	return Obj;
+}
+
+Object GetFirstObject(int x, int y, int z){
+	Object MapCon = GetMapContainer(x, y, z);
+	if(MapCon != NONE){
+		return Object(MapCon.getAttribute(CONTENT));
+	}else{
+		return NONE;
+	}
+}
+
+uint8 GetMapContainerFlags(Object Obj){
+	if(!Obj.exists() || !Obj.getObjectType().isMapContainer()){
+		error("GetMapContainerFlags: Objekt ist kein MapContainer.\n");
+		return 0;
+	}
+
+	// NOTE(fusion): See note in `GetObjectCoordinates`.
+	return (uint8)(AccessObject(Obj)->Attributes[3] >> 8);
 }
 
 void GetObjectCoordinates(Object Obj, int *x, int *y, int *z){
@@ -1509,66 +1806,7 @@ void GetObjectCoordinates(Object Obj, int *x, int *y, int *z){
 	*y = AccessObject(Obj)->Attributes[2];
 
 	// NOTE(fusion): The first 8 bits of `Attributes[3]` holds the Z coordinate
-	// of a map container. The next 8 bits holds the flags of a map container.
+	// of a map container. The next 8 bits holds its flags and the last 16 bits
+	// holds its house id.
 	*z = AccessObject(Obj)->Attributes[3] & 0xFF;
-
-	return;
-}
-
-uint8 GetMapContainerFlags(Object Obj){
-	if(!Obj.exists() || !Obj.getObjectType().isMapContainer()){
-		error("GetMapContainerFlags: Objekt ist kein MapContainer.\n");
-		return 0;
-	}
-
-	// NOTE(fusion): See note in `GetObjectCoordinates` just above.
-	return (uint8)(AccessObject(Obj)->Attributes[3] >> 8);
-}
-
-Object GetMapContainer(int x, int y, int z){
-	int SectorX = x / 32;
-	int SectorY = y / 32;
-	int SectorZ = z;
-
-	if(SectorX < SectorXMin || SectorXMax < SectorX
-			|| SectorY < SectorYMin || SectorYMax < SectorY
-			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
-		return NONE;
-	}
-
-	ASSERT(Sector != NULL);
-	TSector *ConSector = *Sector->at(SectorX, SectorY, SectorZ);
-	if(ConSector == NULL){
-		return NONE;
-	}
-
-
-	int OffsetX = x % 32;
-	int OffsetY = y % 32;
-	ConSector->TimeStamp = RoundNr;
-	return ConSector->MapCon[OffsetX][OffsetY];
-}
-
-Object GetMapContainer(Object Obj){
-	if(!Obj.exists()){
-		error("GetMapContainer: Übergebenes Objekt existiert nicht\n");
-		return NONE;
-	}
-
-	while(true){
-		if(Obj.getObjectType().isMapContainer())
-			break;
-		Obj = Obj.getContainer();
-	}
-
-	return Obj;
-}
-
-Object GetFirstObject(int x, int y, int z){
-	Object MapCon = GetMapContainer(x, y, z);
-	if(MapCon != NONE){
-		return Object(MapCon.getAttribute(CONTENT));
-	}else{
-		return NONE;
-	}
 }

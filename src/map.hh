@@ -5,36 +5,54 @@
 #include "objects.hh"
 #include "script.hh"
 
+// NOTE(fusion): This is used by hash table entries and sectors to tell whether
+// they're currently loaded or swapped out to disk.
+enum : uint8 {
+	STATUS_FREE = 0,
+	STATUS_LOADED = 1,
+	STATUS_SWAPPED = 2,
+
+	// TODO(fusion): It seems this is only used with the `NONE` entry in the
+	// hash table. I haven't seen it used **yet** but It may have a purpose
+	// aside from preventing swap outs.
+	STATUS_PERMANENT = 255,
+};
+
+// NOTE(fusion): This is used to determine precedence order of different objects
+// in a map container.
+enum : int {
+	PRIORITY_BANK = 0,
+	PRIORITY_CLIP = 1,
+	PRIORITY_BOTTOM = 2,
+	PRIORITY_TOP = 3,
+	PRIORITY_CREATURE = 4,
+	PRIORITY_OTHER = 5,
+};
+
 struct Object {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	constexpr Object(void) : ObjectID(0) {}
 	constexpr Object(uint32 ObjectID): ObjectID(ObjectID) {}
 
-	constexpr bool operator==(const Object &other) const {
-		return this->ObjectID == other.ObjectID;
-	}
-
-	constexpr bool operator!=(const Object &other) const {
-		return this->ObjectID != other.ObjectID;
-	}
-
 	bool exists(void);
-
 	ObjectType getObjectType(void);
 	void setObjectType(ObjectType Type);
-
 	Object getNextObject(void);
 	void setNextObject(Object NextObject);
-
 	Object getContainer(void);
 	void setContainer(Object Con);
-
 	uint32 getCreatureID(void);
-	//void setCreatureID(uint32 CreatureID); //??
-
 	uint32 getAttribute(INSTANCEATTRIBUTE Attribute);
 	void setAttribute(INSTANCEATTRIBUTE Attribute, uint32 Value);
+
+	constexpr bool operator==(const Object &Other) const {
+		return this->ObjectID == Other.ObjectID;
+	}
+
+	constexpr bool operator!=(const Object &Other) const {
+		return this->ObjectID != Other.ObjectID;
+	}
 
 	// DATA
 	// =========================================================================
@@ -95,22 +113,48 @@ void SaveObjects(Object Obj, TWriteStream *Stream, bool Stop);
 void SaveObjects(TReadStream *Stream, TWriteScriptFile *Script);
 void SaveSector(char *FileName, int SectorX, int SectorY, int SectorZ);
 void SaveMap(void);
+//RefreshSector
+//PatchSector
 void InitMap(void);
 void ExitMap(bool Save);
 
 // NOTE(fusion): Object related functions.
-Object CreateObject(void);
 TObject *AccessObject(Object Obj);
+Object CreateObject(void);
+void DestroyObject(Object Obj);
+void DeleteObject(Object Obj);
 void ChangeObject(Object Obj, ObjectType NewType);
+void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value);
+void ChangeObject(Object Obj, ObjectType NewType, uint32 Value);
 int GetObjectPriority(Object Obj);
 void PlaceObject(Object Obj, Object Con, bool Append);
+void CutObject(Object Obj);
+void MoveObject(Object Obj, Object Con);
 Object AppendObject(Object Con, ObjectType Type);
+Object SetObject(Object Con, ObjectType Type, uint32 CreatureID);
+Object CopyObject(Object Con, Object Source);
+Object SplitObject(Object Obj, int Count);
+void MergeObjects(Object Obj, Object Dest);
 Object GetFirstContainerObject(Object Con);
 Object GetContainerObject(Object Con, int Index);
-void GetObjectCoordinates(Object Obj, int *x, int *y, int *z);
-uint8 GetMapContainerFlags(Object Obj);
 Object GetMapContainer(int x, int y, int z);
 Object GetMapContainer(Object Obj);
 Object GetFirstObject(int x, int y, int z);
+//GetFirstSpecObject
+uint8 GetMapContainerFlags(Object Obj);
+//CoordinateFlag
+void GetObjectCoordinates(Object Obj, int *x, int *y, int *z);
+//IsOnMap
+//IsPremiumArea
+//IsProtectionZone
+//IsNoLogoutField
+//IsHouse
+//GetHouseID
+//SetHouseID
+//GetDepotNumber
+//GetDepotName
+//GetDepotSize
+//GetStartPosition
+//GetMarkPosition
 
 #endif //TIBIA_MAP_HH_

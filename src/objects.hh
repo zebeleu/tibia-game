@@ -52,6 +52,14 @@ struct ObjectType {
 		return this->TypeID == TYPEID_CREATURE_CONTAINER;
 	}
 
+	bool operator==(const ObjectType &Other) const {
+		return this->TypeID == Other.TypeID;
+	}
+
+	bool operator!=(const ObjectType &Other) const {
+		return this->TypeID != Other.TypeID;
+	}
+
 	// DATA
 	// =========================================================================
 	int TypeID;
