@@ -186,11 +186,3 @@ enum SITUATION: int {
     BUSY=3,
     VANISH=4
 };
-
-enum BloodType: int {
-    BT_BLOOD=0,
-    BT_SLIME=1,
-    BT_BONES=2,
-    BT_FIRE=3,
-    BT_ENERGY=4
-};

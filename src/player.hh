@@ -69,6 +69,7 @@ struct TPlayer: TCreature {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	void CheckState(void);
+	uint8 GetActiveProfession(void);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================

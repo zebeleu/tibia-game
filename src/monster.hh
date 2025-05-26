@@ -85,4 +85,6 @@ struct TMonster: TNonplayer {
 };
 #endif
 
+extern TRaceData RaceData[512];
+
 #endif //TIBIA_MONSTER_HH_

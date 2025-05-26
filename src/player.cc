@@ -1,6 +1,8 @@
 #include "player.hh"
 #include "enums.hh"
 
+#include "stubs.hh"
+
 void TPlayer::CheckState(void){
 	if(this->Connection != NULL){
 		uint8 State = 0;

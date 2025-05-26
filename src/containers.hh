@@ -75,7 +75,7 @@ struct vector{
 				increment = this->space;
 			}
 
-			T *entry = new[this->space + increment];
+			T *entry = new T[this->space + increment];
 			for(int i = this->min; i <= this->max; i += 1){
 				int old_index = i - this->start;
 				int new_index = old_index;
@@ -207,7 +207,7 @@ struct priority_queue{
 //	priority_queue<uint32, uint32>			ToDoQueue(5000, 1000);
 //	priority_queue<uint32, TAttackWave*>	AttackWaveQueue(100, 100);
 
-typedef<typename T>
+template<typename T>
 struct matrix{
 	// REGULAR FUNCTIONS
 	// =========================================================================
@@ -264,7 +264,7 @@ struct matrix{
 	T *entry;
 };
 
-typedef<typename T>
+template<typename T>
 struct matrix3d{
 	// REGULAR FUNCTIONS
 	// =========================================================================
@@ -298,7 +298,7 @@ struct matrix3d{
 	}
 
 	matrix3d(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax, T init)
-			: matrix(xmin, xmax, ymin, ymax, zmin, zmax) {
+			: matrix3d(xmin, xmax, ymin, ymax, zmin, zmax) {
 		int count = this->dx * this->dy * this->dz;
 		for(int i = 0; i < count; i += 1){
 			this->entry[i] = init;

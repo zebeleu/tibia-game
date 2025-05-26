@@ -86,15 +86,15 @@ struct TWriteScriptFile {
 	// =========================================================================
 	TWriteScriptFile(void);
 	~TWriteScriptFile(void);
-	void open(char *FileName);
+	void open(const char *FileName);
 	void close(void);
-	void error(char *Text);
+	void error(const char *Text);
 	void writeLn(void);
-	void writeText(char *Text);
+	void writeText(const char *Text);
 	void writeNumber(int Number);
-	void writeString(char *Text);
+	void writeString(const char *Text);
 	void writeCoordinate(int x ,int y ,int z);
-	void writeBytesequence(uint8 *Sequence, int Length);
+	void writeBytesequence(const uint8 *Sequence, int Length);
 
 	// DATA
 	// =========================================================================
@@ -107,9 +107,9 @@ struct TReadBinaryFile: TReadStream {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TReadBinaryFile(void);
-	void open(char *FileName);
-	int close(void);
-	void error(char *Text);
+	void open(const char *FileName);
+	void close(void);
+	void error(const char *Text);
 	int getPosition(void);
 	int getSize(void);
 	void seek(int Offset);
@@ -118,13 +118,13 @@ struct TReadBinaryFile: TReadStream {
 	// =========================================================================
 	uint8 readByte(void) override;
 	void readBytes(uint8 *Buffer, int Count) override;
-	bool eof(TReadBinaryFile *this) override;
+	bool eof(void) override;
 	void skip(int Count) override;
 
 	// TODO(fusion): Appended virtual functions. These are not in the base class
 	// VTABLE which can be problematic if we intend to use polymorphism, although
 	// that doesn't seem to be case.
-	virtual ~TReadBinaryFile(void) override;											// VTABLE[8]
+	virtual ~TReadBinaryFile(void);														// VTABLE[8]
 	// Duplicate destructor that also calls operator delete.							// VTABLE[9]
 
 	// DATA
@@ -138,14 +138,14 @@ struct TWriteBinaryFile: TWriteStream {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TWriteBinaryFile(void);
-	void open(char *FileName);
+	void open(const char *FileName);
 	void close(void);
-	void error(char *Text);
+	void error(const char *Text);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
 	void writeByte(uint8 Byte) override;
-	void writeBytes(uint8 *Buffer, int Count) override;
+	void writeBytes(const uint8 *Buffer, int Count) override;
 
 	// TODO(fusion): Appended virtual functions. These are not in the base class
 	// VTABLE which can be problematic if we intend to use polymorphism, although

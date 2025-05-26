@@ -6,6 +6,14 @@
 // TODO(fusion): Probably cleanup these names? Prefix values? Its crazy that
 // there are no collision problems (possibly yet).
 
+enum BloodType: int {
+	BT_BLOOD	= 0,
+	BT_SLIME	= 1,
+	BT_BONES	= 2,
+	BT_FIRE		= 3,
+	BT_ENERGY	= 4,
+};
+
 enum CreatureType: int {
 	PLAYER      = 0,
 	MONSTER     = 1,

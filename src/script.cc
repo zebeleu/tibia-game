@@ -595,7 +595,7 @@ TWriteScriptFile::~TWriteScriptFile(void){
 	}
 }
 
-void TWriteScriptFile::open(char *FileName){
+void TWriteScriptFile::open(const char *FileName){
 	if(this->File != NULL){
 		::error("TWriteScriptFile::open: Altes Skript ist noch offen.\n");
 		if(fclose(this->File) != 0){
@@ -628,7 +628,7 @@ void TWriteScriptFile::close(void){
 	this->File = NULL;
 }
 
-void TWriteScriptFile::error(char *Text){
+void TWriteScriptFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
 			::error("TWriteScriptFile::error: Fehler %d beim Schließen der Datei.\n", errno);
@@ -638,7 +638,7 @@ void TWriteScriptFile::error(char *Text){
 
 	snprintf(ErrorString, sizeof(ErrorString),
 			"error in script-file \"%s\", line %d: %s",
-			this->Filename, this->Line);
+			this->Filename, this->Line, Text);
 
 	throw ErrorString;
 }
@@ -652,7 +652,7 @@ void TWriteScriptFile::writeLn(void){
 	putc('\n', this->File);
 }
 
-void TWriteScriptFile::writeText(char *Text){
+void TWriteScriptFile::writeText(const char *Text){
 	if(this->File == NULL){
 		::error("TWriteScriptFile::writeText: Kein Skript zum Schreiben geöffnet.\n");
 		throw "Cannot write text";
@@ -679,9 +679,9 @@ void TWriteScriptFile::writeNumber(int Number){
 	this->writeText(s);
 }
 
-void TWriteScriptFile::writeString(char *Text){
+void TWriteScriptFile::writeString(const char *Text){
 	if(this->File == NULL){
-		::error();
+		::error("TWriteScriptFile::writeString: Kein Skript zum Schreiben geöffnet.\n");
 		throw "Cannot write string";
 	}
 
@@ -722,7 +722,7 @@ void TWriteScriptFile::writeCoordinate(int x ,int y ,int z){
 	this->writeText(s);
 }
 
-void TWriteScriptFile::writeBytesequence(uint8 *Sequence, int Length){
+void TWriteScriptFile::writeBytesequence(const uint8 *Sequence, int Length){
 	if(this->File == NULL){
 		::error("TWriteScriptFile::writeBytesequence: Kein Skript zum Schreiben geöffnet.\n");
 		throw "Cannot write bytesequence";
@@ -743,6 +743,7 @@ void TWriteScriptFile::writeBytesequence(uint8 *Sequence, int Length){
 			putc('-', this->File);
 		}
 
+		char s[32];
 		snprintf(s, sizeof(s), "%u", Sequence[i]);
 		this->writeText(s);
 	}
@@ -754,7 +755,7 @@ TReadBinaryFile::TReadBinaryFile(void){
 	this->File = NULL;
 }
 
-void TReadBinaryFile::open(char *FileName){
+void TReadBinaryFile::open(const char *FileName){
 	if(this->File != NULL){
 		this->error("File still open");
 	}
@@ -770,7 +771,7 @@ void TReadBinaryFile::open(char *FileName){
 	this->FileSize = -1;
 }
 
-int TReadBinaryFile::close(void){
+void TReadBinaryFile::close(void){
 	// TODO(fusion): Check if file is NULL?
 	if(fclose(this->File) != 0){
 		int ErrCode = errno;
@@ -781,7 +782,7 @@ int TReadBinaryFile::close(void){
 	this->File = NULL;
 }
 
-void TReadBinaryFile::error(char *Text){
+void TReadBinaryFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
 			::error("TReadBinaryFile::error: Fehler %d beim Schließen der Datei.\n", errno);
@@ -870,7 +871,7 @@ void TReadBinaryFile::readBytes(uint8 *Buffer, int Count){
 	}
 }
 
-bool TReadBinaryFile::eof(TReadBinaryFile *this){
+bool TReadBinaryFile::eof(void){
 	if(this->File == NULL){
 		this->error("File not open for eof check");
 	}
@@ -901,7 +902,7 @@ TWriteBinaryFile::TWriteBinaryFile(void){
 	this->File = NULL;
 }
 
-void TWriteBinaryFile::open(char *FileName){
+void TWriteBinaryFile::open(const char *FileName){
 	if(this->File != NULL){
 		this->error("File still open");
 	}
@@ -932,7 +933,7 @@ void TWriteBinaryFile::close(void){
 	this->File = NULL;
 }
 
-void TWriteBinaryFile::error(char *Text){
+void TWriteBinaryFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
 			::error("TWriteBinaryFile::error: Fehler %d beim Schließen der Datei.\n", errno);
@@ -966,7 +967,7 @@ void TWriteBinaryFile::writeByte(uint8 Byte){
 	}
 }
 
-void TWriteBinaryFile::writeBytes(uint8 *Buffer, int Count){
+void TWriteBinaryFile::writeBytes(const uint8 *Buffer, int Count){
 	int Result = (int)fwrite(Buffer, 1, Count, this->File);
 	if(Result != Count){
 		int ErrCode = errno;

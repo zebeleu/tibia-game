@@ -50,7 +50,7 @@ int JoinThread(ThreadHandle Handle){
 	int Result = 0;
 	int *ResultPointer;
 
-	pthread_join((pthread_t)Handle, &ResultPointer);
+	pthread_join((pthread_t)Handle, (void**)&ResultPointer);
 	if(ResultPointer != NULL){
 		Result = *ResultPointer;
 		delete ResultPointer;

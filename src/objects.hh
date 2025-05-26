@@ -65,6 +65,7 @@ struct TObjectType {
 	int AttributeOffsets[18];
 };
 
+const char *GetInstanceAttributeName(int Attribute);
 int GetInstanceAttributeByName(const char *Name);
 bool ObjectTypeExists(int TypeID);
 //void InitObjects(void);

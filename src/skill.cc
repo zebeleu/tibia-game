@@ -1,8 +1,11 @@
 #include "skill.hh"
-
 #include "enums.hh"
 #include "creature.hh"
+#include "monster.hh"
 #include "player.hh"
+
+#include "stubs.hh"
+
 #include <math.h>
 
 // TSkill REGULAR FUNCTIONS
@@ -952,8 +955,7 @@ void TSkillIllusion::Event(int Range){
 		if(this->Get() <= 0){
 			Master->Outfit = Master->OrgOutfit;
 			AnnounceChangedCreature(Master->ID, 3);
-			// TODO(fusion): I'm not sure this is correct.
-			NotifyAllCreatures(&Master->CrObject, 2, &NONE);
+			NotifyAllCreatures(Master->CrObject, 2, NONE);
 		}
 	}
 }
@@ -1101,7 +1103,7 @@ void TSkillEnergy::Event(int Range){
 // TSkillBase
 //==============================================================================
 TSkillBase::TSkillBase(void){
-	STATIC_ASSERT(NARRAY(this>Skills) == NARRAY(this->TimerList));
+	STATIC_ASSERT(NARRAY(this->Skills) == NARRAY(this->TimerList));
 	for(int i = 0; i < NARRAY(this->Skills); i += 1){
 		this->Skills[i] = NULL;
 		this->TimerList[i] = NULL;

@@ -10,7 +10,7 @@ TCombat::TCombat(void){
 	this->ChaseMode = 0;
 	this->SecureMode = 1;
 	this->AttackDest = 0;
-	this->Following;
+	this->Following = false;
 	this->Shield = NONE;
 	this->Close = NONE;
 	this->Missile = NONE;

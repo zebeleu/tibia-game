@@ -11,7 +11,7 @@ void SetPrintFunction(TPrintFunction *Function){
 	PrintFunction = Function;
 }
 
-void error(char *Text, ...){
+void error(const char *Text, ...){
 	char s[1024];
 
 	va_list ap;
@@ -26,7 +26,7 @@ void error(char *Text, ...){
 	}
 }
 
-void print(int Level, char *Text, ...){
+void print(int Level, const char *Text, ...){
 	char s[1024];
 
 	va_list ap;
@@ -109,8 +109,8 @@ char *strUpper(char *s){
 	return s;
 }
 
-int stricmp(const char *s1, const char *s2, int Pos){
-	for(int i = 0; i < Pos; i += 1){
+int stricmp(const char *s1, const char *s2, int Max /*= INT_MAX*/){
+	for(int i = 0; i < Max; i += 1){
 		int c1 = toLower(s1[i]);
 		int c2 = toLower(s2[i]);
 		if(c1 > c2){
@@ -120,10 +120,11 @@ int stricmp(const char *s1, const char *s2, int Pos){
 		}else{
 			ASSERT(c1 == c2);
 			if(c1 == 0){
-				return 0;
+				break;
 			}
 		}
 	}
+	return 0;
 }
 
 char *findFirst(char *s, char c){
@@ -179,7 +180,7 @@ void TReadStream::readString(char *Buffer, int MaxLength){
 
 	if(Length > 0){
 		if(MaxLength < 0 || MaxLength > Length){
-			this->readBytes(Buffer, Length);
+			this->readBytes((uint8*)Buffer, Length);
 			Buffer[Length] = 0;
 		}else{
 			this->readBytes((uint8*)Buffer, MaxLength - 1);
@@ -375,7 +376,7 @@ void TWriteBuffer::writeQuad(uint32 Quad){
 	this->Position += 4;
 }
 
-void TWriteBuffer::writeBytes(uint8 *Buffer, int Count){
+void TWriteBuffer::writeBytes(const uint8 *Buffer, int Count){
 	if((this->Size - this->Position) < Count){
 		throw "buffer full";
 	}
@@ -436,7 +437,7 @@ void TDynamicWriteBuffer::writeQuad(uint32 Quad){
 	this->Position += 4;
 }
 
-void TDynamicWriteBuffer::writeBytes(uint8 *Buffer, int Count){
+void TDynamicWriteBuffer::writeBytes(const uint8 *Buffer, int Count){
 	while((this->Size - this->Position) < Count){
 		this->resizeBuffer();
 	}

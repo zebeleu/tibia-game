@@ -1,4 +1,5 @@
 #include "objects.hh"
+#include "containers.hh"
 
 static vector<TObjectType> ObjectTypes(0, 5000, 1000);
 static ObjectType SpecialObjects[49];
@@ -69,24 +70,24 @@ static FLAG TypeAttributeFlags[62] = {
 };
 
 static FLAG InstanceAttributeFlags[18] = {
-	CONTAINER			// CONTENT
-	CHEST				// CHESTQUESTNUMBER
-	CUMULATIVE			// AMOUNT
-	KEY					// KEYNUMBER
-	KEYDOOR				// KEYHOLENUMBER
-	LEVELDOOR			// DOORLEVEL
-	QUESTDOOR			// DOORQUESTNUMBER
-	QUESTDOOR			// DOORQUESTVALUE
-	RUNE				// CHARGES
-	TEXT				// TEXTSTRING
-	TEXT				// EDITOR
-	LIQUIDCONTAINER		// CONTAINERLIQUIDTYPE
-	LIQUIDPOOL			// POOLLIQUIDTYPE
-	TELEPORTABSOLUTE	// ABSTELEPORTDESTINATION
-	MAGICFIELD			// RESPONSIBLE
-	EXPIRE				// REMAININGEXPIRETIME
-	EXPIRESTOP			// SAVEDEXPIRETIME
-	WEAROUT				// REMAININGUSES
+	CONTAINER,				// CONTENT
+	CHEST,					// CHESTQUESTNUMBER
+	CUMULATIVE,				// AMOUNT
+	KEY,					// KEYNUMBER
+	KEYDOOR,				// KEYHOLENUMBER
+	LEVELDOOR,				// DOORLEVEL
+	QUESTDOOR,				// DOORQUESTNUMBER
+	QUESTDOOR,				// DOORQUESTVALUE
+	RUNE,					// CHARGES
+	TEXT,					// TEXTSTRING
+	TEXT,					// EDITOR
+	LIQUIDCONTAINER,		// CONTAINERLIQUIDTYPE
+	LIQUIDPOOL,				// POOLLIQUIDTYPE
+	TELEPORTABSOLUTE,		// ABSTELEPORTDESTINATION
+	MAGICFIELD,				// RESPONSIBLE
+	EXPIRE,					// REMAININGEXPIRETIME
+	EXPIRESTOP,				// SAVEDEXPIRETIME
+	WEAROUT,				// REMAININGUSES
 };
 
 static const char InstanceAttributeNames[18][30] = {
@@ -180,6 +181,11 @@ const char *ObjectType::getDescription(void){
 
 // Object Type Related Functions
 // =============================================================================
+const char *GetInstanceAttributeName(int Attribute){
+	ASSERT(Attribute >= 0 && Attribute <= 17);
+	return InstanceAttributeNames[Attribute];
+}
+
 int GetInstanceAttributeByName(const char *Name){
 	int Result = -1;
 	for(int i = 0; i < NARRAY(InstanceAttributeNames); i += 1){

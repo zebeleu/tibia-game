@@ -1,5 +1,7 @@
 #include "common.hh"
 
+#include <time.h>
+
 // IMPORTANT(fusion): `RoundNr` is just the number of seconds since startup which
 // is why `GetRoundAtTime` and `GetRoundForNextMinute` straight up uses it as
 // seconds. It is incremented every 1 second inside `AdvanceGame`.
@@ -38,7 +40,7 @@ void GetDate(int *Year, int *Cycle, int *Day){
 	// NOTE(fusion): This maps each real time week to a game time year.
 	time_t RealTime = time(NULL);
 	struct tm LocalTime = GetLocalTimeTM(RealTime);
-	*Year = ((T / 86400) + 4) / 7
+	*Year = (int)(((RealTime / 86400) + 4) / 7);
 	*Cycle = LocalTime.tm_wday;
 	*Day = LocalTime.tm_hour;
 }
@@ -79,7 +81,7 @@ void GetAmbiente(int *Brightness, int *Color){
 }
 
 uint32 GetRoundAtTime(int Hour, int Minute){
-	struct tm LocalTime = GetLocalTimeTM(RealTime);
+	struct tm LocalTime = GetLocalTimeTM(time(NULL));
 	int SecondsToTime = (Hour - LocalTime.tm_hour) * 3600
 					+ (Minute - LocalTime.tm_min) * 60
 					+ (0 - LocalTime.tm_sec);
@@ -90,7 +92,7 @@ uint32 GetRoundAtTime(int Hour, int Minute){
 }
 
 uint32 GetRoundForNextMinute(void){
-	struct tm LocalTime = GetLocalTimeTM(RealTime);
+	struct tm LocalTime = GetLocalTimeTM(time(NULL));
 	int SecondsToNextMinute = 60 - LocalTime.tm_sec;
 	return SecondsToNextMinute + RoundNr + 30;
 }

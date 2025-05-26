@@ -19,7 +19,7 @@ typedef uintptr_t uintptr;
 typedef size_t usize;
 
 #define STATIC_ASSERT(expr) static_assert((expr), "static assertion failed: " #expr)
-#define NARRAY(arr) (sizeof(arr) / sizeof(arr[0]))
+#define NARRAY(arr) (int)(sizeof(arr) / sizeof(arr[0]))
 #define ISPOW2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 #define KB(x) ((usize)(x) << 10)
 #define MB(x) ((usize)(x) << 20)
@@ -80,10 +80,9 @@ STATIC_ASSERT(sizeof(int) == 4);
 // be too difficult either. Overall this design is outdated and should be reviewed.
 //	Nevertheless, we should focus on getting it working as intended, on the target
 // platform (which is Linux 32-bits) before attempting to refine it.
-//STATIC_ASSERT(OS_LINUX);
-//#include <sys/types.h>
-typedef int pid_t;
-//
+STATIC_ASSERT(OS_LINUX);
+#include <errno.h>
+#include <unistd.h>
 
 // shm.cc
 // =============================================================================
@@ -120,7 +119,6 @@ void ExitSHMExtern(void);
 // =============================================================================
 extern uint32 RoundNr;
 extern uint32 ServerMilliseconds;
-
 void GetRealTime(int *Hour, int *Minute);
 void GetTime(int *Hour, int *Minute);
 void GetDate(int *Year, int *Cycle, int *Day);
@@ -134,8 +132,8 @@ typedef void TErrorFunction(const char *Text);
 typedef void TPrintFunction(int Level, const char *Text);
 void SetErrorFunction(TErrorFunction *Function);
 void SetPrintFunction(TPrintFunction *Function);
-void error(char *Text, ...) ATTR_PRINTF(1, 2);
-void print(int Level, char *Text, ...) ATTR_PRINTF(1, 2);
+void error(const char *Text, ...) ATTR_PRINTF(1, 2);
+void print(int Level, const char *Text, ...) ATTR_PRINTF(2, 3);
 
 bool isSpace(int c);
 bool isAlpha(int c);
@@ -145,7 +143,7 @@ int toLower(int c);
 int toUpper(int c);
 char *strLower(char *s);
 char *strUpper(char *s);
-int stricmp(const char *s1, const char *s2, int Pos);
+int stricmp(const char *s1, const char *s2, int Max = INT_MAX);
 char *findFirst(char *s, char c);
 char *findLast(char *s, char c);
 
@@ -166,8 +164,6 @@ struct TReadBuffer: TReadStream {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TReadBuffer(uint8 *Data, int Size);
-	TReadBuffer(const TWriteBuffer &WriteBuffer)
-		: TReadBuffer(WriteBuffer.Data, WriteBuffer.Size) {}
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
@@ -207,7 +203,7 @@ struct TWriteBuffer: TWriteStream {
 	void writeByte(uint8 Byte) override;
 	void writeWord(uint16 Word) override;
 	void writeQuad(uint32 Quad) override;
-	void writeBytes(uint8 *Buffer, int Count) override;
+	void writeBytes(const uint8 *Buffer, int Count) override;
 
 	// DATA
 	// =========================================================================
@@ -227,7 +223,7 @@ struct TDynamicWriteBuffer: TWriteBuffer {
 	void writeByte(uint8 Byte) override;
 	void writeWord(uint16 Word) override;
 	void writeQuad(uint32 Quad) override;
-	void writeBytes(uint8 *Buffer, int Count) override;
+	void writeBytes(const uint8 *Buffer, int Count) override;
 
 	// TODO(fusion): Appended virtual functions. These are not in the base class
 	// VTABLE which can be problematic if we intend to use polymorphism, although

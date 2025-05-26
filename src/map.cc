@@ -1,5 +1,12 @@
 #include "map.hh"
 #include "containers.hh"
+#include "config.hh"
+#include "enums.hh"
+#include "script.hh"
+
+#include "stubs.hh"
+
+#include <dirent.h>
 
 // NOTE(fusion): This is used by hash table entries and sectors to tell whether
 // they're currently loaded or swapped out to disk.
@@ -57,653 +64,110 @@ static int CronEntries;
 static vector<TDepotInfo> DepotInfo(0, 4, 5);
 static int Depots;
 
-static vector<TMask> Mark(0, 4, 5);
+static vector<TMark> Mark(0, 4, 5);
 static int Marks;
 
 static TDynamicWriteBuffer HelpBuffer(0x10000);
 
-// Map Init/Exit and Helpers
+// Object
 // =============================================================================
-static void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber){
-	ASSERT(Obj != NONE);
+bool Object::exists(void){
+	if(*this == NONE){
+		return false;
+	}
 
-	// NOTE(fusion): Does it make sense to swap an object that isn't loaded? We
-	// were originally calling `Object::exists` that would swap in the object's
-	// sector if it was swapped out. We should probably have an assertion here.
-	if(HashTableType[Obj.ObjectID & HashTableMask] != STATUS_LOADED){
-		error("SwapObject: Object doesn't exists or is not currently loaded.\n");
+	uint32 EntryIndex = this->ObjectID & HashTableMask;
+	if(HashTableType[EntryIndex] == STATUS_SWAPPED){
+		UnswapSector((uint32)((uintptr)HashTableData[EntryIndex]));
+	}
+
+	return HashTableType[EntryIndex] == STATUS_LOADED
+		&& HashTableData[EntryIndex]->ObjectID == this->ObjectID;
+}
+
+ObjectType Object::getObjectType(void){
+	return AccessObject(*this)->Type;
+}
+
+void Object::setObjectType(ObjectType Type){
+	AccessObject(*this)->Type = Type;
+}
+
+Object Object::getNextObject(void){
+	return AccessObject(*this)->NextObject;
+}
+
+void Object::setNextObject(Object NextObject){
+	AccessObject(*this)->NextObject = NextObject;
+}
+
+Object Object::getContainer(void){
+	return AccessObject(*this)->Container;
+}
+
+void Object::setContainer(Object Container){
+	AccessObject(*this)->Container = Container;
+}
+
+uint32 Object::getCreatureID(void){
+	// TODO(fusion): We call `AccessObject` once in `getObjectType` then again
+	// after checking the TypeID, when we could call it once to check both type
+	// and access `Attributes[1]`.
+
+	if(!this->getObjectType().isCreatureContainer()){
+		error("Object::getCreatureID: Objekt ist keine Kreatur.\n");
+		return 0;
+	}
+
+	return AccessObject(*this)->Attributes[1];
+}
+
+uint32 Object::getAttribute(INSTANCEATTRIBUTE Attribute){
+	ObjectType ObjType = this->getObjectType();
+	int AttributeOffset = ObjType.getAttributeOffset(Attribute);
+	if(AttributeOffset == -1){
+		error("Object::getAttribute: Flag für Attribut %d bei Objekttyp %d nicht gesetzt.\n",
+				Attribute, ObjType.TypeID);
+		return 0;
+	}
+
+	if(AttributeOffset < 0 || AttributeOffset >= NARRAY(TObject::Attributes)){
+		error("Object::getAttribute: Ungültiger Offset %d für Attribut %d bei Objekttyp %d.\n",
+				AttributeOffset, Attribute, ObjType.TypeID);
+		return 0;
+	}
+
+	return AccessObject(*this)->Attributes[AttributeOffset];
+}
+
+void Object::setAttribute(INSTANCEATTRIBUTE Attribute, uint32 Value){
+	ObjectType ObjType = this->getObjectType();
+	int AttributeOffset = ObjType.getAttributeOffset(Attribute);
+	if(AttributeOffset == -1){
+		error("Object::setAttribute: Flag für Attribut %d bei Objekttyp %d nicht gesetzt.\n",
+				Attribute, ObjType.TypeID);
 		return;
 	}
 
-	TObject *Entry = HashTableData[Obj.ObjectID & HashTableMask];
-	if(Entry->ObjectID != Obj.ObjectID){
-		error("SwapObject: Übergebenes Objekt existiert nicht.\n");
+	if(AttributeOffset < 0 || AttributeOffset >= NARRAY(TObject::Attributes)){
+		error("Object::setAttribute: Ungültiger Offset %d für Attribut %d bei Objekttyp %d.\n",
+				AttributeOffset, Attribute, ObjType.TypeID);
 		return;
 	}
 
-	File->writeBytes((const uint8*)Entry, sizeof(TObject));
-	if(Entry->Type.getFlag(CONTAINER) || Entry->Type.getFlag(CHEST)){
-		Object Current = Obj.getAttribute(CONTENT);
-		while(Current != NONE){
-			Object Next = Current.getNextObject();
-			SwapObject(File, Current, FileNumber);
-			Current = Next;
+	if(Value == 0){
+		if(Attribute == AMOUNT || Attribute == POOLLIQUIDTYPE || Attribute == CHARGES){
+			Value = 1;
+		}else if(Attribute == REMAININGUSES){
+			Value = ObjType.getAttribute(TOTALUSES);
 		}
 	}
 
-	PutFreeObjectSlot(Entry);
-	HashTableType[EntryIndex] = STATUS_SWAPPED;
-	HashTableData[EntryIndex] = (TObject*)FileNumber;
+	AccessObject(*this)->Attributes[AttributeOffset] = Value;
 }
 
-static void SwapSector(void){
-	static uint32 FileNumber = 0;
-
-	TSector *Oldest = NULL;
-	int OldestSectorX = 0;
-	int OldestSectorY = 0;
-	int OldestSectorZ = 0;
-	uint32 OldestTimeStamp = RoundNr + 1;
-
-	ASSERT(Sector != NULL);
-	for(int SectorZ = SectorZMin; SectorZ <= SectorZMax; SectorZ += 1)
-	for(int SectorY = SectorYMin; SectorY <= SectorYMax; SectorY += 1)
-	for(int SectorX = SectorXMin; SectorX <= SectorXMax; SectorX += 1){
-		TSector *CurrentSector = *Sector->at(SectorX, SectorY, SectorZ);
-		if(CurrentSector != NULL
-				&& CurrentSector->Status == STATUS_LOADED
-				&& CurrentSector->TimeStamp < OldestTimeStamp){
-			Oldest = CurrentSector;
-			OldestSectorX = SectorX;
-			OldestSectorY = SectorY;
-			OldestSectorZ = SectorZ;
-			OldestTimeStamp = CurrentSector->TimeStamp;
-		}
-	}
-
-	if(Oldest == NULL){
-		error("FATAL ERROR in SwapSector: Es kann kein Sektor ausgelagert werden.\n");
-		abort();
-	}
-
-	char FileName[4096];
-	do{
-		FileNumber += 1; // NOTE(fusion): Let it wrap naturally.
-		snprintf(FileName, sizeof(FileName), "%s/%010u.swp", SAVEPATH, FileNumber);
-	}while(FileExists(FileName));
-
-	TWriteBinaryFile File;
-	try{
-		File.open(FileName);
-		print(2, "Lagere Sektor %d/%d/%d aus...\n", OldestSectorX, OldestSectorY, OldestSectorZ);
-		File.writeQuad((uint32)OldestSectorX);
-		File.writeQuad((uint32)OldestSectorY);
-		File.writeQuad((uint32)OldestSectorZ);
-		// TODO(fusion): I think tiles are stored in column major order but it doesn't
-		// really matter as long as optimize for sequential access.
-		for(int X = 0; X < 32; X += 1){
-			for(int Y = 0; Y < 32; Y += 1){
-				SwapObject(&File, Oldest->MapCon[X][Y], FileNumber);
-			}
-		}
-		Oldest->Status = STATUS_SWAPPED;
-		File.close();
-	}catch(const char *str){
-		error("FATAL ERROR in SwapSector: Kann Datei \"%s\" nicht anlegen.\n", FileName);
-		error("# Fehler: %s\n", str);
-		abort();
-	}
-}
-
-static void UnswapSector(uint32 FileNumber){
-	char FileName[4096];
-	snprintf(FileName, sizeof(FileName), "%s/%010u.swp", SAVEPATH, FileNumber);
-
-	TReadBinaryFile File;
-	try{
-		File.open(FileName);
-		int SectorX = (int)File.readQuad();
-		int SectorY = (int)File.readQuad();
-		int SectorZ = (int)File.readQuad();
-		print(2, "Lagere Sector %d/%d/%d ein...\n", SectorX, SectorY, SectorZ);
-
-		ASSERT(Sector != NULL);
-		TSector *LoadingSector = *Sector->at(SectorX, SectorY, SectorZ);
-		if(LoadingSector == NULL){
-			error("UnswapSector: Sektor %d/%d/%d existiert nicht.\n", SectorX, SectorY, SectorZ);
-			File.close();
-			return;
-		}
-
-		if(LoadingSector->Status != STATUS_SWAPPED){
-			error("UnswapSector: Sektor %d/%d/%d ist nicht ausgelagert.\n", SectorX, SectorY, SectorZ);
-			File.close();
-			return;
-		}
-
-		int Size = File.getSize();
-		while(File.getPosition() < Size){
-			TObject Entry;
-			File.readBytes((uint8*)&Entry, sizeof(TObject));
-
-			uint32 EntryIndex = Entry.ObjectID & HashTableMask;
-			if(HashTableType[EntryIndex] == STATUS_SWAPPED){
-				// NOTE(fusion): Make sure we only allocate the object if we confirm
-				// its status. The original code would call `readBytes` on the result
-				// from `GetFreeObjectSlot()` directly and would then leak it if the
-				// entry status was not `STATUS_SWAPPED`.
-				TObject *EntryPointer = GetFreeObjectSlot();
-				*EntryPointer = Entry;
-				HashTableData[EntryIndex] = EntryPointer;
-				HashTableType[EntryIndex] = STATUS_LOADED;
-			}else{
-				error("UnswapSector: Objekt %u existiert schon.\n", Entry.ObjectID);
-			}
-		}
-		LoadingSector->Status = STATUS_LOADED;
-		File.close();
-		unlink(FileName);
-	}catch(const char *str){
-		error("FATAL ERROR in UnswapSector: Kann Datei \"%s\" nicht lesen.\n", FileName);
-		error("# Fehler: %s\n", str);
-		abort();
-	}
-}
-
-static void DeleteSwappedSectors(void){
-	DIR *SwapDir = opendir(SAVEPATH);
-	if(SwapDir == NULL){
-		error("DeleteSwappedSectors: Unterverzeichnis %s nicht gefunden\n", SAVEPATH);
-		return;
-	}
-
-	char FilePath[4096];
-	while(dirent *DirEntry = readdir(SwapDir)){
-		if(DirEntry->d_type == DT_REG){
-			// NOTE(fusion): `DirEntry->d_name` will only contain the filename
-			// so we need to assemble the actual file path (relative in this
-			// case) to properly unlink it. Windows has the same behavior with
-			// its `FindFirstFile`/`FindNextFile` API.
-			const char *FileExt = findLast(DirEntry->d_name, '.');
-			if(FileExt != NULL && strcmp(FileExt, ".swp") == 0){
-				snprintf(FilePath, sizeof(FilePath), "%s/%s", SAVEPATH, DirEntry->d_name);
-				unlink(FilePath);
-			}
-		}
-	}
-
-	closedir(SwapDir);
-}
-
-static void LoadObjects(TReadScriptFile *Script, TWriteStream *Stream, bool Skip){
-	int Depth = 1;
-	bool ParseAttribute = false;
-	Script->readSymbol('{');
-	Script->nextToken();
-	while(true){
-		if(!ParseAttribute){
-			if(Script->Token != SPECIAL){
-				int TypeID = Script->getNumber();
-				if(!ObjectTypeExists(TypeID)){
-					Script->error("unknown object type");
-				}
-
-				if(!Skip){
-					Stream->writeWord((uint16)TypeID);
-				}
-
-				ParseAttribute = true;
-			}else{
-				char Special = Script->getSpecial();
-				if(Special == '}'){
-					if(!Skip){
-						Stream->writeWord(0xFFFF);
-					}
-
-					Depth -= 1;
-					if(Depth <= 0){
-						break;
-					}
-				}else if(Special != ','){
-					Script->error("expected comma");
-				}
-			}
-			Script->nextToken();
-		}else{
-			if(Script->Token != SPECIAL){
-				int Attribute = GetInstanceAttributeByName(Script->getIdentifier());
-				if(Attribute == -1){
-					Script->error("unknown attribute");
-				}
-
-				Script->readSymbol('=');
-				if(!Skip){
-					Stream->writeByte((uint8)Attribute);
-				}
-
-				if(Attribute == CONTENT){
-					Script->readSymbol('{');
-					Depth += 1;
-					ParseAttribute = false;
-				}else if(Attribute == TEXTSTRING || Attribute == EDITOR){
-					const char *String = Script->readString();
-					if(!Skip){
-						Stream->writeString(String);
-					}
-				}else{
-					int Number = Script->readNumber();
-					if(!Skip){
-						Stream->writeQuad((uint32)Number);
-					}
-				}
-
-				Script->nextToken();
-			}else{
-				// NOTE(fusion): Attributes are key-value pairs separated by whitespace.
-				// If we find a special token (probably ',' or '}'), then we're done
-				// parsing attributes for the current object.
-				if(!Skip){
-					Stream->writeByte(0xFF);
-				}
-				ParseAttribute = false;
-			}
-		}
-	}
-}
-
-static void LoadObjects(TReadStream *Stream, Object Con){
-	int Depth = 1;
-	Object Obj = NONE;
-	while(true){
-		if(Obj == NONE){
-			int TypeID = (int)Stream->readWord();
-			if(TypeID != 0xFFFF){
-				ObjectCounter += 1;
-				ObjectType ObjType(TypeID);
-
-				if(ObjType.isBodyContainer()){
-					Obj = GetContainerObject(Con, (TypeID - 1));
-				}else{
-					Obj = AppendObject(Con, ObjType);
-				}
-			}else{
-				Obj = Con;
-				Con = Con.getContainer();
-				Depth -= 1;
-				if(Depth <= 0){
-					break;
-				}
-			}
-		}else{
-			int Attribute = (int)Stream->readByte();
-			if(Attribute != 0xFF){
-				if(Attribute == CONTENT){
-					Con = Obj;
-					Obj = NONE;
-					Depth += 1;
-				}else if(Attribute == TEXTSTRING || Attribute == EDITOR){
-					uint32 Value = AddDynamicString(Stream->readString());
-					Obj.setAttribute(Attribute, Value);
-				}else if(Attribute != REMAININGEXPIRETIME){
-					uint32 Value = Stream->readQuad();
-					Obj.setAttribute(Attribute, Value);
-				}else{
-					uint32 Value = Stream->readQuad();
-					if(Value != 0){
-						CronChange(Obj, (int)Value);
-					}
-				}
-			}else{
-				Obj = NONE;
-			}
-		}
-	}
-}
-
-static void InitSector(int SectorX, int SectorY, int SectorZ){
-	ASSERT(Sector);
-	if(*Sector->at(SectorX, SectorY, SectorZ) != NULL){
-		error("InitSector: Sektor %d/%d/%d existiert schon.\n", SectorX, SectorY, SectorZ);
-		return;
-	}
-
-	TSector *NewSector = (TSector*)malloc(sizeof(TSector));
-	for(int X = 0; X < 32; X += 1){
-		for(int Y = 0; Y < 32; Y += 1){
-			Object MapCon = CreateObject();
-			// NOTE(fusion): `Attributes[0]` is probably the object id of the
-			// first object in the container.
-			Access(MapCon)->Attributes[1] = SectorX * 32 + X;
-			Access(MapCon)->Attributes[2] = SectorY * 32 + Y;
-			Access(MapCon)->Attributes[3] = SectorZ;
-			NewSector->MapCon[X][Y] = MapCon;
-		}
-	}
-	NewSector->TimeStamp = RoundNr;
-	NewSector->Status = STATUS_LOADED;
-	NewSector->MapFlags = 0;
-
-	*Sector->at(SectorX, SectorY, SectorZ) = NewSector;
-}
-
-static void LoadSector(const char *FileName, int SectorX, int SectorY, int SectorZ){
-	if(SectorX < SectorXMin || SectorXMax < SectorX
-			|| SectorY < SectorYMin || SectorYMax < SectorY
-			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
-		return;
-	}
-
-	InitSector(SectorX, SectorY, SectorZ);
-
-	ASSERT(Sector != NULL);
-	TSector *LoadingSector = *Sector->at(SectorX, SectorY, SectorZ);
-	ASSERT(LoadingSector != NULL);
-
-	TReadScriptFile Script;
-	try{
-		Script.open(FileName);
-		print(1, "Lade Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
-
-		int OffsetX = -1;
-		int OffsetY = -1;
-		while(true){
-			Script.nextToken();
-			if(Script.Token == ENDOFFILE){
-				Script.close();
-				return;
-			}
-
-			if(Script.Token == SPECIAL && Script.getSpecial() == ','){
-				continue;
-			}
-
-			if(Script.Token == BYTES){
-				uint8 *SectorOffset = Script.getBytesequence();
-				OffsetX = (int)SectorOffset[0];
-				OffsetY = (int)SectorOffset[1];
-				Script.readSymbol(':');
-				continue;
-			}
-
-			if(Script.Token != IDENTIFIER){
-				Script.error("next map point expected");
-			}
-
-			if(OffsetX == -1 || OffsetY == -1){
-				Script.error("coordinate expected");
-			}
-
-			const char *Identifier = Script.getIdentifier();
-			if(strcmp(Identifier, "refresh") == 0){
-				LoadingSector->MapFlags |= 1;
-				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x100;
-			}else if(strcmp(Identifier, "nologout") == 0){
-				LoadingSector->MapFlags |= 2;
-				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x200;
-			}else if(strcmp(Identifier, "protectionzone") == 0){
-				LoadingSector->MapFlags |= 4;
-				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x400;
-			}else if(strcmp(Identifier, "content") == 0){
-				Script.readSymbol('=');
-				HelpBuffer.reset();
-				LoadObjects(&Script, &HelpBuffer, false);
-				TReadBuffer ReadBuffer(HelpBuffer);
-				LoadObjects(&ReadBuffer, LoadingSector->MapCon[OffsetX][OffsetY]);
-			}else{
-				Script.error("unknown map flag");
-			}
-		}
-	}catch(const char *str){
-		error("LoadSector: Kann Datei \"%s\" nicht lesen.\n", FileName);
-		error("# Fehler: %s\n", str);
-		throw "Cannot load sector";
-	}
-}
-
-static void LoadMap(void){
-	DIR *MapDir = opendir(MAPPATH);
-	if(MapDir == NULL){
-		error("LoadMap: Unterverzeichnis %s nicht gefunden\n", MAPPATH);
-		throw "Cannot load map";
-	}
-
-	print(1, "Lade Karte ...\n");
-	ObjectCounter = 0;
-
-	char FilePath[4096];
-	while(dirent *DirEntry = readdir(MapDir)){
-		if(DirEntry->d_type == DT_REG){
-			// NOTE(fusion): See note in `DeleteSwappedSectors`.
-			const char *FileExt = findLast(DirEntry->d_name, '.');
-			if(FileExt != NULL && strcmp(FileExt, ".sec") == 0){
-				int SectorX, SectorY, SectorZ;
-				if(sscanf("%d-%d-%d.sec", &SectorX, &SectorY, &SectorZ) == 3){
-					snprintf(FilePath, sizeof(FilePath), "%s/%s", SAVEPATH, DirEntry->d_name);
-					LoadSector(FilePath, SectorX, SectorY, SectorZ);
-					SectorCounter += 1;
-				}
-			}
-		}
-	}
-
-	closedir(MapDir);
-	print(1, "%d Sektoren geladen.\n", SectorCounter);
-	print(1, "%d Objekte geladen.\n", ObjectCounter);
-}
-
-//SaveObjects
-//SaveObjects
-
-void SaveSector(char *FileName, int SectorX, int SectorY, int SectorZ){
-	ASSERT(Sector);
-	TSector *SavingSector = *Sector->at(SectorX, SectorY, SectorZ);
-	if(!SavingSector){
-		return;
-	}
-
-	bool Empty = true;
-	TWriteScriptFile Script;
-	try{
-		Script.open(FileName);
-		print(1, "Speichere Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
-
-		Script.writeText("# Tibia - graphical Multi-User-Dungeon");
-		Script.writeLn();
-		Script.writeText("# Data for sector ");
-		Script.writeNumber(SectorX);
-		Script.writeText("/");
-		Script.writeNumber(SectorY);
-		Script.writeText("/");
-		Script.writeNumber(SectorZ);
-		Script.writeLn();
-		Script.writeLn();
-
-		for(int X = 0; X < 32; X += 1){
-			for(int Y = 0; Y < 32; Y += 1){
-				Object First = Object(SavingSector->MapCon[X][Y].getAttribute(CONTENT));
-				uint8 Flags = GetMapContainerFlags(SavingSector->MapCon[X][Y]);
-				if(First != NONE || Flags != 0){
-					Script.writeNumber(X);
-					Script.writeText("-");
-					Script.writeNumber(Y);
-					Script.writeText(": ");
-
-					int AttrCount = 0;
-
-					if(Flags & 1){
-						if(AttrCount > 0){
-							Script.writeText(", ");
-						}
-						Script.writeText("Refresh");
-						AttrCount += 1;
-					}
-
-					if(Flags & 2){
-						if(AttrCount > 0){
-							Script.writeText(", ");
-						}
-						Script.writeText("NoLogout");
-						AttrCount += 1;
-					}
-
-					if(Flags & 4){
-						if(AttrCount > 0){
-							Script.writeText(", ");
-						}
-						Script.writeText("ProtectionZone");
-						AttrCount += 1;
-					}
-
-					if(First != NONE){
-						if(AttrCount > 0){
-							Script.writeText(", ");
-						}
-						Script.writeText("Content=");
-						HelpBuffer.reset();
-						SaveObjects(First, &HelpBuffer, false);
-						TReadBuffer ReadBuffer(HelpBuffer);
-						SaveObjects(&ReadBuffer, &Script);
-						AttrCount += 1;
-					}
-
-					Script.writeLn();
-					Empty = false;
-				}
-			}
-		}
-
-		Script.close();
-		if(Empty){
-			error("SaveSector: Sektor %d/%d/%d ist leer.\n", SectorX, SectorY, SectorZ);
-			unlink(FileName);
-		}
-	}catch(const char *str){
-		error("SaveSector: Kann Datei %s nicht schreiben.\n", FileName);
-		error("# Fehler: %s\n", str);
-	}
-}
-
-static void SaveMap(void){
-	// NOTE(fusion): I guess this could happen if we're already saving the map
-	// and a signal causes `exit` to execute cleanup functions registered with
-	// `atexit`, among which is `ExitAll` which may call `SaveMap` throught
-	// `ExitMap`.
-	static bool SavingMap = false;
-	if(SavingMap){
-		error("SaveMap: Karte wird schon gespeichert.\n");
-		return;
-	}
-
-	SavingMap = true;
-	print(1, "Speichere Karte ...\n");
-	ObjectCounter = 0;
-
-	char FileName[4096];
-	for(int SectorZ = SectorZMin; SectorZ <= SectorZMax; SectorZ += 1)
-	for(int SectorY = SectorYMin; SectorY <= SectorYMax; SectorY += 1)
-	for(int SectorX = SectorXMin; SectorX <= SectorXMax; SectorX += 1){
-		snprintf(FileName, sizeof(FileName), "%s/%04d-%04d-%02d.sec",
-				MAPPATH, SectorX, SectorY, SectorZ);
-		SaveSector(FileName, SectorX, SectorY, SectorZ);
-	}
-
-	print(1, "%d Objekte gespeichert.\n", ObjectCounter);
-	SavingMap = false;
-}
-
-static void ResizeHashTable(void){
-	uint32 OldSize = HashTableSize;
-	uint32 NewSize = OldSize * 2;
-	ASSERT(ISPOW2(OldSize));
-	ASSERT(NewSize > OldSize);
-
-	// TODO(fusion): See note below.
-	error("FATAL ERROR in ResizeHashTable: Resizing the object hash table is"
-			" currently disabled. You may increase `Objects` in the map config"
-			" from %d to %d, to achieve the same effect.", OldSize, NewSize);
-	abort();
-
-	error("INFO: HashTabelle zu klein. Größe wird verdoppelt auf %d.\n", NewSize);
-
-	uint32 NewMask = NewSize - 1;
-	TObject **NewData = (TObject**)malloc(NewSize * sizeof(TObject*));
-	uint8 *NewType = (uint8*)malloc(NewSize * sizeof(uint8));
-	memset(NewType, 0, NewSize * sizeof(uint8));
-
-	// TODO(fusion): This rehash loop doesn't make a lot of sense. It wants to
-	// access all existing objects but doing so would cause all sectors to be
-	// swapped in at some time or another. This may be bad for performance but
-	// the real problem is that `UnswapSector` may swap out some other sector
-	// whose objects were already put into `NewType` and `NewData`, causing
-	// multiple object ids to reference the same `TObject`.
-	//	Looking at some of the logs included with this executable, it doesn't
-	// look like this function was ever called which explains why it wasn't fixed
-	// earlier.
-	//	It would be possible to do this rehashing without swapping anything out,
-	// if we stored ObjectID somewhere (maybe `HashTableData`). Doubling the size
-	// of the table means there are two possible indices for each previous entry,
-	// and we can only determine which one to actually move it with the ObjectID.
-
-	NewType[0] = STATUS_PERMANENT;
-	NewData[0] = HashTableData[0];
-	for(uint32 i = 1; i < NewSize; i += 1){
-		if(HashTableType[i] != STATUS_FREE){
-			if(HashTableType[i] == STATUS_SWAPPED){
-				UnswapSector((uintptr)HashTableData[i]);
-			}
-
-			if(HashTableType[i] == STATUS_LOADED){
-				TObject *Entry = HashTableData[i];
-				NewType[Entry->ObjectID & NewMask] = STATUS_LOADED;
-				NewData[Entry->ObjectID & NewMask] = Entry;
-			}else{
-				error("ResizeHashTable: Fehler beim Reorganisieren der HashTabelle.\n");
-			}
-		}
-	}
-
-	free(HashTableData);
-	free(HashTableType);
-
-	HashTableData = NewData;
-	HashTableType = NewType;
-	HashTableSize = NewSize;
-	HashTableMask = NewMask;
-	HashTableFree += (NewSize - OldSize);
-}
-
-static TObject *GetFreeObjectSlot(void){
-	if(FirstFreeObject == NULL){
-		SwapSector();
-	}
-
-	TObject *Entry = FirstFreeObject;
-	if(Entry == NULL){
-		error("GetFreeObjectSlot: Kein freier Platz mehr.\n");
-		return NULL;
-	}
-
-	// NOTE(fusion): The next object pointer was originally stored in `Entry->NextObject.ObjectID`
-	// which is a problem when compiling in 64 bits mode. For this reason, I've changed it to be
-	// stored at the beggining of `TObject`.
-	FirstFreeObject = *((TObject**)Entry);
-
-	memset(Entry, 0, sizeof(TObject));
-
-	return Entry;
-}
-
-static void PutFreeObjectSlot(TObject *Entry){
-	if(Entry == NULL){
-		error("PutFreeObjectSlot: Entry ist NULL.\n");
-		return;
-	}
-
-	// NOTE(fusion): See note in `GetFreeObjectSlot`, just above.
-	*((TObject**)Entry) = FirstFreeObject;
-	FirstFreeObject = Entry;
-}
-
+// Map Management
+// =============================================================================
 static void ReadMapConfig(void){
 	OBCount = 0xA0000;
 	SectorXMin = 1000;
@@ -731,7 +195,7 @@ static void ReadMapConfig(void){
 	while(true){
 		Script.nextToken();
 		if(Script.Token == ENDOFFILE){
-			Script.close():
+			Script.close();
 			break;
 		}
 
@@ -872,6 +336,796 @@ static void ReadMapConfig(void){
 	}
 }
 
+static void ResizeHashTable(void){
+	uint32 OldSize = HashTableSize;
+	uint32 NewSize = OldSize * 2;
+	ASSERT(ISPOW2(OldSize));
+	ASSERT(NewSize > OldSize);
+
+	// TODO(fusion): See note below.
+	error("FATAL ERROR in ResizeHashTable: Resizing the object hash table is"
+			" currently disabled. You may increase `Objects` in the map config"
+			" from %d to %d, to achieve the same effect.", OldSize, NewSize);
+	abort();
+
+	error("INFO: HashTabelle zu klein. Größe wird verdoppelt auf %d.\n", NewSize);
+
+	uint32 NewMask = NewSize - 1;
+	TObject **NewData = (TObject**)malloc(NewSize * sizeof(TObject*));
+	uint8 *NewType = (uint8*)malloc(NewSize * sizeof(uint8));
+	memset(NewType, 0, NewSize * sizeof(uint8));
+
+	// TODO(fusion): This rehash loop doesn't make a lot of sense. It wants to
+	// access all existing objects but doing so would cause all sectors to be
+	// swapped in at some time or another. This may be bad for performance but
+	// the real problem is that `UnswapSector` may swap out some other sector
+	// whose objects were already put into `NewType` and `NewData`, causing
+	// multiple object ids to reference the same `TObject`.
+	//	Looking at some of the logs included with this executable, it doesn't
+	// look like this function was ever called which explains why it wasn't fixed
+	// earlier.
+	//	It would be possible to do this rehashing without swapping anything out,
+	// if we stored ObjectID somewhere (maybe `HashTableData`). Doubling the size
+	// of the table means there are two possible indices for each previous entry,
+	// and we can only determine which one to actually move it with the ObjectID.
+
+	NewType[0] = STATUS_PERMANENT;
+	NewData[0] = HashTableData[0];
+	for(uint32 i = 1; i < NewSize; i += 1){
+		if(HashTableType[i] != STATUS_FREE){
+			if(HashTableType[i] == STATUS_SWAPPED){
+				UnswapSector((uint32)((uintptr)HashTableData[i]));
+			}
+
+			if(HashTableType[i] == STATUS_LOADED){
+				TObject *Entry = HashTableData[i];
+				NewType[Entry->ObjectID & NewMask] = STATUS_LOADED;
+				NewData[Entry->ObjectID & NewMask] = Entry;
+			}else{
+				error("ResizeHashTable: Fehler beim Reorganisieren der HashTabelle.\n");
+			}
+		}
+	}
+
+	free(HashTableData);
+	free(HashTableType);
+
+	HashTableData = NewData;
+	HashTableType = NewType;
+	HashTableSize = NewSize;
+	HashTableMask = NewMask;
+	HashTableFree += (NewSize - OldSize);
+}
+
+static TObject *GetFreeObjectSlot(void){
+	if(FirstFreeObject == NULL){
+		SwapSector();
+	}
+
+	TObject *Entry = FirstFreeObject;
+	if(Entry == NULL){
+		error("GetFreeObjectSlot: Kein freier Platz mehr.\n");
+		return NULL;
+	}
+
+	// NOTE(fusion): The next object pointer was originally stored in `Entry->NextObject.ObjectID`
+	// which is a problem when compiling in 64 bits mode. For this reason, I've changed it to be
+	// stored at the beggining of `TObject`.
+	FirstFreeObject = *((TObject**)Entry);
+
+	// TODO(fusion): Using `memset` here will trigger a compiler warning because `TObject` contains
+	// a few `Object`s and I've made them non PODs by adding a few constructors.
+	//memset(Entry, 0, sizeof(TObject));
+
+	*Entry = TObject{};
+	return Entry;
+}
+
+static void PutFreeObjectSlot(TObject *Entry){
+	if(Entry == NULL){
+		error("PutFreeObjectSlot: Entry ist NULL.\n");
+		return;
+	}
+
+	// NOTE(fusion): See note in `GetFreeObjectSlot`, just above.
+	*((TObject**)Entry) = FirstFreeObject;
+	FirstFreeObject = Entry;
+}
+
+void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber){
+	ASSERT(Obj != NONE);
+
+	// NOTE(fusion): Does it make sense to swap an object that isn't loaded? We
+	// were originally calling `Object::exists` that would swap in the object's
+	// sector if it was swapped out. We should probably have an assertion here.
+	uint32 EntryIndex = Obj.ObjectID & HashTableMask;
+	if(HashTableType[EntryIndex] != STATUS_LOADED){
+		error("SwapObject: Object doesn't exists or is not currently loaded.\n");
+		return;
+	}
+
+	TObject *Entry = HashTableData[EntryIndex];
+	if(Entry->ObjectID != Obj.ObjectID){
+		error("SwapObject: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	File->writeBytes((const uint8*)Entry, sizeof(TObject));
+	if(Entry->Type.getFlag(CONTAINER) || Entry->Type.getFlag(CHEST)){
+		Object Current = Obj.getAttribute(CONTENT);
+		while(Current != NONE){
+			Object Next = Current.getNextObject();
+			SwapObject(File, Current, FileNumber);
+			Current = Next;
+		}
+	}
+
+	PutFreeObjectSlot(Entry);
+	HashTableType[EntryIndex] = STATUS_SWAPPED;
+	HashTableData[EntryIndex] = (TObject*)((uintptr)FileNumber);
+}
+
+void SwapSector(void){
+	static uint32 FileNumber = 0;
+
+	TSector *Oldest = NULL;
+	int OldestSectorX = 0;
+	int OldestSectorY = 0;
+	int OldestSectorZ = 0;
+	uint32 OldestTimeStamp = RoundNr + 1;
+
+	ASSERT(Sector != NULL);
+	for(int SectorZ = SectorZMin; SectorZ <= SectorZMax; SectorZ += 1)
+	for(int SectorY = SectorYMin; SectorY <= SectorYMax; SectorY += 1)
+	for(int SectorX = SectorXMin; SectorX <= SectorXMax; SectorX += 1){
+		TSector *CurrentSector = *Sector->at(SectorX, SectorY, SectorZ);
+		if(CurrentSector != NULL
+				&& CurrentSector->Status == STATUS_LOADED
+				&& CurrentSector->TimeStamp < OldestTimeStamp){
+			Oldest = CurrentSector;
+			OldestSectorX = SectorX;
+			OldestSectorY = SectorY;
+			OldestSectorZ = SectorZ;
+			OldestTimeStamp = CurrentSector->TimeStamp;
+		}
+	}
+
+	if(Oldest == NULL){
+		error("FATAL ERROR in SwapSector: Es kann kein Sektor ausgelagert werden.\n");
+		abort();
+	}
+
+	char FileName[4096];
+	do{
+		FileNumber += 1;
+		if(FileNumber > 99999999){
+			FileNumber = 1;
+		}
+		snprintf(FileName, sizeof(FileName), "%s/%08u.swp", SAVEPATH, FileNumber);
+	}while(FileExists(FileName));
+
+	TWriteBinaryFile File;
+	try{
+		File.open(FileName);
+		print(2, "Lagere Sektor %d/%d/%d aus...\n", OldestSectorX, OldestSectorY, OldestSectorZ);
+		File.writeQuad((uint32)OldestSectorX);
+		File.writeQuad((uint32)OldestSectorY);
+		File.writeQuad((uint32)OldestSectorZ);
+		// TODO(fusion): I think tiles are stored in column major order but it doesn't
+		// really matter as long as optimize for sequential access.
+		for(int X = 0; X < 32; X += 1){
+			for(int Y = 0; Y < 32; Y += 1){
+				SwapObject(&File, Oldest->MapCon[X][Y], FileNumber);
+			}
+		}
+		Oldest->Status = STATUS_SWAPPED;
+		File.close();
+	}catch(const char *str){
+		error("FATAL ERROR in SwapSector: Kann Datei \"%s\" nicht anlegen.\n", FileName);
+		error("# Fehler: %s\n", str);
+		abort();
+	}
+}
+
+void UnswapSector(uint32 FileNumber){
+	char FileName[4096];
+	snprintf(FileName, sizeof(FileName), "%s/%08u.swp", SAVEPATH, FileNumber);
+
+	TReadBinaryFile File;
+	try{
+		File.open(FileName);
+		int SectorX = (int)File.readQuad();
+		int SectorY = (int)File.readQuad();
+		int SectorZ = (int)File.readQuad();
+		print(2, "Lagere Sector %d/%d/%d ein...\n", SectorX, SectorY, SectorZ);
+
+		ASSERT(Sector != NULL);
+		TSector *LoadingSector = *Sector->at(SectorX, SectorY, SectorZ);
+		if(LoadingSector == NULL){
+			error("UnswapSector: Sektor %d/%d/%d existiert nicht.\n", SectorX, SectorY, SectorZ);
+			File.close();
+			return;
+		}
+
+		if(LoadingSector->Status != STATUS_SWAPPED){
+			error("UnswapSector: Sektor %d/%d/%d ist nicht ausgelagert.\n", SectorX, SectorY, SectorZ);
+			File.close();
+			return;
+		}
+
+		int Size = File.getSize();
+		while(File.getPosition() < Size){
+			TObject Entry;
+			File.readBytes((uint8*)&Entry, sizeof(TObject));
+
+			uint32 EntryIndex = Entry.ObjectID & HashTableMask;
+			if(HashTableType[EntryIndex] == STATUS_SWAPPED){
+				// NOTE(fusion): Make sure we only allocate the object if we confirm
+				// its status. The original code would call `readBytes` on the result
+				// from `GetFreeObjectSlot()` directly and would then leak it if the
+				// entry status was not `STATUS_SWAPPED`.
+				TObject *EntryPointer = GetFreeObjectSlot();
+				*EntryPointer = Entry;
+				HashTableData[EntryIndex] = EntryPointer;
+				HashTableType[EntryIndex] = STATUS_LOADED;
+			}else{
+				error("UnswapSector: Objekt %u existiert schon.\n", Entry.ObjectID);
+			}
+		}
+		LoadingSector->Status = STATUS_LOADED;
+		File.close();
+		unlink(FileName);
+	}catch(const char *str){
+		error("FATAL ERROR in UnswapSector: Kann Datei \"%s\" nicht lesen.\n", FileName);
+		error("# Fehler: %s\n", str);
+		abort();
+	}
+}
+
+void DeleteSwappedSectors(void){
+	DIR *SwapDir = opendir(SAVEPATH);
+	if(SwapDir == NULL){
+		error("DeleteSwappedSectors: Unterverzeichnis %s nicht gefunden\n", SAVEPATH);
+		return;
+	}
+
+	char FilePath[4096];
+	while(dirent *DirEntry = readdir(SwapDir)){
+		if(DirEntry->d_type == DT_REG){
+			// NOTE(fusion): `DirEntry->d_name` will only contain the filename
+			// so we need to assemble the actual file path (relative in this
+			// case) to properly unlink it. Windows has the same behavior with
+			// its `FindFirstFile`/`FindNextFile` API.
+			const char *FileExt = findLast(DirEntry->d_name, '.');
+			if(FileExt != NULL && strcmp(FileExt, ".swp") == 0){
+				snprintf(FilePath, sizeof(FilePath), "%s/%s", SAVEPATH, DirEntry->d_name);
+				unlink(FilePath);
+			}
+		}
+	}
+
+	closedir(SwapDir);
+}
+
+void LoadObjects(TReadScriptFile *Script, TWriteStream *Stream, bool Skip){
+	int Depth = 1;
+	bool ProcessObjects = true;
+	Script->readSymbol('{');
+	Script->nextToken();
+	while(true){
+		if(ProcessObjects){
+			if(Script->Token != SPECIAL){
+				int TypeID = Script->getNumber();
+				if(!ObjectTypeExists(TypeID)){
+					Script->error("unknown object type");
+				}
+
+				if(!Skip){
+					Stream->writeWord((uint16)TypeID);
+				}
+
+				ProcessObjects = false;
+			}else{
+				char Special = Script->getSpecial();
+				if(Special == '}'){
+					if(!Skip){
+						Stream->writeWord(0xFFFF);
+					}
+
+					Depth -= 1;
+					if(Depth <= 0){
+						break;
+					}
+				}else if(Special != ','){
+					Script->error("expected comma");
+				}
+			}
+			Script->nextToken();
+		}else{
+			if(Script->Token != SPECIAL){
+				int Attribute = GetInstanceAttributeByName(Script->getIdentifier());
+				if(Attribute == -1){
+					Script->error("unknown attribute");
+				}
+
+				Script->readSymbol('=');
+				if(!Skip){
+					Stream->writeByte((uint8)Attribute);
+				}
+
+				if(Attribute == CONTENT){
+					Script->readSymbol('{');
+					Depth += 1;
+					ProcessObjects = true;
+				}else if(Attribute == TEXTSTRING || Attribute == EDITOR){
+					const char *String = Script->readString();
+					if(!Skip){
+						Stream->writeString(String);
+					}
+				}else{
+					int Number = Script->readNumber();
+					if(!Skip){
+						Stream->writeQuad((uint32)Number);
+					}
+				}
+
+				Script->nextToken();
+			}else{
+				// NOTE(fusion): Attributes are key-value pairs separated by whitespace.
+				// If we find a special token (probably ',' or '}'), then we're done
+				// parsing attributes for the current object.
+				if(!Skip){
+					Stream->writeByte(0xFF);
+				}
+				ProcessObjects = true;
+			}
+		}
+	}
+}
+
+void LoadObjects(TReadStream *Stream, Object Con){
+	int Depth = 1;
+	Object Obj = NONE;
+	while(true){
+		if(Obj == NONE){
+			int TypeID = (int)Stream->readWord();
+			if(TypeID != 0xFFFF){
+				ObjectCounter += 1;
+				ObjectType ObjType(TypeID);
+
+				if(ObjType.isBodyContainer()){
+					// TODO(fusion): I couldn't find if a creature's body containers
+					// are properly initialized or if we need to create them here.
+					// Either way we should come back to this function to check it
+					// is working properly.
+					Obj = GetContainerObject(Con, (TypeID - 1));
+				}else{
+					Obj = AppendObject(Con, ObjType);
+				}
+			}else{
+				Obj = Con;
+				Con = Con.getContainer();
+				Depth -= 1;
+				if(Depth <= 0){
+					break;
+				}
+			}
+		}else{
+			int Attribute = (int)Stream->readByte();
+			if(Attribute != 0xFF){
+				if(Attribute == CONTENT){
+					Con = Obj;
+					Obj = NONE;
+					Depth += 1;
+				}else if(Attribute == TEXTSTRING || Attribute == EDITOR){
+					char String[4096];
+					Stream->readString(String, sizeof(String));
+					Obj.setAttribute((INSTANCEATTRIBUTE)Attribute, AddDynamicString(String));
+				}else if(Attribute != REMAININGEXPIRETIME){
+					uint32 Value = Stream->readQuad();
+					Obj.setAttribute((INSTANCEATTRIBUTE)Attribute, Value);
+				}else{
+					uint32 Value = Stream->readQuad();
+					if(Value != 0){
+						CronChange(Obj, (int)Value);
+					}
+				}
+			}else{
+				Obj = NONE;
+			}
+		}
+	}
+}
+
+void InitSector(int SectorX, int SectorY, int SectorZ){
+	ASSERT(Sector);
+	if(*Sector->at(SectorX, SectorY, SectorZ) != NULL){
+		error("InitSector: Sektor %d/%d/%d existiert schon.\n", SectorX, SectorY, SectorZ);
+		return;
+	}
+
+	TSector *NewSector = (TSector*)malloc(sizeof(TSector));
+	for(int X = 0; X < 32; X += 1){
+		for(int Y = 0; Y < 32; Y += 1){
+			Object MapCon = CreateObject();
+			// NOTE(fusion): `Attributes[0]` is probably the object id of the
+			// first object in the container.
+			AccessObject(MapCon)->Attributes[1] = SectorX * 32 + X;
+			AccessObject(MapCon)->Attributes[2] = SectorY * 32 + Y;
+			AccessObject(MapCon)->Attributes[3] = SectorZ;
+			NewSector->MapCon[X][Y] = MapCon;
+		}
+	}
+	NewSector->TimeStamp = RoundNr;
+	NewSector->Status = STATUS_LOADED;
+	NewSector->MapFlags = 0;
+
+	*Sector->at(SectorX, SectorY, SectorZ) = NewSector;
+}
+
+void LoadSector(const char *FileName, int SectorX, int SectorY, int SectorZ){
+	if(SectorX < SectorXMin || SectorXMax < SectorX
+			|| SectorY < SectorYMin || SectorYMax < SectorY
+			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
+		return;
+	}
+
+	InitSector(SectorX, SectorY, SectorZ);
+
+	ASSERT(Sector != NULL);
+	TSector *LoadingSector = *Sector->at(SectorX, SectorY, SectorZ);
+	ASSERT(LoadingSector != NULL);
+
+	TReadScriptFile Script;
+	try{
+		Script.open(FileName);
+		print(1, "Lade Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+
+		int OffsetX = -1;
+		int OffsetY = -1;
+		while(true){
+			Script.nextToken();
+			if(Script.Token == ENDOFFILE){
+				Script.close();
+				return;
+			}
+
+			if(Script.Token == SPECIAL && Script.getSpecial() == ','){
+				continue;
+			}
+
+			if(Script.Token == BYTES){
+				uint8 *SectorOffset = Script.getBytesequence();
+				OffsetX = (int)SectorOffset[0];
+				OffsetY = (int)SectorOffset[1];
+				Script.readSymbol(':');
+				continue;
+			}
+
+			if(Script.Token != IDENTIFIER){
+				Script.error("next map point expected");
+			}
+
+			if(OffsetX == -1 || OffsetY == -1){
+				Script.error("coordinate expected");
+			}
+
+			const char *Identifier = Script.getIdentifier();
+			if(strcmp(Identifier, "refresh") == 0){
+				LoadingSector->MapFlags |= 1;
+				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x100;
+			}else if(strcmp(Identifier, "nologout") == 0){
+				LoadingSector->MapFlags |= 2;
+				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x200;
+			}else if(strcmp(Identifier, "protectionzone") == 0){
+				LoadingSector->MapFlags |= 4;
+				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x400;
+			}else if(strcmp(Identifier, "content") == 0){
+				Script.readSymbol('=');
+				HelpBuffer.reset();
+				LoadObjects(&Script, &HelpBuffer, false);
+				TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
+				LoadObjects(&ReadBuffer, LoadingSector->MapCon[OffsetX][OffsetY]);
+			}else{
+				Script.error("unknown map flag");
+			}
+		}
+	}catch(const char *str){
+		error("LoadSector: Kann Datei \"%s\" nicht lesen.\n", FileName);
+		error("# Fehler: %s\n", str);
+		throw "Cannot load sector";
+	}
+}
+
+void LoadMap(void){
+	DIR *MapDir = opendir(MAPPATH);
+	if(MapDir == NULL){
+		error("LoadMap: Unterverzeichnis %s nicht gefunden\n", MAPPATH);
+		throw "Cannot load map";
+	}
+
+	print(1, "Lade Karte ...\n");
+	ObjectCounter = 0;
+
+	int SectorCounter = 0;
+	char FilePath[4096];
+	while(dirent *DirEntry = readdir(MapDir)){
+		if(DirEntry->d_type == DT_REG){
+			// NOTE(fusion): See note in `DeleteSwappedSectors`.
+			const char *FileExt = findLast(DirEntry->d_name, '.');
+			if(FileExt != NULL && strcmp(FileExt, ".sec") == 0){
+				int SectorX, SectorY, SectorZ;
+				if(sscanf(DirEntry->d_name, "%d-%d-%d.sec", &SectorX, &SectorY, &SectorZ) == 3){
+					snprintf(FilePath, sizeof(FilePath), "%s/%s", SAVEPATH, DirEntry->d_name);
+					LoadSector(FilePath, SectorX, SectorY, SectorZ);
+					SectorCounter += 1;
+				}
+			}
+		}
+	}
+
+	closedir(MapDir);
+	print(1, "%d Sektoren geladen.\n", SectorCounter);
+	print(1, "%d Objekte geladen.\n", ObjectCounter);
+}
+
+void SaveObjects(Object Obj, TWriteStream *Stream, bool Stop){
+	// TODO(fusion): Just use a recursive algorithm for both `SaveObjects` and
+	// `LoadObjects`. Regardless of performance differences, this iterative version
+	// is just unreadable and mostly disconnected.
+	int Depth = 1;
+	bool ProcessObjects = true;
+	Object Prev = NONE;
+	while(true){
+		if(ProcessObjects){
+			if(Obj != NONE){
+				ObjectType ObjType = Obj.getObjectType();
+				if(!ObjType.isCreatureContainer()){
+					Stream->writeWord((uint16)ObjType.TypeID);
+					ProcessObjects = false;
+				}else{
+					if(Stop && Depth == 1){
+						break;
+					}
+					Prev = Obj;
+					Obj = Obj.getNextObject();
+				}
+			}else{
+				Stream->writeWord(0xFFFF);
+				Depth -= 1;
+				if(Depth <= 0){
+					break;
+				}
+
+				Stream->writeByte(0xFF);
+				ObjectCounter += 1;
+				if(Stop && Depth == 1){
+					break;
+				}
+
+				if(Prev == NONE){
+					error("LastObj ist NONE (1)\n");
+				}
+
+				Prev = Prev.getContainer();
+				if(Prev == NONE){
+					error("LastObj ist NONE (2)\n");
+				}
+
+				Obj = Prev.getNextObject();
+			}
+		}else{
+			ASSERT(Obj != NONE);
+			ObjectType ObjType = Obj.getObjectType();
+			for(int Attribute = 1; Attribute <= 17; Attribute += 1){
+				if(ObjType.getAttributeOffset((INSTANCEATTRIBUTE)Attribute) != -1){
+					uint32 Value = 0;
+					if(Attribute == REMAININGEXPIRETIME){
+						Value = CronInfo(Obj, false);
+					}else{
+						Value = Obj.getAttribute((INSTANCEATTRIBUTE)Attribute);
+					}
+
+					if(Value != 0){
+						Stream->writeByte((uint8)Attribute);
+						if(Attribute == TEXTSTRING || Attribute == EDITOR){
+							Stream->writeString(GetDynamicString(Value));
+						}else{
+							Stream->writeQuad(Value);
+						}
+					}
+				}
+			}
+
+			Object First = NONE;
+			if(ObjType.getAttributeOffset(CONTENT) != -1){
+				First = Obj.getAttribute(CONTENT);
+			}
+
+			if(First != NONE){
+				Depth += 1;
+				Prev = NONE;
+				Obj = First;
+				Stream->writeByte((uint8)CONTENT);
+			}else{
+				Stream->writeByte(0xFF);
+				ObjectCounter += 1;
+				if(Stop && Depth == 1){
+					break;
+				}
+
+				Prev = Obj;
+				Obj = Obj.getNextObject();
+			}
+
+			ProcessObjects = true;
+		}
+	}
+}
+
+void SaveObjects(TReadStream *Stream, TWriteScriptFile *Script){
+	int Depth = 1;
+	bool ProcessObjects = true;
+	bool FirstObject = true;
+	Script->writeText("{");
+	while(true){
+		if(ProcessObjects){
+			int TypeID = (int)Stream->readWord();
+			if(TypeID != 0xFFFF){
+				if(!FirstObject){
+					Script->writeText(", ");
+				}
+
+				Script->writeNumber(TypeID);
+			}else{
+				Depth -= 1;
+				Script->writeText("}");
+			}
+
+			ProcessObjects = false;
+		}else{
+			int Attribute = (int)Stream->readByte();
+			if(Attribute != 0xFF){
+				Script->writeText(" ");
+				Script->writeText(GetInstanceAttributeName(Attribute));
+				Script->writeText("=");
+				if(Attribute == CONTENT){
+					Depth += 1;
+					ProcessObjects = true;
+					FirstObject = true;
+					Script->writeText("{");
+				}else if(Attribute == TEXTSTRING || Attribute == EDITOR){
+					char String[4096];
+					Stream->readString(String, sizeof(String));
+					Script->writeString(String);
+				}else{
+					Script->writeNumber((int)Stream->readQuad());
+				}
+			}else{
+				ProcessObjects = true;
+				FirstObject = false;
+			}
+		}
+	}
+}
+
+void SaveSector(char *FileName, int SectorX, int SectorY, int SectorZ){
+	ASSERT(Sector);
+	TSector *SavingSector = *Sector->at(SectorX, SectorY, SectorZ);
+	if(!SavingSector){
+		return;
+	}
+
+	bool Empty = true;
+	TWriteScriptFile Script;
+	try{
+		Script.open(FileName);
+		print(1, "Speichere Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+
+		Script.writeText("# Tibia - graphical Multi-User-Dungeon");
+		Script.writeLn();
+		Script.writeText("# Data for sector ");
+		Script.writeNumber(SectorX);
+		Script.writeText("/");
+		Script.writeNumber(SectorY);
+		Script.writeText("/");
+		Script.writeNumber(SectorZ);
+		Script.writeLn();
+		Script.writeLn();
+
+		for(int X = 0; X < 32; X += 1){
+			for(int Y = 0; Y < 32; Y += 1){
+				Object First = Object(SavingSector->MapCon[X][Y].getAttribute(CONTENT));
+				uint8 Flags = GetMapContainerFlags(SavingSector->MapCon[X][Y]);
+				if(First != NONE || Flags != 0){
+					Script.writeNumber(X);
+					Script.writeText("-");
+					Script.writeNumber(Y);
+					Script.writeText(": ");
+
+					int AttrCount = 0;
+
+					if(Flags & 1){
+						if(AttrCount > 0){
+							Script.writeText(", ");
+						}
+						Script.writeText("Refresh");
+						AttrCount += 1;
+					}
+
+					if(Flags & 2){
+						if(AttrCount > 0){
+							Script.writeText(", ");
+						}
+						Script.writeText("NoLogout");
+						AttrCount += 1;
+					}
+
+					if(Flags & 4){
+						if(AttrCount > 0){
+							Script.writeText(", ");
+						}
+						Script.writeText("ProtectionZone");
+						AttrCount += 1;
+					}
+
+					if(First != NONE){
+						if(AttrCount > 0){
+							Script.writeText(", ");
+						}
+						Script.writeText("Content=");
+						HelpBuffer.reset();
+						SaveObjects(First, &HelpBuffer, false);
+						TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
+						SaveObjects(&ReadBuffer, &Script);
+						AttrCount += 1;
+					}
+
+					Script.writeLn();
+					Empty = false;
+				}
+			}
+		}
+
+		Script.close();
+		if(Empty){
+			error("SaveSector: Sektor %d/%d/%d ist leer.\n", SectorX, SectorY, SectorZ);
+			unlink(FileName);
+		}
+	}catch(const char *str){
+		error("SaveSector: Kann Datei %s nicht schreiben.\n", FileName);
+		error("# Fehler: %s\n", str);
+	}
+}
+
+void SaveMap(void){
+	// NOTE(fusion): I guess this could happen if we're already saving the map
+	// and a signal causes `exit` to execute cleanup functions registered with
+	// `atexit`, among which is `ExitAll` which may call `SaveMap` throught
+	// `ExitMap`.
+	static bool SavingMap = false;
+	if(SavingMap){
+		error("SaveMap: Karte wird schon gespeichert.\n");
+		return;
+	}
+
+	SavingMap = true;
+	print(1, "Speichere Karte ...\n");
+	ObjectCounter = 0;
+
+	char FileName[4096];
+	for(int SectorZ = SectorZMin; SectorZ <= SectorZMax; SectorZ += 1)
+	for(int SectorY = SectorYMin; SectorY <= SectorYMax; SectorY += 1)
+	for(int SectorX = SectorXMin; SectorX <= SectorXMax; SectorX += 1){
+		snprintf(FileName, sizeof(FileName), "%s/%04d-%04d-%02d.sec",
+				MAPPATH, SectorX, SectorY, SectorZ);
+		SaveSector(FileName, SectorX, SectorY, SectorZ);
+	}
+
+	print(1, "%d Objekte gespeichert.\n", ObjectCounter);
+	SavingMap = false;
+}
+
 void InitMap(void){
 	ReadMapConfig();
 
@@ -951,26 +1205,9 @@ void ExitMap(bool Save){
 	DeleteSwappedSectors();
 }
 
-// TODO(fusion): For some reason this is not a member of `Object`?
-static TObject *AccessObject(Object Obj){
-	if(Obj == NONE){
-		error("AccessObject: Ungültige Objektnummer Null.\n");
-		return HashTableData[0];
-	}
-
-	uint32 Index = Obj.ObjectID
-	if(HashTableType[Index] == STATUS_SWAPPED){
-		UnswapSector((uintptr)HashTableData[Index]);
-	}
-
-	if(HashTableType[Index] == STATUS_LOADED && HashTableData[Index]->ObjectID == Obj.ObjectID){
-		return HashTableData[Index];
-	}else{
-		return HashTableData[0];
-	}
-}
-
-static Object CreateObject(void){
+// Object Functions
+// =============================================================================
+Object CreateObject(void){
 	static uint32 NextObjectID = 1;
 
 	// NOTE(fusion): Load factor of 1/16.
@@ -1006,105 +1243,24 @@ static Object CreateObject(void){
 // DestroyObject
 // DeleteObject
 
-// Object
-// =============================================================================
-bool Object::exists(void){
-	if(*this == NONE){
-		return false;
+TObject *AccessObject(Object Obj){
+	if(Obj == NONE){
+		error("AccessObject: Ungültige Objektnummer Null.\n");
+		return HashTableData[0];
 	}
 
-	uint32 Index = this->ObjectID & HashTableMask;
-	if(HashTableType[Index] == STATUS_SWAPPED){
-		UnswapSector(HashTableData[Index]);
+	uint32 EntryIndex = Obj.ObjectID & HashTableMask;
+	if(HashTableType[EntryIndex] == STATUS_SWAPPED){
+		UnswapSector((uint32)((uintptr)HashTableData[EntryIndex]));
 	}
 
-	return HashTableType[Index] == STATUS_LOADED
-		&& HashTableData[Index]->ObjectID == this->ObjectID;
-}
-
-ObjectType Object::getObjectType(void){
-	return AccessObject(*this)->Type;
-}
-
-void Object::setObjectType(ObjectType Type){
-	AccessObject(*this)->Type = Type;
-}
-
-Object Object::getNextObject(void){
-	return AccessObject(*this)->NextObject;
-}
-
-void Object::setNextObject(Object NextObject){
-	AccessObject(*this)->NextObject = NextObject;
-}
-
-Object Object::getContainer(void){
-	return AccessObject(*this)->Container;
-}
-
-void Object::setContainer(Object Container){
-	AccessObject(*this)->Container = Container;
-}
-
-uint32 Object::getCreatureID(void){
-	// TODO(fusion): We call `AccessObject` once in `getObjectType` then again
-	// after checking the TypeID, when we could call it once to check both type
-	// and access `Attributes[1]`.
-
-	if(!this->getObjectType().isCreatureContainer()){
-		error("Object::getCreatureID: Objekt ist keine Kreatur.\n");
-		return 0;
+	if(HashTableType[EntryIndex] == STATUS_LOADED && HashTableData[EntryIndex]->ObjectID == Obj.ObjectID){
+		return HashTableData[EntryIndex];
+	}else{
+		return HashTableData[0];
 	}
-
-	return AccessObject(*this)->Attributes[1];
 }
 
-uint32 Object::getAttribute(INSTANCEATTRIBUTE Attribute){
-	ObjectType ObjType = this->getObjectType();
-	int AttributeOffset = ObjType.getAttributeOffset(Attribute);
-	if(AttributeOffset == -1){
-		error("Object::getAttribute: Flag für Attribut %d bei Objekttyp %d nicht gesetzt.\n",
-				Attribute, ObjType.TypeID);
-		return 0;
-	}
-
-	if(AttributeOffset < 0 || AttributeOffset >= NARRAY(TObject::Attributes)){
-		error("Object::getAttribute: Ungültiger Offset %d für Attribut %d bei Objekttyp %d.\n",
-				AttributeOffset, Attribute, ObjType.TypeID);
-		return 0;
-	}
-
-	return AccessObject(*this)->Attributes[AttributeOffset];
-}
-
-void Object::setAttribute(INSTANCEATTRIBUTE Attribute, uint32 Value){
-	ObjectType ObjType = this->getObjectType();
-	int AttributeOffset = ObjType.getAttributeOffset(Attribute);
-	if(AttributeOffset == -1){
-		error("Object::setAttribute: Flag für Attribut %d bei Objekttyp %d nicht gesetzt.\n",
-				Attribute, ObjType.TypeID);
-		return;
-	}
-
-	if(AttributeOffset < 0 || AttributeOffset >= NARRAY(TObject::Attributes)){
-		error("Object::setAttribute: Ungültiger Offset %d für Attribut %d bei Objekttyp %d.\n",
-				AttributeOffset, Attribute, ObjType.TypeID);
-		return;
-	}
-
-	if(Value == 0){
-		if(Attribute == AMOUNT || Attribute == POOLLIQUIDTYPE || Attribute == CHARGES){
-			Value = 1;
-		}else if(Attribute == REMAININGUSES){
-			Value = ObjType.getAttribute(TOTALUSES);
-		}
-	}
-
-	AccessObject(*this)->Attributes[AttributeOffset] = Value;
-}
-
-// Object Functions
-// =============================================================================
 void ChangeObject(Object Obj, ObjectType NewType){
 	if(!Obj.exists()){
 		error("ChangeObject: Übergebenes Objekt existiert nicht.\n");
@@ -1227,12 +1383,11 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 	Object Cur(Con.getAttribute(CONTENT));
 	if(ConType.isMapContainer()){
 		// TODO(fusion): Review. The loop below was a bit rough but it seems that
-		// append is forced for PRIORITY_CREATURE and PRIORITY_OTHER. We should
-		// confirm this whenever the server is up and running. It'll show.
+		// append is forced for non PRIORITY_CREATURE and PRIORITY_OTHER.
 		int ObjPriority = GetObjectPriority(Obj);
 		Append = Append
-			|| ObjPriority == PRIORITY_CREATURE
-			|| ObjPriority == PRIORITY_OTHER;
+			|| (ObjPriority != PRIORITY_CREATURE
+				&& ObjPriority != PRIORITY_OTHER);
 
 		while(Cur != NONE){
 			int CurPriority = GetObjectPriority(Cur);
@@ -1243,16 +1398,16 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 				// TODO(fusion): Replace item? I think the client might assert
 				// if there are two of these objects on a single tile.
 				const char *PriorityString = "";
-				if(ObjPriority == PRIORITY_BACK){
-					PriorityString == "BANK";
+				if(ObjPriority == PRIORITY_BANK){
+					PriorityString = "BANK";
 				}else if(ObjPriority == PRIORITY_BOTTOM){
-					PriorityString == "BOTTOM";
+					PriorityString = "BOTTOM";
 				}else if(ObjPriority == PRIORITY_TOP){
-					PriorityString == "TOP";
+					PriorityString = "TOP";
 				}
 
 				int CoordX, CoordY, CoordZ;
-				GetObjectCoordinates(Con, CoordX, CoordY, CoordZ);
+				GetObjectCoordinates(Con, &CoordX, &CoordY, &CoordZ);
 
 				ObjectType ObjType = Obj.getObjectType();
 				ObjectType CurType = Cur.getObjectType();
@@ -1302,7 +1457,7 @@ Object GetFirstContainerObject(Object Con){
 		return NONE;
 	}
 
-	ObjectType ConType = Con.getObjectType(Con);
+	ObjectType ConType = Con.getObjectType();
 	if(!ConType.getFlag(CONTAINER) && !ConType.getFlag(CHEST)){
 		error("GetFirstContainerObject: Con (%d) ist kein Container.\n", ConType.TypeID);
 		return NONE;
@@ -1322,12 +1477,12 @@ Object GetContainerObject(Object Con, int Index){
 		return NONE;
 	}
 
-	Object Current = GetFirstContainerObject(Con);
-	while(Current != NONE && Index > 0){
-		Current = CurrentObject.getNextObject();
+	Object Obj = GetFirstContainerObject(Con);
+	while(Obj != NONE && Index > 0){
+		Obj = Obj.getNextObject();
 	}
 
-	return Current;
+	return Obj;
 }
 
 void GetObjectCoordinates(Object Obj, int *x, int *y, int *z){
@@ -1396,7 +1551,7 @@ Object GetMapContainer(int x, int y, int z){
 
 Object GetMapContainer(Object Obj){
 	if(!Obj.exists()){
-		error("GetMapContainer: Übergebenes Objekt existiert nicht\n")
+		error("GetMapContainer: Übergebenes Objekt existiert nicht\n");
 		return NONE;
 	}
 

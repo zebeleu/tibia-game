@@ -2,8 +2,12 @@
 #include "config.hh"
 #include "map.hh"
 
+#include "stubs.hh"
+
 #include <signal.h>
+#include <sys/stat.h>
 #include <sys/time.h>
+#include <fstream>
 
 static bool BeADaemon = false;
 static bool Reboot = false;
@@ -62,6 +66,7 @@ static void DefaultHandler(int signr){
 
 	SaveMapOn = (signr == SIGQUIT) || (signr == SIGTERM) || (signr == SIGPWR);
 	if(signr == SIGTERM){
+		int Hour, Minute;
 		GetRealTime(&Hour, &Minute);
 		RebootTime = (Hour * 60 + Minute + 6) % 1440;
 		CloseGame();
@@ -114,7 +119,7 @@ static void SigAlarmHandler(int signr){
 	SigAlarmCounter += 1;
 
 	struct itimerval new_timer = {};
-	strict itimerval old_timer = {};
+	struct itimerval old_timer = {};
 	new_timer.it_value.tv_usec = Beat * 1000;
 	setitimer(ITIMER_REAL, &new_timer, &old_timer);
 }
@@ -122,12 +127,12 @@ static void SigAlarmHandler(int signr){
 static void InitTime(void){
 	SigAlarmCounter = 0;
 	handler(SIGALRM, SigAlarmHandler);
-	SigAlarmHandler(SIGALARM);
+	SigAlarmHandler(SIGALRM);
 }
 
 static void ExitTime(void){
 	struct itimerval new_timer = {};
-	strict itimerval old_timer = {};
+	struct itimerval old_timer = {};
 	setitimer(ITIMER_REAL, &new_timer, &old_timer);
 	handler(SIGALRM, SIG_IGN);
 }
@@ -138,7 +143,7 @@ static void UnlockGame(void){
 	strcpy(FileName, SAVEPATH);
 	strcat(FileName, "/game.pid");
 
-	std::ifstream InputFile(Filename, std::ios_base::in);
+	std::ifstream InputFile(FileName, std::ios_base::in);
 	if(!InputFile.fail()){
 		int Pid;
 		InputFile >> Pid;
@@ -156,7 +161,7 @@ static void LockGame(void){
 	strcat(FileName, "/game.pid");
 
 	{
-		std::ifstream InputFile(Filename, std::ios_base::in);
+		std::ifstream InputFile(FileName, std::ios_base::in);
 		if(!InputFile.fail()){
 			int Pid;
 			InputFile >> Pid;
@@ -200,7 +205,7 @@ void LoadWorldConfig(void){
 	WorldType = NORMAL;
 	RebootTime = 6 * 60; // minutes
 	strcpy(GameAddress, "127.0.0.1"); // I KNOW
-	Port = 7171;
+	GamePort = 7171;
 	MaxPlayers = 1000;
 	PremiumPlayerBuffer = 100;
 	MaxNewbies = 200;
@@ -292,7 +297,7 @@ static void AdvanceGame(int Delay){
 
 	if(CreatureTimeCounter >= 1750){
 		CreatureTimeCounter -= 1000;
-		ProcessCreature();
+		ProcessCreatures();
 	}
 
 	if(CronTimeCounter >= 1500){
@@ -315,7 +320,7 @@ static void AdvanceGame(int Delay){
 		ProcessMonsterhomes();
 		ProcessMonsterRaids();
 		ProcessCommunicationControl();
-		ProcessReaderThreadReplies(RefreshSector,SendMails);
+		ProcessReaderThreadReplies(RefreshSector, SendMails);
 		ProcessWriterThreadReplies();
 		ProcessCommand();
 

@@ -1,13 +1,14 @@
 #include "creature.hh"
-
 #include "enums.hh"
+
+#include "stubs.hh"
 
 TCreature::TCreature(void) :
 		TSkillBase(),
 		Combat(),
 		ToDoList(0, 20, 10)
 {
-	this->Master = this;
+	this->Combat.Master = this;
 	this->ID = 0;
 	this->NextHashEntry = NULL;
 	this->NextChainCreature =  0;

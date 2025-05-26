@@ -4,6 +4,7 @@
 #include "common.hh"
 #include "connection.hh"
 #include "containers.hh"
+#include "map.hh"
 #include "skill.hh"
 
 struct TCreature;
@@ -18,6 +19,7 @@ struct TCombat{
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TCombat(void);
+	void CheckCombatValues(void);
 
 	// DATA
 	// =========================================================================
@@ -108,7 +110,8 @@ struct TOutfit{
 struct TCreature: TSkillBase {
 	// REGULAR FUNCTIONS
 	// =========================================================================
-	// TODO
+	TCreature(void);
+	int Damage(TCreature *Attacker, int Damage, int DamageType);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================

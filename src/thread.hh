@@ -18,7 +18,7 @@ void DelayThread(int Seconds, int MicroSeconds);
 struct Semaphore {
 	// REGULAR FUNCTIONS
 	// =========================================================================
-	Semaphore(void);
+	Semaphore(int Value);
 	~Semaphore(void);
 	void up(void);
 	void down(void);

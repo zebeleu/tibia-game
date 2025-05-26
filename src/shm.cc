@@ -1,4 +1,11 @@
 #include "common.hh"
+#include "config.hh"
+#include "enums.hh"
+#include "thread.hh"
+
+#include "stubs.hh"
+
+#include <sys/shm.h>
 
 // NOTE(fusion): This looks like an interface to external tools. Looking at the
 // `bin` directory this program was in, there are other programs that probably
@@ -103,7 +110,7 @@ pid_t GetGameThreadPID(void){
 	return Pid;
 }
 
-static void ErrorHandler(char *Text){
+static void ErrorHandler(const char *Text){
 	if(VerboseOutput){
 		printf("%s", Text);
 	}
@@ -119,7 +126,7 @@ static void ErrorHandler(char *Text){
 	}
 }
 
-static void PrintHandler(int Level, char *Text){
+static void PrintHandler(int Level, const char *Text){
 	static Semaphore LogfileMutex(1);
 
 	if(Level > DebugLevel){
@@ -249,7 +256,7 @@ void SetCommand(int Command, char *Text){
 		if(Text == NULL){
 			SHM->CommandBuffer[0] = 0;
 		}else{
-			strncpy(SHM->CommandBuffer, sizeof(SHM->CommandBuffer), Text);
+			strncpy(SHM->CommandBuffer, Text, sizeof(SHM->CommandBuffer));
 			SHM->CommandBuffer[sizeof(SHM->CommandBuffer) - 1] = 0;
 		}
 	}
@@ -359,8 +366,9 @@ void InitSHM(bool Verbose){
 	// the decompiled version was also clearing SHM, probably just in case.
 	memset(SHM, 0, sizeof(TSharedMemory));
 
-	strncpy(SHM->PrintBuffer[0], sizeof(SHM->PrintBuffer[0]),
-			"SHM initialized. System printing is working!\n");
+	strncpy(SHM->PrintBuffer[0],
+			"SHM initialized. System printing is working!\n",
+			sizeof(SHM->PrintBuffer[0]));
 	SHM->PrintBuffer[0][sizeof(SHM->PrintBuffer[0]) - 1] = 0;
 
 	SHM->PrintBufferPosition = 1;

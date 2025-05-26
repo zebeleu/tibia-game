@@ -1,4 +1,7 @@
 #include "config.hh"
+#include "script.hh"
+
+#include "stubs.hh"
 
 char BINPATH[4096];
 char DATAPATH[4096];
@@ -254,16 +257,16 @@ void ReadConfig(void){
 		}else if(strcmp(Identifier, "querymanager") == 0){
 			Script.readSymbol('{');
 			do{
-				if(NumberOfQueryManager >= NARRAY(QUERY_MANAGER)){
+				if(NumberOfQueryManagers >= NARRAY(QUERY_MANAGER)){
 					Script.error("Cannot handle more query managers");
 				}
 				Script.readSymbol('(');
-				strcpy(QUERY_MANAGER[NumberOfQueryManager].Host, Script.readString());
+				strcpy(QUERY_MANAGER[NumberOfQueryManagers].Host, Script.readString());
 				Script.readSymbol(',');
-				QUERY_MANAGER[NumberOfQueryManager].Port = Script.readNumber();
+				QUERY_MANAGER[NumberOfQueryManagers].Port = Script.readNumber();
 				Script.readSymbol(',');
-				strcpy(QUERY_MANAGER[NumberOfQueryManager].Password, Script.readString());
-				DisguisePassword(QUERY_MANAGER[NumberOfQueryManager].Password, PasswordKey);
+				strcpy(QUERY_MANAGER[NumberOfQueryManagers].Password, Script.readString());
+				DisguisePassword(QUERY_MANAGER[NumberOfQueryManagers].Password, PasswordKey);
 				Script.readSymbol(')');
 				NumberOfQueryManagers += 1;
 			}while(Script.readSpecial() != '}');
