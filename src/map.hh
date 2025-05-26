@@ -99,6 +99,13 @@ struct TCronEntry {
 	int Next;
 };
 
+// NOTE(fusion): Cron management functions. Most for internal use.
+Object CronCheck(void);
+void CronExpire(Object Obj, int Delay);
+void CronChange(Object Obj, int NewDelay);
+uint32 CronInfo(Object Obj, bool Delete);
+uint32 CronStop(Object Obj);
+
 // NOTE(fusion): Map management functions. Most for internal use.
 void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber);
 void SwapSector(void);
@@ -140,21 +147,21 @@ Object GetContainerObject(Object Con, int Index);
 Object GetMapContainer(int x, int y, int z);
 Object GetMapContainer(Object Obj);
 Object GetFirstObject(int x, int y, int z);
-//GetFirstSpecObject
+Object GetFirstSpecObject(int x, int y, int z, ObjectType Type);
 uint8 GetMapContainerFlags(Object Obj);
-//CoordinateFlag
 void GetObjectCoordinates(Object Obj, int *x, int *y, int *z);
-//IsOnMap
-//IsPremiumArea
-//IsProtectionZone
-//IsNoLogoutField
-//IsHouse
-//GetHouseID
-//SetHouseID
-//GetDepotNumber
-//GetDepotName
-//GetDepotSize
-//GetStartPosition
-//GetMarkPosition
+bool CoordinateFlag(int x, int y, int z, FLAG Flag);
+bool IsOnMap(int x, int y, int z);
+bool IsPremiumArea(int x, int y, int z);
+bool IsNoLogoutField(int x, int y, int z);
+bool IsProtectionZone(int x, int y, int z);
+bool IsHouse(int x, int y, int z);
+uint16 GetHouseID(int x, int y, int z);
+void SetHouseID(int x, int y, int z, uint16 ID);
+int GetDepotNumber(const char *Town);
+const char *GetDepotName(int DepotNumber);
+int GetDepotSize(int DepotNumber, bool PremiumAccount);
+bool GetMarkPosition(const char *Name, int *x, int *y, int *z);
+void GetStartPosition(int *x, int *y, int *z, bool Newbie);
 
 #endif //TIBIA_MAP_HH_

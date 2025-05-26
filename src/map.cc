@@ -38,8 +38,6 @@ static int CronHashTable[2047];
 static int CronEntries;
 
 static vector<TDepotInfo> DepotInfo(0, 4, 5);
-static int Depots;
-
 static vector<TMark> Mark(0, 4, 5);
 static int Marks;
 
@@ -142,6 +140,204 @@ void Object::setAttribute(INSTANCEATTRIBUTE Attribute, uint32 Value){
 	AccessObject(*this)->Attributes[AttributeOffset] = Value;
 }
 
+// Cron Management
+// =============================================================================
+static void CronMove(int Destination, int Source){
+	TCronEntry *DestEntry = CronEntry.at(Destination);
+	*DestEntry = *CronEntry.at(Source);
+
+	if(DestEntry->Next != -1){
+		CronEntry.at(DestEntry->Next)->Previous = Destination;
+	}
+
+	if(DestEntry->Previous != -1){
+		CronEntry.at(DestEntry->Previous)->Next = Destination;
+	}else{
+		CronHashTable[DestEntry->Obj.ObjectID % NARRAY(CronHashTable)] = Destination;
+	}
+}
+
+static void CronHeapify(int Position){
+	while(Position > 1){
+		int Parent = Position / 2;
+		TCronEntry *CurrentEntry = CronEntry.at(Position);
+		TCronEntry *ParentEntry = CronEntry.at(Parent);
+		if(ParentEntry->RoundNr <= CurrentEntry->RoundNr){
+			break;
+		}
+
+		// NOTE(fusion): This is emulating a swap, using position 0 as the
+		// temporary value. It is needed to maintain hash table links valid.
+		CronMove(0, Position);
+		CronMove(Position, Parent);
+		CronMove(Parent, 0);
+
+		Position = Parent;
+	}
+
+	// IMPORTANT(fusion): This is different from `priority_queue::deleteMin` as
+	// the last element is still in the heap and needs to be considered.
+	int Last = CronEntries;
+	while(true){
+		int Smallest = Position * 2;
+		if(Smallest > Last){
+			break;
+		}
+
+		TCronEntry *SmallestEntry = CronEntry.at(Smallest);
+		if((Smallest + 1) <= Last){
+			TCronEntry *OtherEntry = CronEntry.at(Smallest + 1);
+			if(OtherEntry->RoundNr < SmallestEntry->RoundNr){
+				SmallestEntry = OtherEntry;
+				Smallest += 1;
+			}
+		}
+
+		TCronEntry *CurrentEntry = CronEntry.at(Position);
+		if(CurrentEntry->RoundNr <= SmallestEntry->RoundNr){
+			break;
+		}
+
+		// NOTE(fusion): Same in the first loop.
+		CronMove(0, Position);
+		CronMove(Position, Smallest);
+		CronMove(Smallest, 0);
+
+		Position = Smallest;
+	}
+}
+
+static void CronSet(Object Obj, uint32 Delay){
+	if(!Obj.exists()){
+		error("CronSet: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	// TODO(fusion): We don't check if the object is already in the table.
+
+	CronEntries += 1;
+
+	int Position = CronEntries;
+	TCronEntry *Entry = CronEntry.at(Position);
+	Entry->Obj = Obj;
+	Entry->RoundNr = RoundNr + Delay;
+	Entry->Previous = -1;
+	Entry->Next = CronHashTable[Obj.ObjectID % NARRAY(CronHashTable)];
+	if(Entry->Next != -1){
+		CronEntry.at(Entry->Next)->Previous = Position;
+	}
+
+	CronHeapify(Position);
+}
+
+static void CronDelete(int Position){
+	if(Position < 1 || Position > CronEntries){
+		error("CronDelete: Ungültige Position %d.\n", Position);
+		return;
+	}
+
+	TCronEntry *Entry = CronEntry.at(Position);
+
+	if(Entry->Next != -1){
+		CronEntry.at(Entry->Next)->Previous = Entry->Previous;
+	}
+
+	if(Entry->Previous != -1){
+		CronEntry.at(Entry->Previous)->Next = Entry->Next;
+	}else{
+		CronHashTable[Entry->Obj.ObjectID % NARRAY(CronHashTable)] = Entry->Next;
+	}
+
+	int Last = CronEntries;
+	CronEntries -= 1;
+	if(Position != Last){
+		CronMove(Position, Last);
+		CronHeapify(Position);
+	}
+}
+
+Object CronCheck(void){
+	Object Obj = NONE;
+	if(CronEntries != 0){
+		TCronEntry *Entry = CronEntry.at(1);
+		if(Entry->RoundNr <= RoundNr){
+			Obj = Entry->Obj;
+		}
+	}
+	return Obj;
+}
+
+void CronExpire(Object Obj, int Delay){
+	if(!Obj.exists()){
+		error("CronExpire: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(EXPIRE)){
+		if(Delay == -1){
+			CronSet(Obj, ObjType.getAttribute(TOTALEXPIRETIME));
+		}else{
+			CronSet(Obj, (uint32)Delay);
+		}
+	}
+}
+
+void CronChange(Object Obj, int NewDelay){
+	if(!Obj.exists()){
+		error("CronChange: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	int Position = CronHashTable[Obj.ObjectID % NARRAY(CronHashTable)];
+	while(Position != -1){
+		TCronEntry *Entry = CronEntry.at(Position);
+		if(Entry->Obj == Obj){
+			Entry->RoundNr = RoundNr + NewDelay;
+			CronHeapify(Position);
+			return;
+		}
+		Position = Entry->Next;
+	}
+
+	error("CronChange: Objekt ist nicht im Cron-System eingetragen.\n");
+}
+
+uint32 CronInfo(Object Obj, bool Delete){
+	if(!Obj.exists()){
+		error("CronInfo: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	int Position = CronHashTable[Obj.ObjectID % NARRAY(CronHashTable)];
+	while(Position != -1){
+		TCronEntry *Entry = CronEntry.at(Position);
+		if(Entry->Obj == Obj){
+			uint32 Remaining = 1;
+			if(Entry->RoundNr < RoundNr){
+				Remaining = Entry->RoundNr - RoundNr;
+			}
+			if(Delete){
+				CronDelete(Position);
+			}
+			return Remaining;
+		}
+		Position = Entry->Next;
+	}
+
+	error("CronInfo: Objekt ist nicht im Cron-System eingetragen.\n");
+	return 0;
+}
+
+uint32 CronStop(Object Obj){
+	if(!Obj.exists()){
+		error("CronStop: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	return CronInfo(Obj, true);
+}
+
 // Map Management
 // =============================================================================
 static void ReadMapConfig(void){
@@ -161,7 +357,6 @@ static void ReadMapConfig(void){
 	VeteranStartPositionZ = 0;
 	HashTableSize = 0x100000;
 	Marks = 0;
-	Depots = 0;
 
 	char FileName[4096];
 	snprintf(FileName, sizeof(FileName), "%s/map.dat", DATAPATH);
@@ -1772,6 +1967,17 @@ Object GetFirstObject(int x, int y, int z){
 	}
 }
 
+Object GetFirstSpecObject(int x, int y, int z, ObjectType Type){
+	Object Obj = GetFirstObject(x, y, z);
+	while(Obj != NONE){
+		if(Obj.getObjectType() == Type){
+			break;
+		}
+		Obj = Obj.getNextObject();
+	}
+	return NONE;
+}
+
 uint8 GetMapContainerFlags(Object Obj){
 	if(!Obj.exists() || !Obj.getObjectType().isMapContainer()){
 		error("GetMapContainerFlags: Objekt ist kein MapContainer.\n");
@@ -1809,4 +2015,175 @@ void GetObjectCoordinates(Object Obj, int *x, int *y, int *z){
 	// of a map container. The next 8 bits holds its flags and the last 16 bits
 	// holds its house id.
 	*z = AccessObject(Obj)->Attributes[3] & 0xFF;
+}
+
+bool CoordinateFlag(int x, int y, int z, FLAG Flag){
+	bool Result = false;
+	Object Obj = GetFirstObject(x, y, z);
+	while(Obj != NONE){
+		if(Obj.getObjectType().getFlag(Flag)){
+			Result = true;
+			break;
+		}
+		Obj = Obj.getNextObject();
+	}
+	return Result;
+}
+
+bool IsOnMap(int x, int y, int z){
+	int SectorX = x / 32;
+	int SectorY = y / 32;
+	int SectorZ = z;
+
+	return SectorXMin <= SectorX && SectorX <= SectorXMax
+		&& SectorYMin <= SectorY && SectorY <= SectorYMax
+		&& SectorZMin <= SectorZ && SectorZ <= SectorZMax;
+}
+
+bool IsPremiumArea(int x, int y, int z){
+	int SectorX = x / 32;
+	int SectorY = y / 32;
+
+	// TODO(fusion): This is checking if the position lies within certain bounding
+	// boxes but it is difficult to unwind the condition due to optimizations. The
+	// best way to understand the outline of the region is to plot this function.
+	bool Result = true;
+	if(SectorX < 0x40C
+	&& (SectorX < 0x408 || SectorY > 0x3E6)
+	&& (SectorX < 0x406 || SectorY < 0x3F0)
+	&& (SectorX < 0x405 || SectorY < 0x3F1)
+	&& (SectorX < 0x3FE || SectorY < 0x3F6)){
+		Result = SectorY > 0x3F7;
+	}
+	return Result;
+}
+
+bool IsNoLogoutField(int x, int y, int z){
+	bool Result = false;
+	Object Con = GetMapContainer(x, y, z);
+	if(Con != NONE){
+		Result = (GetMapContainerFlags(Con) & 0x02) != 0;
+	}
+	return Result;
+}
+
+bool IsProtectionZone(int x, int y, int z){
+	bool Result = false;
+	Object Con = GetMapContainer(x, y, z);
+	if(Con != NONE){
+		Result = (GetMapContainerFlags(Con) & 0x04) != 0;
+	}
+	return Result;
+}
+
+bool IsHouse(int x, int y, int z){
+	return GetHouseID(x, y, z) != 0;
+}
+
+uint16 GetHouseID(int x, int y, int z){
+	Object Con = GetMapContainer(x, y, z);
+	if(Con == NONE){
+		return 0;
+	}
+
+	if(!Con.exists()){
+		error("GetHouseID: Kartencontainer für Punkt [%d,%d,%d] existiert nicht.\n", x, y, z);
+		return 0;
+	}
+
+	// NOTE(fusion): See note in `GetObjectCoordinates`.
+	return (uint16)(AccessObject(Con)->Attributes[3] >> 16);
+}
+
+void SetHouseID(int x, int y, int z, uint16 ID){
+	if(!IsOnMap(x, y, z)){
+		return;
+	}
+
+	Object Con = GetMapContainer(x, y, z);
+	if(Con == NONE || !Con.exists()){
+		error("SetHouseID: Kartencontainer für Punkt [%d,%d,%d] existiert nicht.\n", x, y, z);
+		return;
+	}
+
+	// NOTE(fusion): See note in `GetObjectCoordinates`.
+	uint16 PrevID = (uint16)(AccessObject(Con)->Attributes[3] >> 16);
+	if(PrevID != 0){
+		error("SetHouseID: Feld [%d,%d,%d] gehört schon zu einem Haus.\n", x, y, z);
+		return;
+	}
+
+	AccessObject(Con)->Attributes[3] |= ((uint32)ID << 16);
+}
+
+int GetDepotNumber(const char *Town){
+	if(Town == NULL){
+		error("GetDepotNumber: Town ist NULL.\n");
+		return -1;
+	}
+
+	for(int DepotNumber = DepotInfo.min;
+			DepotNumber <= DepotInfo.max;
+			DepotNumber += 1){
+		if(stricmp(DepotInfo.at(DepotNumber)->Town, Town) == 0){
+			return DepotNumber;
+		}
+	}
+	return -1;
+}
+
+const char *GetDepotName(int DepotNumber){
+	if(DepotNumber < DepotInfo.min || DepotNumber > DepotInfo.max){
+		error("GetDepotName: Ungültiger Name für Depot %d.\n", DepotNumber);
+		return "unknown";
+	}
+
+	return DepotInfo.at(DepotNumber)->Town;
+}
+
+int GetDepotSize(int DepotNumber, bool PremiumAccount){
+	if(DepotNumber < DepotInfo.min || DepotNumber > DepotInfo.max){
+		error("GetDepotSize: Ungültige Depotnummer %d.\n", DepotNumber);
+		return 1;
+	}
+
+	TDepotInfo *Info = DepotInfo.at(DepotNumber);
+	if(Info->Size < 1){
+		error("GetDepotSize: Ungültige Depotgröße %d für Depot %d.\n", Info->Size, DepotNumber);
+		Info->Size = 1;
+	}
+
+	int Size = Info->Size;
+	if(PremiumAccount){
+		Size *= 2;
+	}
+
+	return Size;
+}
+
+bool GetMarkPosition(const char *Name, int *x, int *y, int *z){
+	bool Result = false;
+	for(int i = 0; i < Marks; i += 1){
+		TMark *MarkPointer = Mark.at(i);
+		if(stricmp(MarkPointer->Name, Name) == 0){
+			*x = MarkPointer->x;
+			*y = MarkPointer->y;
+			*z = MarkPointer->z;
+			Result = true;
+			break;
+		}
+	}
+	return Result;
+}
+
+void GetStartPosition(int *x, int *y, int *z, bool Newbie){
+	if(Newbie){
+		*x = NewbieStartPositionX;
+		*y = NewbieStartPositionY;
+		*z = NewbieStartPositionZ;
+	}else{
+		*x = VeteranStartPositionX;
+		*y = VeteranStartPositionY;
+		*z = VeteranStartPositionZ;
+	}
 }
