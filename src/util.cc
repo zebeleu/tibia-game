@@ -228,7 +228,7 @@ void TReadStream::readBytes(uint8 *Buffer, int Count){
 
 // TReadBuffer
 // =============================================================================
-TReadBuffer::TReadBuffer(uint8 *Data, int Size){
+TReadBuffer::TReadBuffer(const uint8 *Data, int Size){
 	if(Data == NULL){
 		error("TReadBuffer::TReadBuffer: data ist NULL.\n");
 		Size = 0;

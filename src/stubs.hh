@@ -11,7 +11,7 @@
 // IMPORTANT(fusion): These function definitions exist to test compilation. They're
 // not yet implemented and will cause the linker to fail with unresolved symbols.
 
-typedef void TRefreshSectorFunction(int SectorX, int SectorY, int SectorZ, TReadStream *Stream);
+typedef void TRefreshSectorFunction(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Size);
 typedef void TSendMailsFunction(TPlayerData *PlayerData);
 
 extern void AbortWriter(void);
@@ -20,6 +20,7 @@ extern void AnnounceChangedCreature(uint32 CreatureID, int Type);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void Change(Object Obj, ObjectType NewType, uint32 Value);
 extern bool CheckRight(uint32 CreatureID, RIGHT Right);
+extern void CleanHouseField(int x, int y, int z);
 extern void CleanupDynamicStrings(void);
 extern void CreatePlayerList(bool Online);
 extern void DeleteDynamicString(uint32 Number);
@@ -46,7 +47,7 @@ extern void ProcessWriterThreadReplies(void);
 extern void ReceiveData(void);
 extern void RefreshCylinders(void);
 extern void RefreshMap(void);
-extern void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream);
+extern void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Size);
 extern void SavePlayerDataOrder(void);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);

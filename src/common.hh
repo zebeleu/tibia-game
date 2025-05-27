@@ -181,7 +181,7 @@ struct TReadStream {
 struct TReadBuffer: TReadStream {
 	// REGULAR FUNCTIONS
 	// =========================================================================
-	TReadBuffer(uint8 *Data, int Size);
+	TReadBuffer(const uint8 *Data, int Size);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================

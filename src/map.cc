@@ -970,6 +970,7 @@ void LoadSector(const char *FileName, int SectorX, int SectorY, int SectorZ){
 				OffsetX = (int)SectorOffset[0];
 				OffsetY = (int)SectorOffset[1];
 				Script.readSymbol(':');
+				// TODO(fusion): Probably check if offsets are within bounds?
 				continue;
 			}
 
@@ -1297,6 +1298,406 @@ void SaveMap(void){
 	SavingMap = false;
 }
 
+void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
+	// TODO(fusion): `matrix3d::at` will return the first entry if the coordinates
+	// are out of bounds which that is problematic, specially here.
+	if(SectorX < SectorXMin || SectorXMax < SectorX
+			|| SectorY < SectorYMin || SectorYMax < SectorY
+			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
+		error("RefreshSector: Sector %d/%d/%d is out of bounds.",
+				SectorX, SectorY, SectorZ);
+		return;
+	}
+
+	ASSERT(Sector);
+	TSector *Sec = *Sector->at(SectorX, SectorY, SectorZ);
+	if(Sec && (Sec->MapFlags & 0x01) != 0){
+		print(3, "Refreshe Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+		while(!Stream->eof()){
+			uint8 OffsetX = Stream->readByte();
+			uint8 OffsetY = Stream->readByte();
+			if(OffsetX < 32 && OffsetY < 32){
+				Object Con = Sec->MapCon[OffsetX][OffsetY];
+
+				// TODO(fusion): This loop was done a bit differently but I suppose
+				// iterating it directly is clearer and as long as we don't access
+				// the object after `DeleteObject`, it should work the same.
+				Object Obj = Con.getAttribute(CONTENT);
+				while(Obj != NONE){
+					Object Next = Obj.getNextObject();
+					if(!Obj.getObjectType().isCreatureContainer()){
+						DeleteObject(Obj);
+					}
+					Obj = Next;
+				}
+
+				LoadObjects(Stream, Con);
+			}
+		}
+	}
+}
+
+void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
+		TReadScriptFile *Script, bool SaveHouses){
+	if(SectorX < SectorXMin || SectorXMax < SectorX
+			|| SectorY < SectorYMin || SectorYMax < SectorY
+			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
+		error("PatchSector: Sector %d/%d/%d is out of bounds.",
+				SectorX, SectorY, SectorZ);
+		return;
+	}
+
+	ASSERT(Sector);
+	TSector *Sec = *Sector->at(SectorX, SectorY, SectorZ);
+	bool NewSector = (Sec == NULL);
+	if(NewSector){
+		print(2, "Lege Sektor %d/%d/%d neu an.\n", SectorX, SectorY, SectorZ);
+		InitSector(SectorX, SectorY, SectorZ);
+		Sec = *Sector->at(SectorX, SectorY, SectorZ);
+		ASSERT(Sec != NULL);
+	}
+
+	bool FieldTreated[32][32] = {};
+	bool FieldPatched[32][32] = {};
+
+	// NOTE(fusion): Step 1.
+	//	Patch fields specified in the input script. House fields are NOT patched
+	// if `SaveHouses` is set.
+	{
+		bool House = false;
+		int OffsetX = -1;
+		int OffsetY = -1;
+		while(true){
+			Script->nextToken();
+			if(Script->Token == ENDOFFILE){
+				break;
+			}
+
+			if(Script->Token == SPECIAL && Script->getSpecial() == ','){
+				continue;
+			}
+
+			if(Script->Token == BYTES){
+				uint8 *SectorOffset = Script->getBytesequence();
+				OffsetX = (int)SectorOffset[0];
+				OffsetY = (int)SectorOffset[1];
+				Script->readSymbol(':');
+
+				// TODO(fusion): Probably check if offsets are within bounds?
+				FieldTreated[OffsetX][OffsetY] = true;
+				int CoordX = SectorX * 32 + OffsetX;
+				int CoordY = SectorY * 32 + OffsetY;
+				int CoordZ = SectorZ;
+
+				// TODO(fusion): Maybe some inlined function?
+				House = IsHouse(CoordX, CoordY, CoordZ);
+				if(!House && CoordinateFlag(CoordX, CoordY, CoordZ, HOOKSOUTH)){
+					House = IsHouse(CoordX - 1, CoordY + 1, CoordZ)
+						||  IsHouse(CoordX,     CoordY + 1, CoordZ)
+						||  IsHouse(CoordX + 1, CoordY + 1, CoordZ);
+				}
+				if(!House && CoordinateFlag(CoordX, CoordY, CoordZ, HOOKEAST)){
+					House = IsHouse(CoordX + 1, CoordY - 1, CoordZ)
+						||  IsHouse(CoordX + 1, CoordY,     CoordZ)
+						||  IsHouse(CoordX + 1, CoordY + 1, CoordZ);
+				}
+
+				if(House){
+					if(SaveHouses){
+						continue;
+					}
+					CleanHouseField(CoordX, CoordY, CoordZ);
+				}
+
+				// NOTE(fusion): Similar to `RefreshSector`.
+				Object Con = Sec->MapCon[OffsetX][OffsetY];
+				Object Obj = Con.getAttribute(CONTENT);
+				while(Obj != NONE){
+					Object Next = Obj.getNextObject();
+					if(!Obj.getObjectType().isCreatureContainer()){
+						DeleteObject(Obj);
+					}
+					Obj = Next;
+				}
+				// NOTE(fusion): Clear map container flags. See note in `GetObjectCoordinates`.
+				AccessObject(Con)->Attributes[3] &= 0xFFFF00FF;
+				FieldPatched[OffsetX][OffsetY] = true;
+				continue;
+			}
+
+			if(Script->Token != IDENTIFIER){
+				Script->error("next map point expected");
+			}
+
+			if(OffsetX == -1 || OffsetY == -1){
+				Script->error("coordinate expected");
+			}
+
+			const char *Identifier = Script->getIdentifier();
+			if(strcmp(Identifier, "refresh") == 0){
+				Sec->MapFlags |= 1;
+				if(!House || !SaveHouses){
+					AccessObject(Sec->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x100;
+				}
+			}else if(strcmp(Identifier, "nologout") == 0){
+				Sec->MapFlags |= 2;
+				if(!House || !SaveHouses){
+					AccessObject(Sec->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x200;
+				}
+			}else if(strcmp(Identifier, "protectionzone") == 0){
+				Sec->MapFlags |= 4;
+				if(!House || !SaveHouses){
+					AccessObject(Sec->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x400;
+				}
+			}else if(strcmp(Identifier, "content") == 0){
+				Script->readSymbol('=');
+				HelpBuffer.reset();
+				if(!House || !SaveHouses){
+					LoadObjects(Script, &HelpBuffer, false);
+					TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
+					LoadObjects(&ReadBuffer, Sec->MapCon[OffsetX][OffsetY]);
+				}else{
+					// NOTE(fusion): Skip content.
+					LoadObjects(Script, &HelpBuffer, true);
+				}
+			}else{
+				Script->error("unknown map flag");
+			}
+		}
+	}
+
+	// NOTE(fusion): Step 2.
+	//	Patch fields not specified in the input script if `FullSector` is set.
+	// Note that patching in this case is simply deleting a field's objects.
+	// House fields are NOT patched if `SaveHouses` is set.
+	if(FullSector){
+		for(int OffsetX = 0; OffsetX < 32; OffsetX += 1)
+		for(int OffsetY = 0; OffsetY < 32; OffsetY += 1){
+			if(FieldTreated[OffsetX][OffsetY]){
+				continue;
+			}
+
+			int CoordX = SectorX * 32 + OffsetX;
+			int CoordY = SectorY * 32 + OffsetY;
+			int CoordZ = SectorZ;
+
+			// TODO(fusion): Maybe some inlined function?
+			bool House = IsHouse(CoordX, CoordY, CoordZ);
+			if(!House && CoordinateFlag(CoordX, CoordY, CoordZ, HOOKSOUTH)){
+				House = IsHouse(CoordX - 1, CoordY + 1, CoordZ)
+					||  IsHouse(CoordX,     CoordY + 1, CoordZ)
+					||  IsHouse(CoordX + 1, CoordY + 1, CoordZ);
+			}
+			if(!House && CoordinateFlag(CoordX, CoordY, CoordZ, HOOKEAST)){
+				House = IsHouse(CoordX + 1, CoordY - 1, CoordZ)
+					||  IsHouse(CoordX + 1, CoordY,     CoordZ)
+					||  IsHouse(CoordX + 1, CoordY + 1, CoordZ);
+			}
+
+			if(House){
+				if(SaveHouses){
+					continue;
+				}
+				CleanHouseField(CoordX, CoordY, CoordZ);
+			}
+
+			// NOTE(fusion): Same as in the parsing loop above.
+			Object Con = Sec->MapCon[OffsetX][OffsetY];
+			Object Obj = Con.getAttribute(CONTENT);
+			while(Obj != NONE){
+				Object Next = Obj.getNextObject();
+				if(!Obj.getObjectType().isCreatureContainer()){
+					DeleteObject(Obj);
+				}
+				Obj = Next;
+			}
+			AccessObject(Con)->Attributes[3] &= 0xFFFF00FF;
+			FieldPatched[OffsetX][OffsetY] = true;
+		}
+	}
+
+	// NOTE(fusion): Step 3.
+	//	Parse original sector file, transfering non patched fields to a new sector file.
+	char FileName[4096];
+	char FileNameBak[4096];
+	snprintf(FileName, sizeof(FileName), "%s/%04d-%04d-%02d.sec",
+			ORIGMAPPATH, SectorX, SectorY, SectorZ);
+	snprintf(FileNameBak, sizeof(FileNameBak), "%s/%04d-%04d-%02d.sec~",
+			ORIGMAPPATH, SectorX, SectorY, SectorZ);
+
+	TWriteScriptFile OUT;
+	OUT.open(FileNameBak);
+	OUT.writeText("# Tibia - graphical Multi-User-Dungeon");
+	OUT.writeLn();
+	OUT.writeText("# Data for sector ");
+	OUT.writeNumber(SectorX);
+	OUT.writeText("/");
+	OUT.writeNumber(SectorY);
+	OUT.writeText("/");
+	OUT.writeNumber(SectorZ);
+	OUT.writeLn();
+	OUT.writeLn();
+
+	if(!NewSector){
+		TReadScriptFile IN;
+		IN.open(FileName);
+
+		int OffsetX = -1;
+		int OffsetY = -1;
+		int AttrCount = 0;
+		while(true){
+			IN.nextToken();
+			if(IN.Token == ENDOFFILE){
+				IN.close();
+				break;
+			}
+
+			if(IN.Token == SPECIAL && IN.getSpecial() == ','){
+				continue;
+			}
+
+			if(IN.Token == BYTES){
+				uint8 *SectorOffset = IN.getBytesequence();
+				OffsetX = (int)SectorOffset[0];
+				OffsetY = (int)SectorOffset[1];
+				IN.readSymbol(':');
+				AttrCount = 0;
+				// TODO(fusion): Probably check if offsets are within bounds?
+				if(!FieldPatched[OffsetX][OffsetY]){
+					OUT.writeNumber(OffsetX);
+					OUT.writeText("-");
+					OUT.writeNumber(OffsetY);
+					OUT.writeText(": ");
+				}
+				continue;
+			}
+
+			if(IN.Token != IDENTIFIER){
+				IN.error("next map point expected");
+			}
+
+			if(OffsetX == -1 || OffsetY == -1){
+				IN.error("coordinate expected");
+			}
+
+			const char *Identifier = IN.getIdentifier();
+			if(strcmp(Identifier, "refresh") == 0){
+				if(!FieldPatched[OffsetX][OffsetY]){
+					if(AttrCount > 0){
+						OUT.writeText(", ");
+					}
+					OUT.writeText("Refresh");
+					AttrCount += 1;
+				}
+			}else if(strcmp(Identifier, "nologout") == 0){
+				if(!FieldPatched[OffsetX][OffsetY]){
+					if(AttrCount > 0){
+						OUT.writeText(", ");
+					}
+					OUT.writeText("NoLogout");
+					AttrCount += 1;
+				}
+			}else if(strcmp(Identifier, "protectionzone") == 0){
+				if(!FieldPatched[OffsetX][OffsetY]){
+					if(AttrCount > 0){
+						OUT.writeText(", ");
+					}
+					OUT.writeText("ProtectionZone");
+					AttrCount += 1;
+				}
+			}else if(strcmp(Identifier, "content") == 0){
+				IN.readSymbol('=');
+				HelpBuffer.reset();
+				LoadObjects(&IN, &HelpBuffer, false);
+				if(!FieldPatched[OffsetX][OffsetY]){
+					if(AttrCount > 0){
+						OUT.writeText(", ");
+					}
+					OUT.writeText("Content=");
+					TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
+					SaveObjects(&ReadBuffer, &OUT);
+					AttrCount += 1;
+				}
+			}else{
+				IN.error("unknown map flag");
+			}
+		}
+	}
+
+	// NOTE(fusion): Step 4.
+	//	Transfer patched fields from memory into the new sector file.
+	for(int OffsetX = 0; OffsetX < 32; OffsetX += 1)
+	for(int OffsetY = 0; OffsetY < 32; OffsetY += 1){
+		if(!FieldPatched[OffsetX][OffsetY]){
+			continue;
+		}
+
+		Object Con = Sec->MapCon[OffsetX][OffsetY];
+		Object First = Con.getAttribute(CONTENT);
+		uint8 Flags = GetMapContainerFlags(Con);
+		if(First != NONE || Flags != 0){
+			OUT.writeNumber(OffsetX);
+			OUT.writeText("-");
+			OUT.writeNumber(OffsetY);
+			OUT.writeText(": ");
+
+			int AttrCount = 0;
+
+			if(Flags & 1){
+				if(AttrCount > 0){
+					OUT.writeText(", ");
+				}
+				OUT.writeText("Refresh");
+				AttrCount += 1;
+			}
+
+			if(Flags & 2){
+				if(AttrCount > 0){
+					OUT.writeText(", ");
+				}
+				OUT.writeText("NoLogout");
+				AttrCount += 1;
+			}
+
+			if(Flags & 4){
+				if(AttrCount > 0){
+					OUT.writeText(", ");
+				}
+				OUT.writeText("ProtectionZone");
+				AttrCount += 1;
+			}
+
+			if(First != NONE){
+				if(AttrCount > 0){
+					OUT.writeText(", ");
+				}
+				OUT.writeText("Content=");
+				HelpBuffer.reset();
+				SaveObjects(First, &HelpBuffer, false);
+				TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
+				SaveObjects(&ReadBuffer, &OUT);
+				AttrCount += 1;
+			}
+
+			OUT.writeLn();
+		}
+	}
+	OUT.close();
+
+	// NOTE(fusion): Step 5.
+	//	Replace original sector file with the new one.
+	if(!NewSector){
+		unlink(FileName);
+	}
+
+	if(rename(FileNameBak, FileName) != 0){
+		int ErrCode = errno;
+		error("PatchSector: Fehler %d beim Umbenennen von %s.\n", ErrCode, FileNameBak);
+		error("# Fehler %d: %s.\n", ErrCode, strerror(ErrCode));
+		throw "cannot patch ORIGMAP";
+	}
+}
+
 void InitMap(void){
 	ReadMapConfig();
 
@@ -1429,6 +1830,8 @@ Object CreateObject(void){
 	return Object(NextObjectID);
 }
 
+// TODO(fusion): This is only used from `DeleteObject`. Should probably be an
+// internal helper.
 void DestroyObject(Object Obj){
 	if(!Obj.exists()){
 		error("DestroyObject: Übergebenes Objekt existiert nicht.\n");

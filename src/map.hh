@@ -120,8 +120,9 @@ void SaveObjects(Object Obj, TWriteStream *Stream, bool Stop);
 void SaveObjects(TReadStream *Stream, TWriteScriptFile *Script);
 void SaveSector(char *FileName, int SectorX, int SectorY, int SectorZ);
 void SaveMap(void);
-//RefreshSector
-//PatchSector
+void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream);
+void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
+		TReadScriptFile *Script, bool SaveHouses);
 void InitMap(void);
 void ExitMap(bool Save);
 
