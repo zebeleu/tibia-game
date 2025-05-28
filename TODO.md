@@ -1,6 +1,4 @@
 ## TODO NEXT
-- MAP.CC
-- OBJECTS.CC
 - STRINGS.CC
 - TCreature
 - TPlayer

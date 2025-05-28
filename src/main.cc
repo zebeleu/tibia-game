@@ -1,6 +1,7 @@
 #include "common.hh"
 #include "config.hh"
 #include "map.hh"
+#include "objects.hh"
 
 #include "stubs.hh"
 
@@ -227,7 +228,7 @@ static void InitAll(void){
 		//InitStrings();
 		//InitWriter();
 		//InitReader();
-		//InitObjects();
+		InitObjects();
 		InitMap();
 		//InitInfo();
 		//InitMoveUse();
@@ -253,7 +254,7 @@ static void ExitAll(void){
 	//ExitInfo();
 	//ExitHouses();
 	ExitMap(SaveMapOn);
-	//ExitObjects();
+	ExitObjects();
 	//ExitReader();
 	//ExitWriter();
 	//ExitStrings();

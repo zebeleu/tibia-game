@@ -1830,9 +1830,7 @@ Object CreateObject(void){
 	return Object(NextObjectID);
 }
 
-// TODO(fusion): This is only used from `DeleteObject`. Should probably be an
-// internal helper.
-void DestroyObject(Object Obj){
+static void DestroyObject(Object Obj){
 	if(!Obj.exists()){
 		error("DestroyObject: Übergebenes Objekt existiert nicht.\n");
 		return;
@@ -1972,6 +1970,7 @@ void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value){
 	Obj.setAttribute(Attribute, Value);
 }
 
+// TODO(fusion): This probably belongs to `operate.cc`.
 void ChangeObject(Object Obj, ObjectType NewType, uint32 Value){
 	if(!Obj.exists()){
 		error("ChangeObject: Übergebenes Objekt existiert nicht (1, NewType=%d).\n", NewType.TypeID);

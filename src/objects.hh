@@ -66,17 +66,26 @@ struct ObjectType {
 };
 
 struct TObjectType {
-	char *Name;
-	char *Description;
+	const char *Name;
+	const char *Description;
 	uint8 Flags[9];
 	uint32 Attributes[62];
 	int AttributeOffsets[18];
 };
 
-const char *GetInstanceAttributeName(int Attribute);
+int GetFlagByName(const char *Name);
+int GetTypeAttributeByName(const char *Name);
 int GetInstanceAttributeByName(const char *Name);
+const char *GetFlagName(int Flag);
+const char *GetTypeAttributeName(int Attribute);
+const char *GetInstanceAttributeName(int Attribute);
 bool ObjectTypeExists(int TypeID);
-//void InitObjects(void);
-//void ExitObjects(void);
+bool ObjectTypeExists(uint8 Group, uint8 Number);
+ObjectType GetNewObjectType(uint8 Group, uint8 Number);
+void GetOldObjectType(ObjectType Type, uint8 *Group, uint8 *Number);
+ObjectType GetSpecialObject(SPECIALMEANING Meaning);
+ObjectType GetObjectTypeByName(const char *SearchName, bool Movable);
+void InitObjects(void);
+void ExitObjects(void);
 
 #endif //TIBIA_OBJECTS_HH_

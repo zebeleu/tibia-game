@@ -129,7 +129,6 @@ void ExitMap(bool Save);
 // NOTE(fusion): Object related functions.
 TObject *AccessObject(Object Obj);
 Object CreateObject(void);
-void DestroyObject(Object Obj);
 void DeleteObject(Object Obj);
 void ChangeObject(Object Obj, ObjectType NewType);
 void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value);

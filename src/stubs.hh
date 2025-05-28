@@ -15,7 +15,8 @@ typedef void TRefreshSectorFunction(int SectorX, int SectorY, int SectorZ, const
 typedef void TSendMailsFunction(TPlayerData *PlayerData);
 
 extern void AbortWriter(void);
-extern uint32 AddDynamicString(const char *Text);
+extern uint32 AddDynamicString(const char *String);
+extern const char *AddStaticString(const char *String);
 extern void AnnounceChangedCreature(uint32 CreatureID, int Type);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void Change(Object Obj, ObjectType NewType, uint32 Value);
