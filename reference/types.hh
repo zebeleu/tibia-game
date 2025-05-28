@@ -125,21 +125,6 @@ struct TPlayerIndexInternalNode {
     struct TPlayerIndexNode *Child[27];
 };
 
-union storeitem<TPlayerIndexInternalNode> {
-    union storeitem<TPlayerIndexInternalNode> *next;
-    struct TPlayerIndexInternalNode data;
-};
-
-struct storeunit<TPlayerIndexInternalNode,100> {
-    union storeitem<TPlayerIndexInternalNode> item[100];
-};
-
-struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> { // Original name: listnode<storeunit<TPlayerIndexInternalNode, 100> >
-    struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *next;
-    struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *prev;
-    struct storeunit<TPlayerIndexInternalNode,100> data;
-};
-
 struct TPlayerIndexEntry {
     char Name[30];
     ulong CharacterID;
@@ -151,35 +136,11 @@ struct TPlayerIndexLeafNode {
     struct TPlayerIndexEntry Entry[10];
 };
 
-union storeitem<TPlayerIndexLeafNode> {
-    union storeitem<TPlayerIndexLeafNode> *next;
-    struct TPlayerIndexLeafNode data;
-};
-
-struct storeunit<TPlayerIndexLeafNode,100> {
-    union storeitem<TPlayerIndexLeafNode> item[100];
-};
-
 struct TNode {
     int Type;
     int Data;
     struct TNode *Left;
     struct TNode *Right;
-};
-
-union storeitem<TNode> {
-    union storeitem<TNode> *next;
-    struct TNode data;
-};
-
-struct store<TPlayerIndexInternalNode,100> {
-    struct list<storeunit<TPlayerIndexInternalNode,_100>_> *Units;
-    union storeitem<TPlayerIndexInternalNode> *firstFreeItem;
-};
-
-struct list<storeunit<TPlayerIndexInternalNode,_100>_> { // Original name: list<storeunit<TPlayerIndexInternalNode, 100> >
-    struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *firstNode;
-    struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *lastNode;
 };
 
 struct THouseGuest {
@@ -221,21 +182,6 @@ struct TWaitinglistEntry {
     bool Sleeping;
 };
 
-union storeitem<TWaitinglistEntry> {
-    union storeitem<TWaitinglistEntry> *next;
-    struct TWaitinglistEntry data;
-};
-
-struct storeunit<TWaitinglistEntry,100> {
-    union storeitem<TWaitinglistEntry> item[100];
-};
-
-struct listnode<storeunit<TWaitinglistEntry,_100>_> { // Original name: listnode<storeunit<TWaitinglistEntry, 100> >
-    struct listnode<storeunit<TWaitinglistEntry,_100>_> *next;
-    struct listnode<storeunit<TWaitinglistEntry,_100>_> *prev;
-    struct storeunit<TWaitinglistEntry,100> data;
-};
-
 struct TAttackWave {
     int x;
     int y;
@@ -251,16 +197,6 @@ struct TAttackWave {
     struct vector<TItemData> ExtraItem;
 };
 
-struct store<TWaitinglistEntry,100> {
-    struct list<storeunit<TWaitinglistEntry,_100>_> *Units;
-    union storeitem<TWaitinglistEntry> *firstFreeItem;
-};
-
-struct list<storeunit<TWaitinglistEntry,_100>_> { // Original name: list<storeunit<TWaitinglistEntry, 100> >
-    struct listnode<storeunit<TWaitinglistEntry,_100>_> *firstNode;
-    struct listnode<storeunit<TWaitinglistEntry,_100>_> *lastNode;
-};
-
 struct TDynamicStringTableBlock {
     int FreeEntries;
     int TotalTextLength;
@@ -268,16 +204,6 @@ struct TDynamicStringTableBlock {
     uchar EntryType[256];
     ushort StringOffset[256];
     char Text[32768];
-};
-
-struct listnode<TDynamicStringTableBlock> {
-    struct listnode<TDynamicStringTableBlock> *next;
-    struct listnode<TDynamicStringTableBlock> *prev;
-    struct TDynamicStringTableBlock data;
-};
-
-struct listIterator<TDynamicStringTableBlock> {
-    struct listnode<TDynamicStringTableBlock> *actNode;
 };
 
 struct TNonplayer {
@@ -299,50 +225,11 @@ struct TListener {
     ulong CharacterID;
 };
 
-struct fifo<TListener> {
-    struct TListener *Entry;
-    int Size;
-    int Head;
-    int Tail;
-};
-
 struct TDelayedMail {
     ulong CharacterID;
     int DepotNumber;
     uchar *Packet;
     int PacketSize;
-};
-
-struct list<storeunit<TPlayerIndexLeafNode,_100>_> { // Original name: list<storeunit<TPlayerIndexLeafNode, 100> >
-    struct listnode<storeunit<TPlayerIndexLeafNode,_100>_> *firstNode;
-    struct listnode<storeunit<TPlayerIndexLeafNode,_100>_> *lastNode;
-};
-
-struct listnode<storeunit<TPlayerIndexLeafNode,_100>_> { // Original name: listnode<storeunit<TPlayerIndexLeafNode, 100> >
-    struct listnode<storeunit<TPlayerIndexLeafNode,_100>_> *next;
-    struct listnode<storeunit<TPlayerIndexLeafNode,_100>_> *prev;
-    struct storeunit<TPlayerIndexLeafNode,100> data;
-};
-
-struct store<TPlayerIndexLeafNode,100> {
-    struct list<storeunit<TPlayerIndexLeafNode,_100>_> *Units;
-    union storeitem<TPlayerIndexLeafNode> *firstFreeItem;
-};
-
-struct listIterator<storeunit<TWaitinglistEntry,_100>_> { // Original name: listIterator<storeunit<TWaitinglistEntry, 100> >
-    struct listnode<storeunit<TWaitinglistEntry,_100>_> *actNode;
-};
-
-
-
-struct storeunit<TNode,256> {
-    union storeitem<TNode> item[256];
-};
-
-struct listnode<storeunit<TNode,_256>_> { // Original name: listnode<storeunit<TNode, 256> >
-    struct listnode<storeunit<TNode,_256>_> *next;
-    struct listnode<storeunit<TNode,_256>_> *prev;
-    struct storeunit<TNode,256> data;
 };
 
 struct TShortwayPoint {
@@ -372,26 +259,6 @@ struct TStaticStringTableBlock {
     char Text[65536];
 };
 
-struct listnode<TStaticStringTableBlock> {
-    struct listnode<TStaticStringTableBlock> *next;
-    struct listnode<TStaticStringTableBlock> *prev;
-    struct TStaticStringTableBlock data;
-};
-
-struct list<TStaticStringTableBlock> {
-    struct listnode<TStaticStringTableBlock> *firstNode;
-    struct listnode<TStaticStringTableBlock> *lastNode;
-};
-
-struct listIterator<TStaticStringTableBlock> {
-    struct listnode<TStaticStringTableBlock> *actNode;
-};
-
-struct list<storeunit<TNode,_256>_> { // Original name: list<storeunit<TNode, 256> >
-    struct listnode<storeunit<TNode,_256>_> *firstNode;
-    struct listnode<storeunit<TNode,_256>_> *lastNode;
-};
-
 struct TCondition {
     int Type;
     ulong Text;
@@ -413,10 +280,6 @@ struct THelpDepot {
     ulong CharacterID;
     struct Object Box;
     int DepotNr;
-};
-
-struct listIterator<storeunit<TPlayerIndexLeafNode,_100>_> { // Original name: listIterator<storeunit<TPlayerIndexLeafNode, 100> >
-    struct listnode<storeunit<TPlayerIndexLeafNode,_100>_> *actNode;
 };
 
 struct TPlayerData {
@@ -527,23 +390,9 @@ struct TParty {
     int InvitedPlayers;
 };
 
-struct listIterator<storeunit<TNode,_256>_> { // Original name: listIterator<storeunit<TNode, 256> >
-    struct listnode<storeunit<TNode,_256>_> *actNode;
-};
-
-struct store<TNode,256> {
-    struct list<storeunit<TNode,_256>_> *Units;
-    union storeitem<TNode> *firstFreeItem;
-};
-
 struct TMoveUseAction {
     enum ActionType Action;
     int Parameters[5];
-};
-
-struct list<TDynamicStringTableBlock> {
-    struct listnode<TDynamicStringTableBlock> *firstNode;
-    struct listnode<TDynamicStringTableBlock> *lastNode;
 };
 
 struct TMoveUseRule {
@@ -581,23 +430,6 @@ struct THouseArea {
     int DepotNr;
 };
 
-struct listIterator<storeunit<TPlayerIndexInternalNode,_100>_> { // Original name: listIterator<storeunit<TPlayerIndexInternalNode, 100> >
-    struct listnode<storeunit<TPlayerIndexInternalNode,_100>_> *actNode;
-};
-
-
-struct fifoIterator<TStatement> {
-    struct fifo<TStatement> *Fifo;
-    int Position;
-};
-
-struct fifo<TStatement> {
-    struct TStatement *Entry;
-    int Size;
-    int Head;
-    int Tail;
-};
-
 struct TStatement {
     ulong StatementID;
     ulong TimeStamp;
@@ -606,11 +438,6 @@ struct TStatement {
     int Channel;
     ulong Text;
     bool Reported;
-};
-
-struct fifoIterator<TListener> {
-    struct fifo<TListener> *Fifo;
-    int Position;
 };
 
 struct TDirectReplyData {

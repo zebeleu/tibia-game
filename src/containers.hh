@@ -39,7 +39,9 @@ struct vector{
 		}
 	}
 
-	// TODO(fusion): Probably missing some inlined destructor?
+	~vector(void){
+		delete[] this->entry;
+	}
 
 	T *at(int index){
 		// TODO(fusion): This is probably not the best way to achieve this.
@@ -135,7 +137,9 @@ struct priority_queue{
 		Entries = 0;
 	}
 
-	// TODO(fusion): Probably missing some inlined destructor?
+	~priority_queue(void){
+		delete Entry;
+	}
 
 	void insert(K Key, T *Data){
 		this->Entries += 1;
@@ -241,7 +245,9 @@ struct matrix{
 		}
 	}
 
-	// TODO(fusion): Probably missing some inlined destructor?
+	~matrix(void){
+		delete[] this->entry;
+	}
 
 	T *at(int x, int y){
 		int xoffset = x - this->xmin;
@@ -305,7 +311,9 @@ struct matrix3d{
 		}
 	}
 
-	// TODO(fusion): Probably missing some inlined destructor?
+	~matrix3d(void){
+		delete[] this->entry;
+	}
 
 	T *at(int x, int y, int z){
 		int xoffset = x - this->xmin;
@@ -333,6 +341,197 @@ struct matrix3d{
 	int dy;
 	int dz;
 	T *entry;
+};
+
+template<typename T>
+struct listnode{
+	listnode *next;
+	listnode *prev;
+	T data;
+};
+
+template<typename T>
+struct list{
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	list(void){
+		firstNode = NULL;
+		lastNode = NULL;
+	}
+
+	~list(void){
+		while(this->firstNode != NULL){
+			this->remove(this->firstNode);
+		}
+	}
+
+	listnode<T> *append(void){
+		listnode<T> *node = new listnode<T>;
+		node->next = NULL;
+		node->prev = NULL;
+		if(this->firstNode == NULL){
+			ASSERT(this->lastNode == NULL);
+			this->firstNode = node;
+		}else{
+			ASSERT(this->lastNode != NULL);
+			this->lastNode->next = node;
+			node->prev = this->lastNode;
+		}
+		this->lastNode = node;
+		return node;
+	}
+
+	void remove(listnode<T> *node){
+		if(node == NULL){
+			error("list::remove: node ist NULL.\n");
+			return;
+		}
+
+		if(node->prev == NULL){
+			ASSERT(this->firstNode == node);
+			this->firstNode = node->next;
+		}else{
+			node->prev->next = node->next;
+		}
+
+		if(node->next == NULL){
+			ASSERT(this->lastNode == node);
+			this->lastNode = node->prev;
+		}else{
+			node->next->prev = node->prev;
+		}
+
+		delete node;
+	}
+
+	// DATA
+	// =========================================================================
+	listnode<T> *firstNode;
+	listnode<T> *lastNode;
+};
+
+template<typename T>
+struct fifo{
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	fifo(int InitialSize){
+		ASSERT(InitialSize > 0);
+		this->Entry = new T[InitialSize];
+		this->Size = InitialSize;
+		this->Head = -1;
+		this->Tail = 0;
+	}
+
+	~fifo(void){
+		delete[] this->Entry;
+	}
+
+	T *next(void){
+		T *Next = NULL;
+		if(this->Tail <= this->Head){
+			Next = &this->Entry[this->Tail % this->Size];
+		}
+		return Next;
+	}
+
+	T *append(void){
+		if((this->Head - this->Tail + 1) == this->Size){
+			int NewSize = this->Size * 2;
+			T *NewEntry = new T[NewSize];
+			// TODO(fusion): Is it even possible to have `this->Entry == NULL`?
+			if(this->Entry != NULL){
+				for(int Index = this->Tail; Index <= this->Head; Index += 1){
+					NewEntry[Index % NewSize] = this->Entry[Index % this->Size];
+				}
+				delete[] this->Entry;
+			}
+			this->Entry = NewEntry;
+			this->Size = NewSize;
+		}
+
+		// TODO(fusion): We don't consider integer overflow at all.
+		this->Head += 1;
+		return this->Entry[this->Head % this->Size];
+	}
+
+	void remove(void){
+		if(this->Tail > this->Head){
+			error("fifo::remove: Fifo ist leer.\n");
+			return;
+		}
+
+		this->Tail += 1;
+	}
+
+	// TODO(fusion): There is also a `fifoIterator` used a few times and it is
+	// essentially iterating from `this->Head` towards `this->Tail`. All its
+	// functions were inlined so I'm not sure it is needed.
+
+	// DATA
+	// =========================================================================
+    T *Entry;
+    int Size;
+    int Head;
+    int Tail;
+};
+
+template<typename T>
+union storeitem{
+	// IMPORTANT(fusion): This will only work properly with POD structures. We
+	// could also manually handle `data` construction and destruction but I don't
+	// think we need it.
+	STATIC_ASSERT(std::is_pod<T>::value);
+	storeitem<T> *next;
+	T data;
+};
+
+template<typename T, usize N>
+struct storeunit{
+	STATIC_ASSERT(N > 0);
+	storeitem<T> item[N];
+};
+
+// NOTE(fusion): The `store` container is an allocator that manages a single type.
+// It is also known as a slab allocator.
+template<typename T, usize N>
+struct store{
+	// REGULAR FUNCTIONS
+	// =========================================================================
+	store(void){
+		this->Units = new list<storeunit<T, N>>;
+		this->firstFreeItem = NULL;
+	}
+
+	~store(void){
+		delete this->Units;
+	}
+
+	T *getFreeItem(void){
+		if(this->firstFreeItem == NULL){
+			storeunit<T, N> *Unit = &this->Units.append()->data;
+			for(usize i = 0; i < (N - 1); i += 1){
+				Unit->item[i].next = &Unit->item[i + 1];
+			}
+			Unit->item[N - 1].next = NULL;
+			this->firstFreeItem = &Unit->item[0];
+		}
+
+		storeitem<T> *Item = this->firstFreeItem;
+		this->firstFreeItem = Item->next;
+		return &Item->data;
+	}
+
+	void putFreeItem(T *Item){
+		// TODO(fusion): Not the safest thing to do.
+		ASSERT(Item != NULL);
+		((storeitem<T>*)Item)->next = this->firstFreeItem;
+		this->firstfreeItem = (storeitem<T>*)Item;
+	}
+
+	// DATA
+	// =========================================================================
+	list<storeunit<T, N>> *Units;
+	storeitem<T> *firstFreeItem;
 };
 
 #endif //TIBIA_CONTAINERS_HH_

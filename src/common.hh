@@ -115,6 +115,11 @@ void ExitSHM(void);
 void InitSHMExtern(bool Verbose);
 void ExitSHMExtern(void);
 
+// strings.cc
+// =============================================================================
+void InitStrings(void);
+void ExitStrings(void);
+
 // time.cc
 // =============================================================================
 extern uint32 RoundNr;

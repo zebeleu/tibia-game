@@ -3,7 +3,7 @@ BUILDDIR = build
 OUTPUTEXE = game
 
 CC = g++
-CFLAGS = -m64 -fno-strict-aliasing -pedantic -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation -std=c++11 -DOS_LINUX=1 -DARCH_X64=1 -D_CRT_SECURE_NO_WARNINGS=1
+CFLAGS = -m64 -fno-strict-aliasing -pedantic -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation -std=c++11 -DOS_LINUX=1 -DARCH_X64=1
 LFLAGS = -Wl,-t
 
 DEBUG ?= 0
@@ -15,7 +15,7 @@ endif
 
 HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/config.hh $(SRCDIR)/connection.hh $(SRCDIR)/containers.hh $(SRCDIR)/creature.hh $(SRCDIR)/enums.hh $(SRCDIR)/map.hh $(SRCDIR)/monster.hh $(SRCDIR)/objects.hh $(SRCDIR)/player.hh $(SRCDIR)/script.hh $(SRCDIR)/skill.hh $(SRCDIR)/thread.hh
 
-$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/creature.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/player.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/skill.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
+$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/creature.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/player.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/skill.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
 	$(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 $(BUILDDIR)/config.obj: $(SRCDIR)/config.cc $(HEADERS)
@@ -55,6 +55,10 @@ $(BUILDDIR)/shm.obj: $(SRCDIR)/shm.cc $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILDDIR)/skill.obj: $(SRCDIR)/skill.cc $(HEADERS)
+	@mkdir -p $(@D)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(BUILDDIR)/strings.obj: $(SRCDIR)/strings.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 

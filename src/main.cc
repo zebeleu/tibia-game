@@ -225,7 +225,7 @@ static void InitAll(void){
 		InitSignalHandler();
 		//InitConnections();
 		//InitCommunication();
-		//InitStrings();
+		InitStrings();
 		//InitWriter();
 		//InitReader();
 		InitObjects();
@@ -257,7 +257,7 @@ static void ExitAll(void){
 	ExitObjects();
 	//ExitReader();
 	//ExitWriter();
-	//ExitStrings();
+	ExitStrings();
 	//ExitCommunication();
 	//ExitConnections();
 	ExitSignalHandler();
