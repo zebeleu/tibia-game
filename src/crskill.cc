@@ -1,8 +1,5 @@
-#include "skill.hh"
-#include "enums.hh"
 #include "creature.hh"
 #include "monster.hh"
-#include "player.hh"
 
 #include "stubs.hh"
 

@@ -2,8 +2,8 @@
 #define TIBIA_PLAYER_HH_ 1
 
 #include "common.hh"
-#include "creature.hh"
 #include "containers.hh"
+#include "creature.hh"
 
 struct TPlayerData {
 	uint32 CharacterID;

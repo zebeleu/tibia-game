@@ -5,45 +5,16 @@
 #include "connection.hh"
 #include "containers.hh"
 #include "map.hh"
-#include "skill.hh"
 
-struct TCreature;
+#include "crcombat.hh"
+#include "crskill.hh"
 
-struct TCombatEntry{
-	uint32 ID;
-	uint32 Damage;
-	int TimeStamp;
-};
-
-struct TCombat{
-	// REGULAR FUNCTIONS
-	// =========================================================================
-	TCombat(void);
-	void CheckCombatValues(void);
-
-	// DATA
-	// =========================================================================
-	TCreature *Master;
-	uint32 EarliestAttackTime;
-	uint32 EarliestDefendTime;
-	uint32 LastDefendTime;
-	uint32 LatestAttackTime;
-	uint32 AttackMode;
-	uint32 ChaseMode;
-	uint32 SecureMode;
-	uint32 AttackDest;
-	bool Following;
-	Object Shield;
-	Object Close;
-	Object Missile;
-	Object Throw;
-	Object Wand;
-	Object Ammo;
-	bool Fist;
-	uint32 CombatDamage;
-	int ActCombatEntry;
-	TCombatEntry CombatList[20];
-	int LearningPoints;
+struct TOutfit{
+	int OutfitID;
+	union{
+		uint16 ObjectType;
+		uint8 Colors[4];
+	};
 };
 
 struct TToDoEntry {
@@ -97,14 +68,6 @@ struct TToDoEntry {
             int NewState;
         } ChangeState;
     };
-};
-
-struct TOutfit{
-	int OutfitID;
-	union{
-		uint16 ObjectType;
-		uint8 Colors[4];
-	};
 };
 
 struct TCreature: TSkillBase {

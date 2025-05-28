@@ -1,5 +1,5 @@
-#ifndef TIBIA_SKILL_HH_
-#define TIBIA_SKILL_HH_ 1
+#ifndef TIBIA_CRSKILL_HH_
+#define TIBIA_CRSKILL_HH_ 1
 
 #include "common.hh"
 
@@ -170,4 +170,4 @@ struct TSkillBase{
 	uint16 FirstFreeTimer;
 };
 
-#endif //TIBIA_SKILL_HH_
+#endif //TIBIA_CRSKILL_HH_
