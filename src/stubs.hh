@@ -15,18 +15,13 @@ typedef void TRefreshSectorFunction(int SectorX, int SectorY, int SectorZ, const
 typedef void TSendMailsFunction(TPlayerData *PlayerData);
 
 extern void AbortWriter(void);
-extern uint32 AddDynamicString(const char *String);
-extern const char *AddStaticString(const char *String);
 extern void AnnounceChangedCreature(uint32 CreatureID, int Type);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void Change(Object Obj, ObjectType NewType, uint32 Value);
 extern bool CheckRight(uint32 CreatureID, RIGHT Right);
 extern void CleanHouseField(int x, int y, int z);
-extern void CleanupDynamicStrings(void);
 extern void CreatePlayerList(bool Online);
-extern void DeleteDynamicString(uint32 Number);
 extern TCreature *GetCreature(uint32 CreatureID);
-extern const char *GetDynamicString(uint32 Number);
 extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);

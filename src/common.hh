@@ -117,6 +117,11 @@ void ExitSHMExtern(void);
 
 // strings.cc
 // =============================================================================
+const char *AddStaticString(const char *String);
+uint32 AddDynamicString(const char *String);
+const char *GetDynamicString(uint32 Number);
+void DeleteDynamicString(uint32 Number);
+void CleanupDynamicStrings(void);
 void InitStrings(void);
 void ExitStrings(void);
 

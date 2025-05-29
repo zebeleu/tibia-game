@@ -197,15 +197,6 @@ struct TAttackWave {
     struct vector<TItemData> ExtraItem;
 };
 
-struct TDynamicStringTableBlock {
-    int FreeEntries;
-    int TotalTextLength;
-    bool Dirty;
-    uchar EntryType[256];
-    ushort StringOffset[256];
-    char Text[32768];
-};
-
 struct TNonplayer {
     struct TCreature super_TCreature; // INHERITANCE?
     enum STATE State;
@@ -252,11 +243,6 @@ struct TMonsterhome {
     int ActMonsters;
     int RegenerationTime;
     int Timer;
-};
-
-struct TStaticStringTableBlock {
-    int TotalTextLength;
-    char Text[65536];
 };
 
 struct TCondition {
