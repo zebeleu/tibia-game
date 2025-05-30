@@ -6,12 +6,44 @@
 // TODO(fusion): Probably cleanup these names? Prefix values? Its crazy that
 // there are no collision problems (possibly yet).
 
+enum AnimationType: int {
+	ANIMATION_NONE					= 0,
+	ANIMATION_SPEAR					= 1,
+	ANIMATION_BOLT					= 2,
+	ANIMATION_ARROW					= 3,
+	ANIMATION_FIRE					= 4,
+	ANIMATION_ENERGY				= 5,
+	ANIMATION_POISON_ARROW			= 6,
+	ANIMATION_BURST_ARROW			= 7,
+	ANIMATION_THROWING_STAR			= 8,
+	ANIMATION_THROWING_KNIFE		= 9,
+	ANIMATION_SMALL_STONE			= 10,
+	ANIMATION_SNOWBALL				= 13,
+	ANIMATION_POWER_BOLT			= 14,
+	ANIMATION_POISON				= 15,
+};
+
+// NOTE(fusion): Not in debug symbols.
+enum AttackMode: uint8 {
+	ATTACK_MODE_NONE		= 0,
+	ATTACK_MODE_OFFENSIVE	= 1,
+	ATTACK_MODE_BALANCED	= 2,
+	ATTACK_MODE_DEFENSIVE	= 3,
+};
+
 enum BloodType: int {
 	BT_BLOOD	= 0,
 	BT_SLIME	= 1,
 	BT_BONES	= 2,
 	BT_FIRE		= 3,
 	BT_ENERGY	= 4,
+};
+
+// NOTE(fusion): Not in debug symbols.
+enum ChaseMode: uint8 {
+	CHASE_MODE_NONE		= 0,
+	CHASE_MODE_CLOSE	= 1,
+	CHASE_MODE_RANGE	= 2,
 };
 
 enum CreatureType: int {
@@ -29,6 +61,26 @@ enum CONNECTIONSTATE: int {
 	CONNECTION_DEAD			= 5,
 	CONNECTION_LOGOUT		= 6,
 	CONNECTION_DISCONNECTED	= 7,
+};
+
+// NOTE(fusion): Not in debug symbols.
+enum DamageType: int {
+	DAMAGE_NONE					= 0x0000,
+	DAMAGE_PHYSICAL				= 0x0001,
+	DAMAGE_POISON				= 0x0002,
+	DAMAGE_FIRE					= 0x0004,
+	DAMAGE_ENERGY				= 0x0008,
+	//DAMAGE_DEATH ?			= 0x0010
+	DAMAGE_POISON_PERIODIC		= 0x0020,
+	DAMAGE_FIRE_PERIODIC		= 0x0040,
+	DAMAGE_ENERGY_PERIODIC		= 0x0080,
+	DAMAGE_LIFEDRAIN			= 0x0100,
+	DAMAGE_MANADRAIN			= 0x0200,
+};
+
+enum EffectType: int {
+	EFFECT_POFF					= 3,
+	EFFECT_BURST_ARROW			= 7, // Review
 };
 
 enum FLAG: int {
@@ -132,6 +184,17 @@ enum KNOWNCREATURESTATE: int {
 	KNOWNCREATURE_FREE		= 0,
 	KNOWNCREATURE_UPTODATE	= 1,
 	KNOWNCREATURE_OUTDATED	= 2
+};
+
+enum LiquidType: int {
+	LIQUID_NONE = 0,
+	LIQUID_WATER = 1,
+	LIQUID_WINE = 2,
+	LIQUID_BEER = 3,
+	LIQUID_MUD = 4,
+	LIQUID_BLOOD = 5,
+	LIQUID_SLIME = 6,
+	LIQUID_LEMONADE = 12,
 };
 
 // NOTE(fusion): Not in debug symbols.

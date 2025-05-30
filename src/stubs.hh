@@ -5,6 +5,7 @@
 #include "enums.hh"
 #include "connection.hh"
 #include "creature.hh"
+#include "magic.hh"
 #include "map.hh"
 #include "player.hh"
 
@@ -19,14 +20,22 @@ extern void AnnounceChangedCreature(uint32 CreatureID, int Type);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void Change(Object Obj, ObjectType NewType, uint32 Value);
 extern bool CheckRight(uint32 CreatureID, RIGHT Right);
+extern void CircleShapeSpell(TCreature *Actor, int DestX, int DestY, int DestZ,
+				int Range, int Animation, int Radius, TImpact *Impact, int Effect);
 extern void CleanHouseField(int x, int y, int z);
+extern int ComputeDamage(TCreature *Creature, int SpellNr, int Damage, int Variation);
 extern void CreatePlayerList(bool Online);
+extern void Delete(Object Obj, int Count);
 extern Object GetBodyObject(uint32 CreatureID, int Position);
 extern TCreature *GetCreature(uint32 CreatureID);
 extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
+extern int GetRacePoison(int Race);
+extern void GraphicalEffect(int x, int y, int z, int Type);
+extern void GraphicalEffect(Object Obj, int Type);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutAllPlayers(void);
+extern void Missile(Object Start, Object Dest, int Type);
 extern void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Object Ignore);
 extern void MoveCreatures(int Delay);
 extern void NetLoadCheck(void);
@@ -47,6 +56,7 @@ extern void RefreshCylinders(void);
 extern void RefreshMap(void);
 extern void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Size);
 extern void SavePlayerDataOrder(void);
+extern bool SearchFlightField(uint32 FugitiveID, uint32 PursuerID, int *x, int *y, int *z);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);
 extern void SendClearTarget(TConnection *Connection);
@@ -55,6 +65,8 @@ extern void SendMessage(TConnection *Connection, int Mode, const char *Text, ...
 extern void SendPlayerData(TConnection *Connection);
 extern void SendPlayerSkills(TConnection *Connection);
 extern void SendPlayerState(TConnection *Connection, uint8 State);
+extern bool ThrowPossible(int FromX, int FromY, int FromZ,
+						int ToX, int ToY, int ToZ, int Power);
 extern void WriteKillStatistics(void);
 
 #endif //TIBIA_STUBS_HH_

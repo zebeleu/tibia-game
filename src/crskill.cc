@@ -546,7 +546,11 @@ bool TSkillProbe::Probe(int Diff, int Prob, bool Increase){
 		this->Increase(1);
 	}
 
-	// TODO(fusion): Not sure what's going on here.
+	// NOTE(fusion): `Diff` is a difficulty threshold and determines how challenging
+	// an action is based on the current skill level `this->Act`. The higher the
+	// skill level, the less difficult the action.
+	//	I've only seen it used with SKILL_DISTANCE to determine whether a ranged
+	// attack should hit.
 	bool Result = true;
 	if(Diff != 0){
 		if(this->Act >= (rand() % Diff)){
@@ -1021,7 +1025,7 @@ void TSkillPoison::Event(int Range){
 		Range = -Range;
 	}
 
-	Master->Damage(GetCreature(Master->PoisonDamageOrigin), Range, 2);
+	Master->Damage(GetCreature(Master->PoisonDamageOrigin), Range, DAMAGE_POISON);
 
 	// NOTE(fusion): I think this is checking whether `Master` is still upon some
 	// poison field to determine whether we should extend the poison effect?
@@ -1031,7 +1035,7 @@ void TSkillPoison::Event(int Range){
 		// OpenTibia terms.
 		ObjectType ObjType = Obj.getObjectType();
 		if(ObjType.getFlag(AVOID)){
-			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == 2){
+			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == DAMAGE_POISON){
 				this->Cycle += 1;
 			}
 		}
@@ -1054,7 +1058,7 @@ void TSkillBurning::Event(int Range){
 		return;
 	}
 
-	Master->Damage(GetCreature(Master->FireDamageOrigin), 10, 4);
+	Master->Damage(GetCreature(Master->FireDamageOrigin), 10, DAMAGE_FIRE);
 
 	// NOTE(Fusion): Something similar to `TSkillPoison::Event` except we're
 	// looking for a different field type.
@@ -1062,7 +1066,7 @@ void TSkillBurning::Event(int Range){
 	while(Obj != NONE){
 		ObjectType ObjType = Obj.getObjectType();
 		if(ObjType.getFlag(AVOID)){
-			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == 4){
+			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == DAMAGE_FIRE){
 				this->Cycle += 1;
 			}
 		}
@@ -1080,7 +1084,7 @@ void TSkillEnergy::Event(int Range){
 		return;
 	}
 
-	Master->Damage(GetCreature(Master->EnergyDamageOrigin), 25, 8);
+	Master->Damage(GetCreature(Master->EnergyDamageOrigin), 25, DAMAGE_ENERGY);
 
 	// NOTE(Fusion): Something similar to `TSkillPoison::Event` except we're
 	// looking for a different field type.
@@ -1088,7 +1092,7 @@ void TSkillEnergy::Event(int Range){
 	while(Obj != NONE){
 		ObjectType ObjType = Obj.getObjectType();
 		if(ObjType.getFlag(AVOID)){
-			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == 8){
+			if(ObjType.getAttribute(AVOIDDAMAGETYPES) == DAMAGE_ENERGY){
 				this->Cycle += 1;
 			}
 		}

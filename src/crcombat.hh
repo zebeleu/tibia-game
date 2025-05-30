@@ -16,12 +16,17 @@ struct TCombat{
 	void GetWeapon(void);
 	void GetAmmo(void);
 	void CheckCombatValues(void);
-	int GetDistance(void); // TODO
+	int GetDistance(void);
+	void GetAttackValue(int *Attack, uint16 *SkillNr);
+	int GetDefendDamage(void);
+	void SetAttackDest(uint32 TargetID, bool Follow);
+	void CanToDoAttack(void);
 	void Attack(void);
 	void StopAttack(int Delay);
 	void DelayAttack(int Milliseconds);
-	void CloseAttack(TCreature *Target); // TODO
-	void RangeAttack(TCreature *Target); // TODO
+	void CloseAttack(TCreature *Target);
+	void DistanceAttack(TCreature *Target);
+	void WandAttack(TCreature *Target);
 
 	// DATA
 	// =========================================================================
@@ -30,9 +35,9 @@ struct TCombat{
 	uint32 EarliestDefendTime;
 	uint32 LastDefendTime;
 	uint32 LatestAttackTime;
-	uint32 AttackMode;
-	uint32 ChaseMode;
-	uint32 SecureMode;
+	uint8 AttackMode;
+	uint8 ChaseMode;
+	uint8 SecureMode;
 	uint32 AttackDest;
 	bool Following;
 	Object Shield;

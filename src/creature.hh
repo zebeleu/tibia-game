@@ -74,22 +74,24 @@ struct TCreature: TSkillBase {
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TCreature(void);
+	void Attack(void);
 	int Damage(TCreature *Attacker, int Damage, int DamageType);
 	void BlockLogout(int Delay, bool BlockProtectionZone);
+	void ToDoGo(int DestX, int DestY, int DestZ, bool Dest, int MaxSteps);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================
 	virtual ~TCreature(void);															// VTABLE[ 0]
 	// Duplicate destructor that also calls operator delete.							// VTABLE[ 1]
 	virtual void Death(void);															// VTABLE[ 2]
-	virtual void MovePossible(void);													// VTABLE[ 3]
-	virtual void IsPeaceful(void);														// VTABLE[ 4]
-	virtual void GetMaster(void);														// VTABLE[ 5]
-	virtual void TalkStimulus(void);													// VTABLE[ 6]
-	virtual void DamageStimulus(void);													// VTABLE[ 7]
+	virtual bool MovePossible(int x, int y, int z, bool Execute, bool Jump);			// VTABLE[ 3]
+	virtual bool IsPeaceful(void);														// VTABLE[ 4]
+	virtual uint32 GetMaster(void);														// VTABLE[ 5]
+	virtual void TalkStimulus(uint32 SpeakerID, const char *Text);						// VTABLE[ 6]
+	virtual void DamageStimulus(uint32 AttackerID, int Damage, int DamageType);			// VTABLE[ 7]
 	virtual void IdleStimulus(void);													// VTABLE[ 8]
-	virtual void CreatureMoveStimulus(void);											// VTABLE[ 9]
-	virtual void AttackStimulus(void);													// VTABLE[10]
+	virtual void CreatureMoveStimulus(uint32 CreatureID, int Type);						// VTABLE[ 9]
+	virtual void AttackStimulus(uint32 AttackerID);										// VTABLE[10]
 
 	// DATA
 	// =========================================================================
