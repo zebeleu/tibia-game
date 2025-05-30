@@ -321,21 +321,13 @@ const char *ObjectType::getName(int Count){
 		return NULL;
 	}
 
-	// TODO(fusion): This is yet another rabbit hole. I'm not sure why we have
-	// the object name copied to the stack when `Plural` returns its own static
-	// buffer.
-#if 0
-	char ObjectName[50];
 	TObjectType *TypeP = ObjectTypes.at(this->TypeID);
-	if(Type->Name != NULL){
-		strcpy(ObjectName, TypeP->Name);
-	}else{
-		ObjectName[0] = 0;
+	const char *Name = TypeP->Name;
+	if(Name == NULL){
+		Name = "";
 	}
-	return Plural(ObjectName, Count);
-#endif
 
-	return "Unnamed";
+	return Plural(Name, Count);
 }
 
 const char *ObjectType::getDescription(void){
