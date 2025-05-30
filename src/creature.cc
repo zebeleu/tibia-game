@@ -97,7 +97,7 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 	}
 
 	// NOTE(fusion): Maintain largest exhaust?
-	uint32 EarliestSpellTime = Delay + ServerMilliseconds;
+	uint32 EarliestSpellTime = ServerMilliseconds + Delay;
 	if(Creature->EarliestSpellTime < EarliestSpellTime){
 		Creature->EarliestSpellTime = EarliestSpellTime;
 	}

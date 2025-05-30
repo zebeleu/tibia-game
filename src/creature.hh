@@ -75,6 +75,7 @@ struct TCreature: TSkillBase {
 	// =========================================================================
 	TCreature(void);
 	int Damage(TCreature *Attacker, int Damage, int DamageType);
+	void BlockLogout(int Delay, bool BlockProtectionZone);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================

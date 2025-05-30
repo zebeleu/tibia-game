@@ -13,7 +13,15 @@ struct TCombat{
 	// REGULAR FUNCTIONS
 	// =========================================================================
 	TCombat(void);
+	void GetWeapon(void);
+	void GetAmmo(void);
 	void CheckCombatValues(void);
+	int GetDistance(void); // TODO
+	void Attack(void);
+	void StopAttack(int Delay);
+	void DelayAttack(int Milliseconds);
+	void CloseAttack(TCreature *Target); // TODO
+	void RangeAttack(TCreature *Target); // TODO
 
 	// DATA
 	// =========================================================================

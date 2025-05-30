@@ -68,8 +68,14 @@ struct TPlayerData {
 struct TPlayer: TCreature {
 	// REGULAR FUNCTIONS
 	// =========================================================================
-	void CheckState(void);
+	uint8 GetRealProfession(void);
+	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
+	bool GetActivePromotion(void);
+	bool IsAttackJustified(uint32 Victim);
+	void RecordAttack(uint32 Victim);
+
+	void CheckState(void);
 
 	// VIRTUAL FUNCTIONS
 	// =========================================================================

@@ -3,6 +3,33 @@
 
 #include "stubs.hh"
 
+uint8 TPlayer::GetRealProfession(void){
+	return this->Profession;
+}
+
+uint8 TPlayer::GetEffectiveProfession(void){
+	uint8 Profession = this->Profession;
+	if(Profession >= 10){
+		Profession -= 10;
+	}
+	return Profession;
+}
+
+uint8 TPlayer::GetActiveProfession(void){
+	uint8 Profession;
+	if(CheckRight(this->ID, PREMIUM_ACCOUNT)){
+		Profession = this->Profession;
+	}else{
+		Profession = this->GetEffectiveProfession();
+	}
+	return Profession;
+}
+
+bool TPlayer::GetActivePromotion(void){
+	return CheckRight(this->ID, PREMIUM_ACCOUNT)
+		&& this->Profession >= 10;
+}
+
 void TPlayer::CheckState(void){
 	if(this->Connection != NULL){
 		uint8 State = 0;
