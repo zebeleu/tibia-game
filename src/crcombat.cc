@@ -1,4 +1,5 @@
 #include "creature.hh"
+#include "monster.hh"
 #include "player.hh"
 #include "config.hh"
 #include "magic.hh"
@@ -13,7 +14,7 @@ TCombat::TCombat(void){
 	this->LatestAttackTime = 0;
 	this->AttackMode = ATTACK_MODE_BALANCED;
 	this->ChaseMode = CHASE_MODE_NONE;
-	this->SecureMode = 1;
+	this->SecureMode = SECURE_MODE_ENABLED;
 	this->AttackDest = 0;
 	this->Following = false;
 	this->Shield = NONE;
@@ -147,6 +148,164 @@ void TCombat::CheckCombatValues(void){
 	}
 }
 
+static int WeaponTypeToSkill(int WeaponType){
+	int Result = SKILL_FIST;
+	switch(WeaponType){
+		case WEAPON_NONE:		Result = SKILL_FIST; break;
+		case WEAPON_SWORD:		Result = SKILL_SWORD; break;
+		case WEAPON_CLUB:		Result = SKILL_CLUB; break;
+		case WEAPON_AXE:		Result = SKILL_AXE; break;
+		case WEAPON_SHIELD:		Result = SKILL_SHIELDING; break;
+		case WEAPON_AMMO:		ATTR_FALLTHROUGH;
+		case WEAPON_THROW:		Result = SKILL_DISTANCE; break;
+	}
+	return Result;
+}
+
+void TCombat::GetAttackValue(int *Value, int *SkillNr){
+	int AttackValue;
+	int WeaponType;
+	if(this->Close != NONE){
+		ObjectType CloseType = this->Close.getObjectType();
+		AttackValue = (int)CloseType.getAttribute(WEAPONATTACKVALUE);
+		WeaponType = (int)CloseType.getAttribute(WEAPONTYPE);
+	}else if(this->Missile != NONE){
+		ObjectType AmmoType = this->Ammo.getObjectType();
+		AttackValue = (int)AmmoType.getAttribute(AMMOATTACKVALUE);
+		WeaponType = WEAPON_AMMO;
+	}else if(this->Throw != NONE){
+		ObjectType ThrowType = this->Throw.getObjectType();
+		AttackValue = (int)ThrowType.getAttribute(THROWATTACKVALUE);
+		WeaponType = WEAPON_THROW;
+	}else if(this->Wand != NONE){
+		AttackValue = 0;
+		WeaponType = WEAPON_NONE;
+	}else{
+		AttackValue = RaceData[this->Master->Race].Attack;
+		WeaponType = WEAPON_NONE;
+	}
+
+	*Value = AttackValue;
+	*SkillNr = WeaponTypeToSkill(WeaponType);
+}
+
+void TCombat::GetDefendValue(int *Value, int *SkillNr){
+	int DefenseValue;
+	int WeaponType;
+	if(this->Shield != NONE){
+		ObjectType ShieldType = this->Shield.getObjectType();
+		DefenseValue = (int)ShieldType.getAttribute(SHIELDDEFENDVALUE);
+		WeaponType = WEAPON_SHIELD;
+	}else if(this->Close != NONE){
+		ObjectType CloseType = this->Close.getObjectType();
+		DefenseValue = (int)CloseType.getAttribute(WEAPONDEFENDVALUE);
+		WeaponType = (int)CloseType.getAttribute(WEAPONTYPE);
+	}else if(this->Throw != NONE){
+		ObjectType ThrowType = this->Throw.getObjectType();
+		DefenseValue = (int)ThrowType.getAttribute(THROWDEFENDVALUE);
+		WeaponType = WEAPON_THROW;
+	}else if(this->Missile != NONE){
+		// TODO(fusion): This might be correct. Having a bow equipped will reduce
+		// your defense to zero but having a wand equipped will give you base defense.
+		DefenseValue = 0;
+		WeaponType = WEAPON_AMMO;
+	}else{
+		DefenseValue = RaceData[this->Master->Race].Defend;
+		WeaponType = WEAPON_NONE;
+	}
+
+	*Value = DefenseValue;
+	*SkillNr = WeaponTypeToSkill(WeaponType);
+}
+
+int TCombat::GetAttackDamage(void){
+	int MaxValue, SkillNr;
+	this->GetAttackValue(&MaxValue, &SkillNr);
+	if(this->AttackMode == ATTACK_MODE_OFFENSIVE){
+		MaxValue += (MaxValue * 2) / 10;
+	}else if(this->AttackMode == ATTACK_MODE_DEFENSIVE){
+		MaxValue -= (MaxValue * 4) / 10;
+	}
+
+	TSkill *Skill = this->Master->Skills[SkillNr];
+	int Result = Skill->ProbeValue(MaxValue, this->LearningPoints > 0);
+	if(this->LearningPoints > 0){
+		this->LearningPoints -= 1;
+	}
+	return Result;
+}
+
+int TCombat::GetDefendDamage(void){
+	if(this->EarliestDefendTime > ServerMilliseconds){
+		return 0;
+	}
+
+	this->EarliestDefendTime = this->LastDefendTime + 2000;
+	this->LastDefendTime = ServerMilliseconds;
+
+	int AttackMode = this->AttackMode;
+	if(this->Following || this->AttackDest == 0){
+		AttackMode = ATTACK_MODE_DEFENSIVE;
+	}
+
+	int MaxValue, SkillNr;
+	this->GetDefendValue(&MaxValue, &SkillNr);
+	if(AttackMode == ATTACK_MODE_OFFENSIVE){
+		MaxValue -= (MaxValue * 4) / 10;
+	}else if(AttackMode == ATTACK_MODE_DEFENSIVE){
+		MaxValue += (MaxValue * 8) / 10;
+	}
+
+	TSkill *Skill = this->Master->Skills[SkillNr];
+	bool Increase = (this->Shield != NONE && this->LearningPoints > 0);
+	int Result = Skill->ProbeValue(MaxValue, Increase);
+	if(Increase){
+		this->LearningPoints -= 1;
+	}
+
+	Object Shield = this->Shield;
+	if(Shield != NONE){
+		ObjectType ShieldType = Shield.getObjectType();
+		if(ShieldType.getFlag(WEAROUT)){
+			uint32 RemainingUses = Shield.getAttribute(REMAININGUSES);
+			if(RemainingUses > 1){
+				Change(Shield, REMAININGUSES, RemainingUses - 1);
+			}else{
+				ObjectType WearOutType = ShieldType.getAttribute(WEAROUTTARGET);
+				Change(Shield, WearOutType, 0);
+				// TODO(fusion): Probably just check anyways, to be sure.
+				if(!Shield.exists() || !WearOutType.getFlag(SHIELD)){
+					this->CheckCombatValues();
+				}
+			}
+		}
+	}
+
+	return Result;
+}
+
+int TCombat::GetArmorStrength(void){
+	// TODO(fusion): We're iterating over inventory slots. Make it clearer?
+	int Armor = 0;
+	TCreature *Master = this->Master;
+	for(int Position = 1; Position <= 10; Position += 1){
+		Object Obj = GetBodyObject(Master->ID, Position);
+		if(Obj.exists()){
+			ObjectType ObjType = Obj.getObjectType();
+			if(ObjType.getFlag(CLOTHES) && ObjType.getFlag(ARMOR)
+			&& (int)ObjType.getAttribute(BODYPOSITION) == Position){
+				Armor += (int)ObjType.getAttribute(ARMORVALUE);
+			}
+		}
+	}
+
+	Armor += RaceData[Master->Race].Armor;
+	if(Armor >= 2){
+		Armor = (Armor / 2) + rand() % (Armor / 2);
+	}
+	return Armor;
+}
+
 int TCombat::GetDistance(void){
 	int Distance = 0;
 	if(this->Close != NONE || this->Fist){
@@ -157,6 +316,42 @@ int TCombat::GetDistance(void){
 		Distance = 3;
 	}
 	return Distance;
+}
+
+void TCombat::ActivateLearning(void){
+	this->LearningPoints = 30;
+}
+
+void TCombat::SetAttackMode(uint8 AttackMode){
+	if(AttackMode != ATTACK_MODE_OFFENSIVE
+			&& AttackMode != ATTACK_MODE_BALANCED
+			&& AttackMode != ATTACK_MODE_DEFENSIVE){
+		error("TCombat::SetAttackMode: Ungültiger Angriffsmodus %d.\n", AttackMode);
+		return;
+	}
+
+	if(this->AttackMode != AttackMode){
+		this->DelayAttack(2000);
+		this->AttackMode = AttackMode;
+	}
+}
+
+void TCombat::SetChaseMode(uint8 ChaseMode){
+	if(ChaseMode != CHASE_MODE_NONE && ChaseMode != CHASE_MODE_CLOSE){
+		error("TCombat::SetChaseMode: Ungültiger Verfolgungsmodus %d.\n", ChaseMode);
+		return;
+	}
+
+	this->ChaseMode = ChaseMode;
+}
+
+void TCombat::SetSecureMode(uint8 SecureMode){
+	if(SecureMode != SECURE_MODE_DISABLED && SecureMode != SECURE_MODE_ENABLED){
+		error("TCombat::SetSecureMode: Ungültiger Sicherheitsmodus %d.\n", SecureMode);
+		return;
+	}
+
+	this->SecureMode = SecureMode;
 }
 
 void TCombat::SetAttackDest(uint32 TargetID, bool Follow){
@@ -178,8 +373,8 @@ void TCombat::SetAttackDest(uint32 TargetID, bool Follow){
 
 	if(!Follow){
 		if(Master->Type == PLAYER && Target->Type == PLAYER){
-			if(this->SecureMode == 1 && WorldType == NORMAL
-			&& !((TPlayer*)Master)->IsAttackJustified(TargetID)){
+			if(this->SecureMode == SECURE_MODE_ENABLED && WorldType == NORMAL
+					&& !((TPlayer*)Master)->IsAttackJustified(TargetID)){
 				this->StopAttack(0);
 				throw SECUREMODE;
 			}
@@ -275,8 +470,8 @@ void TCombat::CanToDoAttack(void){
 
 	if(!this->Following){
 		if(Master->Type == PLAYER && Target->Type == PLAYER){
-			if(this->SecureMode == 1 && WorldType == NORMAL
-			&& !((TPlayer*)Master)->IsAttackJustified(Target->ID)){
+			if(this->SecureMode == SECURE_MODE_ENABLED && WorldType == NORMAL
+					&& !((TPlayer*)Master)->IsAttackJustified(Target->ID)){
 				this->StopAttack(0);
 				throw SECUREMODE;
 			}
@@ -319,6 +514,24 @@ void TCombat::CanToDoAttack(void){
 	}
 }
 
+void TCombat::StopAttack(int Delay){
+	if(Delay == 0){
+		this->AttackDest = 0;
+		if(this->Master->Type == PLAYER){
+			SendClearTarget(this->Master->Connection);
+		}
+	}else{
+		this->LatestAttackTime = RoundNr + Delay;
+	}
+}
+
+void TCombat::DelayAttack(int Milliseconds){
+	uint32 EarliestAttackTime = ServerMilliseconds + Milliseconds;
+	if(this->EarliestAttackTime < EarliestAttackTime){
+		this->EarliestAttackTime = EarliestAttackTime;
+	}
+}
+
 void TCombat::Attack(void){
 	if(this->AttackDest == 0 || this->Following){
 		return;
@@ -352,8 +565,8 @@ void TCombat::Attack(void){
 	}
 
 	if(Master->Type == PLAYER && Target->Type == PLAYER){
-		if(this->SecureMode == 1 && WorldType == NORMAL
-		&& !((TPlayer*)Master)->IsAttackJustified(Target->ID)){
+		if(this->SecureMode == SECURE_MODE_ENABLED && WorldType == NORMAL
+				&& !((TPlayer*)Master)->IsAttackJustified(Target->ID)){
 			this->StopAttack(0);
 			throw SECUREMODE;
 		}
@@ -436,49 +649,17 @@ void TCombat::Attack(void){
 	}
 }
 
-void TCombat::StopAttack(int Delay){
-	if(Delay == 0){
-		this->AttackDest = 0;
-		if(this->Master->Type == PLAYER){
-			SendClearTarget(this->Master->Connection);
-		}
-	}else{
-		this->LatestAttackTime = RoundNr + Delay;
-	}
-}
-
-void TCombat::DelayAttack(int Milliseconds){
-	uint32 EarliestAttackTime = ServerMilliseconds + Milliseconds;
-	if(this->EarliestAttackTime < EarliestAttackTime){
-		this->EarliestAttackTime = EarliestAttackTime;
-	}
-}
-
 void TCombat::CloseAttack(TCreature *Target){
-	int Attack;
-	uint16 SkillNr;
-	this->GetAttackValue(&Attack, &SkillNr);
-	if(this->AttackMode == ATTACK_MODE_OFFENSIVE){
-		Attack += (Attack * 2) / 10;
-	}else if(this->AttackMode == ATTACK_MODE_DEFENSIVE){
-		Attack -= (Attack * 4) / 10;
-	}
-
-	TCreature *Master = this->Master;
-	Attack = Master->Skills[SkillNr]->ProbeValue(Attack, this->LearningPoints > 0);
-	if(this->LearningPoints > 0){
-		this->LearningPoints -= 1;
-	}
-
+	int Attack = this->GetAttackDamage();
 	int Defense = Target->Combat.GetDefendDamage();
 	int Damage = Attack - Defense;
 	if(Damage < 0){
 		Damage = 0;
 	}
 
-	int DamageDone = Target->Damage(Master, Damage, 1); // DAMAGE_PHYSICAL ?
+	int DamageDone = Target->Damage(Master, Damage, DAMAGE_PHYSICAL);
 	if(DamageDone > 0){
-		this->LearningPoints = 30;
+		this->ActivateLearning();
 	}
 
 	int Poison = GetRacePoison(Master->Race);
@@ -547,7 +728,7 @@ void TCombat::WandAttack(TCreature *Target){
 
 	int Damage = AttackStrength + random(-AttackVariation, AttackVariation);
 	if(Target->Damage(Master, Damage, DamageType) > 0){
-		this->LearningPoints = 30;
+		this->ActivateLearning();
 	}
 
 	::Missile(Master->CrObject, Target->CrObject, AnimType);
@@ -617,29 +798,18 @@ void TCombat::DistanceAttack(TCreature *Target){
 	int DropY = Target->posy;
 	int DropZ = Target->posz;
 	if(Hit){
-		int Attack;
-		uint16 SkillNr;
-		this->GetAttackValue(&Attack, &SkillNr);
-		if(this->AttackMode == ATTACK_MODE_OFFENSIVE){
-			Attack += (Attack * 2) / 10;
-		}else if(this->AttackMode == ATTACK_MODE_DEFENSIVE){
-			Attack -= (Attack * 4) / 10;
-		}
-
-		Attack = Master->Skills[SkillNr]->ProbeValue(Attack, this->LearningPoints > 0);
-		if(this->LearningPoints > 0){
-			this->LearningPoints -= 1;
-		}
+		int Attack = this->GetAttackDamage();
 
 		// TODO(fusion): This doesn't make any sense. The disassembly looks
 		// correct but I feel we're missing something here. Or maybe defense
-		// doesn't work with ranged attacks but worn them out?
+		// doesn't work with ranged attacks but worn them out? But then only
+		// if the attacker is wearing a shield? This is a probably a bug.
 		if(this->Shield != NONE){
 			Target->Combat.GetDefendDamage();
 		}
 
 		if(Target->Damage(Master, Attack, DamageType) > 0){
-			this->LearningPoints = 30;
+			this->ActivateLearning();
 		}
 	}else{
 		if(DistanceX > 1 || DistanceY > 1){
@@ -679,3 +849,105 @@ void TCombat::DistanceAttack(TCreature *Target){
 		GraphicalEffect(DropX, DropY, DropZ, EFFECT_POFF);
 	}
 }
+
+void TCombat::AddDamageToCombatList(uint32 Attacker, uint32 Damage){
+	this->CombatDamage += Damage;
+	for(int i = 0; i < NARRAY(this->CombatList); i += 1){
+		if(this->CombatList[i].ID == Attacker){
+			this->CombatList[i].Damage += Damage;
+			this->CombatList[i].TimeStamp = RoundNr;
+			return;
+		}
+	}
+
+	int NextEntryIndex = this->ActCombatEntry;
+	this->CombatList[NextEntryIndex].ID = Attacker;
+	this->CombatList[NextEntryIndex].Damage = Damage;
+	this->CombatList[NextEntryIndex].TimeStamp = RoundNr;
+
+	NextEntryIndex += 1;
+	if(NextEntryIndex >= NARRAY(this->CombatList)){
+		NextEntryIndex = 0;
+	}
+	this->ActCombatEntry = NextEntryIndex;
+}
+
+uint32 TCombat::GetDamageByCreature(uint32 CreatureID){
+	uint32 Damage = 0;
+	for(int i = 0; i < NARRAY(this->CombatList); i += 1){
+		if(this->CombatList[i].ID == CreatureID){
+			Damage = this->CombatList[i].Damage;
+			break;
+		}
+	}
+	return Damage;
+}
+
+uint32 TCombat::GetMostDangerousAttacker(void){
+	uint32 Attacker = 0;
+	uint32 MaxDamage = 0;
+	for(int i = 0; i < NARRAY(this->CombatList); i += 1){
+		if((RoundNr - this->CombatList[i].TimeStamp) < 60
+				&& this->CombatList[i].Damage > MaxDamage){
+			Attacker = this->CombatList[i].ID;
+			MaxDamage = this->CombatList[i].Damage;
+		}
+	}
+	return Attacker;
+}
+
+void TCombat::DistributeExperiencePoints(uint32 Exp){
+	TCreature *Master = this->Master;
+	print(3, "%s ist gestorben. Verteile %u EXP...\n", Master->Name, Exp);
+	if(this->CombatDamage == 0){
+		return;
+	}
+
+	for(int i = 0; i < NARRAY(this->CombatList); i += 1){
+		TCreature *Attacker = GetCreature(this->CombatList[i].ID);
+		if(Attacker == NULL || Attacker->IsDead){
+			continue;
+		}
+
+		int Amount = (int)((Exp * this->CombatList[i].Damage) / this->CombatDamage);
+		if(Master->Type == PLAYER && Attacker->Type == PLAYER){
+			if(((TPlayer*)Master)->GetPartyLeader(true) == ((TPlayer*)Attacker)->GetPartyLeader(true)){
+				continue;
+			}
+
+			int MasterLevel = Master->Skills[SKILL_LEVEL]->Get();
+			int AttackerLevel = Attacker->Skills[SKILL_LEVEL]->Get();
+			int MaxLevel = (MasterLevel * 11) / 10;
+			if(AttackerLevel < MaxLevel){
+				Amount = ((MaxLevel - AttackerLevel) * Amount) / MasterLevel;
+			}else{
+				Amount = 0;
+			}			
+		}
+
+		if(Amount > 0){
+			if(Attacker->Type == PLAYER){
+				// NOTE(fusion): Enable soul regeneration.
+				int AttackerLevel = Attacker->Skills[SKILL_LEVEL]->Get();
+				if(Amount >= AttackerLevel){
+					int Interval = 120;
+					if(((TPlayer*)Attacker)->GetActivePromotion()){
+						Interval = 15;
+					}
+
+					int Count = Attacker->Skills[SKILL_SOUL]->TimerValue() % Interval;
+					if(Count == 0){
+						Count = Interval;
+					}
+
+					Attacker->SetTimer(SKILL_SOUL, (240 / Interval), Count, Interval, -1);
+				}
+			}
+
+			Attacker->Skills[0]->Increase(Amount);
+			TextualEffect(Attacker->CrObject, 0xD7, "%d", Amount);
+		}
+	}
+}
+
+

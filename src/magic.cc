@@ -1,5 +1,62 @@
 #include "magic.hh"
+#include "config.hh"
 #include "creature.hh"
+
+#include "stubs.hh"
+
+static const char SpellSyllable[51][6] = {
+	"",
+	"al",
+	"ad",
+	"ex",
+	"ut",
+	"om",
+	"para",
+	"ana",
+	"evo",
+	"ori",
+	"mort",
+	"lux",
+	"liber",
+	"vita",
+	"flam",
+	"pox",
+	"hur",
+	"moe",
+	"ani",
+	"ina",
+	"eta",
+	"amo",
+	"hora",
+	"gran",
+	"cogni",
+	"res",
+	"mas",
+	"vis",
+	"som",
+	"aqua",
+	"frigo",
+	"tera",
+	"ura",
+	"sio",
+	"grav",
+	"ito",
+	"pan",
+	"vid",
+	"isa",
+	"iva",
+	"con",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+};
 
 // TImpact
 // =============================================================================
@@ -17,7 +74,7 @@ bool TImpact::isAggressive(void){
 
 // TDamageImpact
 // =============================================================================
-void TDamageImpact::TDamageImpact(TCreature *Actor, int DamageType, int Power, bool AllowDefense){
+TDamageImpact::TDamageImpact(TCreature *Actor, int DamageType, int Power, bool AllowDefense){
 	if(Actor == NULL){
 		error("TDamageImpact::TDamageImpact: Actor ist NULL.\n");
 	}
@@ -28,6 +85,26 @@ void TDamageImpact::TDamageImpact(TCreature *Actor, int DamageType, int Power, b
 	this->AllowDefense = AllowDefense;
 }
 
+void TDamageImpact::handleCreature(TCreature *Victim){
+	if(Victim == NULL){
+		error("TDamageImpact::handleCreature: Opfer existiert nicht.\n");
+		return;
+	}
+
+	TCreature *Actor = this->Actor;
+	if(Actor != NULL && Actor != Victim){
+		if(WorldType != NON_PVP || !Actor->IsPeaceful() || !Victim->IsPeaceful()){
+			int DamageType = this->DamageType;
+			int Damage = this->Power;
+			if(DamageType == DAMAGE_PHYSICAL && this->AllowDefense){
+				// TODO(fusion): Shouldn't we clamp `Damage` to zero?
+				Damage -= Victim->Combat.GetDefendDamage();
+			}
+			Victim->Damage(Actor, Damage, DamageType);
+		}
+	}
+}
+
 // Magic Related Functions
 // =============================================================================
 void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
@@ -36,8 +113,9 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 		throw ERROR;
 	}
 
-	if(Creature->Type != PLAYER || ManaPoints < 0)
+	if(Creature->Type != PLAYER || ManaPoints < 0){
 		return;
+	}
 
 	TSkill *Mana = Creature->Skills[SKILL_MANA];
 	if(Mana == NULL){
@@ -52,11 +130,13 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 	}
 
 	if(!CheckRight(Creature->ID, UNLIMITED_MANA)){
-		if(Mana->Get() < ManaPoints)
+		if(Mana->Get() < ManaPoints){
 			throw NOTENOUGHMANA;
+		}
 
-		if(Soul->Get() < SoulPoints)
+		if(Soul->Get() < SoulPoints){
 			throw NOTENOUGHSOULPOINTS;
+		}
 
 		Mana->Change(-ManaPoints);
 		Soul->Change(-SoulPoints);

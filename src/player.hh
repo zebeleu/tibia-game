@@ -72,6 +72,9 @@ struct TPlayer: TCreature {
 	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
 	bool GetActivePromotion(void);
+
+	uint32 GetPartyLeader(bool CheckFormer);
+
 	bool IsAttackJustified(uint32 Victim);
 	void RecordAttack(uint32 Victim);
 

@@ -65,6 +65,7 @@ extern void SendMessage(TConnection *Connection, int Mode, const char *Text, ...
 extern void SendPlayerData(TConnection *Connection);
 extern void SendPlayerSkills(TConnection *Connection);
 extern void SendPlayerState(TConnection *Connection, uint8 State);
+extern void TextualEffect(Object Obj, int Color, const char *Text, ...) ATTR_PRINTF(3, 4);
 extern bool ThrowPossible(int FromX, int FromY, int FromZ,
 						int ToX, int ToY, int ToZ, int Power);
 extern void WriteKillStatistics(void);

@@ -25,7 +25,6 @@ enum AnimationType: int {
 
 // NOTE(fusion): Not in debug symbols.
 enum AttackMode: uint8 {
-	ATTACK_MODE_NONE		= 0,
 	ATTACK_MODE_OFFENSIVE	= 1,
 	ATTACK_MODE_BALANCED	= 2,
 	ATTACK_MODE_DEFENSIVE	= 3,
@@ -360,6 +359,11 @@ enum RIGHT: int {
 	NO_STATISTICS						= 81,
 };
 
+enum SecureMode: uint8 {
+	SECURE_MODE_DISABLED = 0,
+	SECURE_MODE_ENABLED = 1,
+};
+
 // NOTE(fusion): Not in debug symbols.
 enum Skill: int {
 	SKILL_LEVEL				= 0,
@@ -554,6 +558,16 @@ enum TWorldType: int {
 	NORMAL			= 0,
 	NON_PVP			= 1,
 	PVP_ENFORCED	= 2,
+};
+
+enum WeaponType: int {
+	WEAPON_NONE		= 0,
+	WEAPON_SWORD	= 1,
+	WEAPON_CLUB		= 2,
+	WEAPON_AXE		= 3,
+	WEAPON_SHIELD	= 4,
+	WEAPON_AMMO		= 5,
+	WEAPON_THROW	= 6,
 };
 
 #endif //TIBIA_ENUMS_HH_
