@@ -839,10 +839,17 @@ void TCombat::DistanceAttack(TCreature *Target){
 				ANIMATION_NONE, 2, &Impact, EFFECT_BURST_ARROW);
 	}
 
-	if(random(0, 99) < Fragility){
-		Delete(this->Ammo, 1);
-	}else{
-		Move(0, this->Ammo, DropCon, 1, false, NONE);
+	try{
+		if(random(0, 99) < Fragility){
+			Delete(this->Ammo, 1);
+		}else{
+			Move(0, this->Ammo, DropCon, 1, false, NONE);
+		}
+	}catch(RESULT err){
+		if(err != DESTROYED){
+			error("TCombat::RangeAttack: Konnte Ammo nicht verschieben/löschen"
+					" (Exception %d, [%d,%d,%d].\n", err, DropX, DropY, DropZ);
+		}
 	}
 
 	if(!Hit){
@@ -918,11 +925,12 @@ void TCombat::DistributeExperiencePoints(uint32 Exp){
 			int MasterLevel = Master->Skills[SKILL_LEVEL]->Get();
 			int AttackerLevel = Attacker->Skills[SKILL_LEVEL]->Get();
 			int MaxLevel = (MasterLevel * 11) / 10;
-			if(AttackerLevel < MaxLevel){
-				Amount = ((MaxLevel - AttackerLevel) * Amount) / MasterLevel;
-			}else{
-				Amount = 0;
-			}			
+			if(AttackerLevel <= MaxLevel){
+				continue;
+			}
+
+			Amount = ((MaxLevel - AttackerLevel) * Amount) / MasterLevel;
+			print(3, "%s erhält %d EXP.\n", Attacker->Name, Amount);
 		}
 
 		if(Amount > 0){
@@ -944,8 +952,8 @@ void TCombat::DistributeExperiencePoints(uint32 Exp){
 				}
 			}
 
-			Attacker->Skills[0]->Increase(Amount);
-			TextualEffect(Attacker->CrObject, 0xD7, "%d", Amount);
+			Attacker->Skills[SKILL_LEVEL]->Increase(Amount);
+			TextualEffect(Attacker->CrObject, COLOR_WHITE, "%d", Amount);
 		}
 	}
 }

@@ -45,10 +45,16 @@ enum ChaseMode: uint8 {
 	CHASE_MODE_RANGE	= 2,
 };
 
-enum CreatureType: int {
-	PLAYER      = 0,
-	MONSTER     = 1,
-	NPC         = 2,
+// NOTE(fusion): Not in debug symbols.
+enum Color: int {
+	COLOR_BLACK			= 0,
+	COLOR_BLUE			= 5,
+	COLOR_LIGHTGREEN	= 30,
+	COLOR_LIGHTBLUE		= 35,
+	COLOR_LIGHTGRAY		= 129,
+	COLOR_RED			= 180,
+	COLOR_ORANGE		= 198,
+	COLOR_WHITE			= 215,
 };
 
 enum CONNECTIONSTATE: int {
@@ -60,6 +66,12 @@ enum CONNECTIONSTATE: int {
 	CONNECTION_DEAD			= 5,
 	CONNECTION_LOGOUT		= 6,
 	CONNECTION_DISCONNECTED	= 7,
+};
+
+enum CreatureType: int {
+	PLAYER      = 0,
+	MONSTER     = 1,
+	NPC         = 2,
 };
 
 // NOTE(fusion): Not in debug symbols.
@@ -77,9 +89,20 @@ enum DamageType: int {
 	DAMAGE_MANADRAIN			= 0x0200,
 };
 
+// TODO(fusion): Review these names.
 enum EffectType: int {
+	EFFECT_NONE					= 0,
+	EFFECT_BLOOD_HIT			= 1,
+	EFFECT_MANA_HIT				= 2,
 	EFFECT_POFF					= 3,
-	EFFECT_BURST_ARROW			= 7, // Review
+	EFFECT_BLOCK_HIT			= 4,
+	EFFECT_BURST_ARROW			= 7,
+	EFFECT_POISON				= 9,
+	EFFECT_BONE_HIT				= 10,
+	EFFECT_ENERGY_HIT			= 12,
+	EFFECT_MAGIC_RED			= 14,
+	EFFECT_FIRE_HIT				= 16,
+	EFFECT_POISON_HIT			= 17,
 };
 
 enum FLAG: int {

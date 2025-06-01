@@ -77,6 +77,7 @@ struct TPlayer: TCreature {
 
 	bool IsAttackJustified(uint32 Victim);
 	void RecordAttack(uint32 Victim);
+	void RecordMurder(uint32 Victim);
 
 	void CheckState(void);
 

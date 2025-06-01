@@ -85,6 +85,9 @@ struct TMonster: TNonplayer {
 };
 #endif
 
+//#define MAX_RACES 512
 extern TRaceData RaceData[512];
+extern int KilledCreatures[512];
+extern int KilledPlayers[512];
 
 #endif //TIBIA_MONSTER_HH_

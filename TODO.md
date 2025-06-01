@@ -1,4 +1,7 @@
 ## TODO NEXT
+- TCreature::Damage
+- MAP.CC FileNumber: uint32 -> uintptr
+- MAGIC.CC
 - TCreature
 - TPlayer
 - TNonPlayer
