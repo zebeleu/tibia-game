@@ -1,8 +1,9 @@
 ## TODO NEXT
 - MAGIC.CC
-- TCreature
-- TPlayer
-- TNonPlayer
+- merge creature headers into a single one CR.HH
+	- this should help preventing dependency cycles and centralize creature data
+		structures and globals in a single place
+- CRMAIN.CC
 
 ## Stack allocations
 Any functions that use `alloca` or some other form of dynamic stack allocations will cause decompiled functions to be an absolute mess. It usually shows up in the decompiled code as both a size computation like `-(VAR + CONST & 0xfffffff0)`, followed by some assignment. It doesn't make total sense without looking at the disassembly. I've encountered ~30 such computations and expect the functions containing them to be amongt the most challenging/annoying to be properly decompiled.

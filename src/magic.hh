@@ -2,8 +2,7 @@
 #define TIBIA_MAGIC_HH_ 1
 
 #include "common.hh"
-
-struct TCreature;
+#include "creature.hh"
 
 struct TImpact{
 	// VIRTUAL FUNCTIONS
@@ -83,6 +82,25 @@ struct TDamageImpact: TImpact{
 	int DamageType;
 	int Power;
 	bool AllowDefense;
+};
+
+struct TCircle {
+	int x[32];
+	int y[32];
+	int Count;
+};
+
+struct TSpellList {
+	uint8 Syllable[10];
+	uint8 RuneGr;
+	uint8 RuneNr;
+	const char *Comment;
+	uint16 Level;
+	uint16 RuneLevel;
+	uint16 Flags;
+	int Mana;
+	int SoulPoints;
+	int Amount;
 };
 
 void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay);

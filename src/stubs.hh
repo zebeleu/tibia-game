@@ -37,6 +37,7 @@ extern TPlayer *GetPlayer(uint32 CreatureID);
 extern int GetRacePoison(int Race);
 extern void GraphicalEffect(int x, int y, int z, int Type);
 extern void GraphicalEffect(Object Obj, int Type);
+extern void InitLog(const char *ProtocolName);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutAllPlayers(void);
 extern void Missile(Object Start, Object Dest, int Type);

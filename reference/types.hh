@@ -1,23 +1,4 @@
 
-struct TCircle {
-    int x[32];
-    int y[32];
-    int Count;
-};
-
-struct TSpellList {
-    uint8 Syllable[10];
-    uint8 RuneGr;
-    uint8 RuneNr;
-    char *Comment;
-    uint16 Level;
-    uint16 RuneLevel;
-    uint16 Flags;
-    int Mana;
-    int SoulPoints;
-    int Amount;
-};
-
 struct TXTEASymmetricKey {
     int (**_vptr.TXTEASymmetricKey)(...); // VTABLE?
     uint8 m_SymmetricKey[16];
