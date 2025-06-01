@@ -1,6 +1,7 @@
 #include "magic.hh"
 #include "config.hh"
 #include "creature.hh"
+#include "monster.hh"
 
 #include "stubs.hh"
 
@@ -110,6 +111,304 @@ void TDamageImpact::handleCreature(TCreature *Victim){
 	}
 }
 
+// TFieldImpact
+// =============================================================================
+TFieldImpact::TFieldImpact(TCreature *Actor, int FieldType){
+	if(Actor == NULL){
+		error("TFieldImpact::TFieldImpact: Actor ist NULL.\n");
+	}
+
+	this->Actor = Actor;
+	this->FieldType = FieldType;
+}
+
+void TFieldImpact::handleField(int x, int y, int z){
+	TCreature *Actor = this->Actor;
+	if(Actor != NULL){
+		bool Peaceful = false;
+		if(WorldType == NON_PVP){
+			Peaceful = Actor->IsPeaceful();
+		}
+
+		CreateField(x, y, z, this->FieldType, Actor->ID, Peaceful);
+	}
+}
+
+// THealingImpact
+// =============================================================================
+THealingImpact::THealingImpact(TCreature *Actor, int Power){
+	if(Actor == NULL){
+		error("THealingImpact::THealingImpact: Actor ist NULL.\n");
+	}
+
+	if(Power < 0){
+		error("THealingImpact::THealingImpact: Power ist negativ (Actor: %s).\n",
+				(Actor != NULL ? Actor->Name : "(unknown)"));
+	}
+
+	this->Actor = Actor;
+	this->Power = Power;
+}
+
+void THealingImpact::handleCreature(TCreature *Victim){
+	if(Victim == NULL){
+		error("THealingImpact::handleCreature: Opfer existiert nicht.\n");
+		return;
+	}
+
+	if(this->Actor != NULL && this->Power >= 0){
+		int HitPoints = Victim->Skills[SKILL_HITPOINTS]->Get();
+		if(HitPoints > 0){
+			Victim->Skills[SKILL_HITPOINTS]->Change(this->Power);
+
+			// NOTE(fusion): Remove paralyze.
+			if(Victim->Skills[SKILL_GO_STRENGTH]->MDAct < 0){
+				Victim->SetTimer(SKILL_GO_STRENGTH, 0, 0, 0, -1);
+			}
+		}
+	}
+}
+
+bool THealingImpact::isAggressive(void){
+	return false;
+}
+
+// TSpeedImpact
+// =============================================================================
+TSpeedImpact::TSpeedImpact(TCreature *Actor, int Percent, int Duration){
+	if(Actor == NULL){
+		error("TSpeedImpact::TSpeedImpact: Actor ist NULL.\n");
+	}
+
+	this->Actor = Actor;
+	this->Percent = Percent;
+	this->Duration = Duration;
+}
+
+void TSpeedImpact::handleCreature(TCreature *Victim){
+	if(Victim == NULL){
+		error("TSpeedImpact::handleCreature: Opfer existiert nicht.\n");
+		return;
+	}
+
+	TCreature *Actor = this->Actor;
+	if(Actor == NULL){
+		return;
+	}
+
+	int Percent = this->Percent;
+	if(Percent < 0){
+		// TODO(fusion): This looks like some inlined function to check if an
+		// aggression is valid.
+		if(Actor == Victim){
+			return;
+		}
+
+		if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
+			return;
+		}
+
+		if(GetRaceNoParalyze(Victim->Race)){
+			return;
+		}
+
+		if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
+			return;
+		}
+	}
+
+
+	TSkill *GoStrength = Victim->Skills[SKILL_GO_STRENGTH];
+	if(Percent < -100){
+		// TODO(fusion): Not sure what's this about.
+		GoStrength->SetMDAct(-GoStrength->Act - 20);
+	}else{
+		GoStrength->SetMDAct((GoStrength->Act * Percent) / 100);
+	}
+
+	Victim->SetTimer(SKILL_GO_STRENGTH, this->Duration, 1, 1, -1);
+}
+
+// TDrunkenImpact
+// =============================================================================
+TDrunkenImpact::TDrunkenImpact(TCreature *Actor, int Power, int Duration){
+	if(Actor == NULL){
+		error("TDrunkenImpact::TDrunkenImpact: Actor ist NULL.\n");
+	}
+
+	if(Power > 6){
+		error("TDrunkenImpact::TDrunkenImpact: Power ist zu groß (%d).\n", Power);
+		Power = 6;
+	}
+
+	this->Actor = Actor;
+	this->Power = Power;
+	this->Duration = Duration;
+}
+
+void TDrunkenImpact::handleCreature(TCreature *Victim){
+	if(Victim == NULL){
+		error("TDrunkenImpact::handleCreature: Opfer existiert nicht.\n");
+		return;
+	}
+
+	TCreature *Actor = this->Actor;
+	if(Actor != NULL){
+		// TODO(fusion): This looks like some inlined function to check if an
+		// aggression is valid.
+		if(Actor == Victim){
+			return;
+		}
+
+		if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
+			return;
+		}
+
+		if(GetRaceNoParalyze(Victim->Race)){
+			return;
+		}
+
+		if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
+			return;
+		}
+
+		int Power = this->Power;
+		int Duration = this->Duration;
+		TSkill *Drunk = Victim->Skills[SKILL_DRUNK];
+		if(Drunk->TimerValue() <= Power){
+			Victim->SetTimer(SKILL_DRUNK, Power, Duration, Duration, -1);
+		}
+	}
+}
+
+// TStrengthImpact
+// =============================================================================
+TStrengthImpact::TStrengthImpact(TCreature *Actor, int Skills, int Percent, int Duration){
+	if(Actor == NULL){
+		error("TStrengthImpact::TStrengthImpact: Actor ist NULL.\n");
+	}
+
+	this->Actor = Actor;
+	this->Skills = Skills;
+	this->Percent = Percent;
+	this->Duration = Duration;
+}
+
+void TStrengthImpact::handleCreature(TCreature *Victim){
+	if(Victim  == NULL){
+		error("TStrengthImpact::handleCreature: Opfer existiert nicht.\n");
+		return;
+	}
+
+	TCreature *Actor = this->Actor;
+	if(Actor == NULL){
+		return;
+	}
+
+	int Percent = this->Percent;
+	if(Percent < 0){
+		// TODO(fusion): This looks like some inlined function to check if an
+		// aggression is valid.
+		if(Actor == Victim){
+			return;
+		}
+
+		if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
+			return;
+		}
+
+		if(GetRaceNoParalyze(Victim->Race)){
+			return;
+		}
+
+		if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
+			return;
+		}
+	}
+
+	int Skills = this->Skills;
+	int Duration = this->Duration;
+
+	for(int SkillNr = 6; SkillNr <= 11; SkillNr += 1){
+		if((Skills & 1) == 0
+				&& (SkillNr == SKILL_SWORD
+					|| SkillNr == SKILL_CLUB
+					|| SkillNr == SKILL_AXE
+					|| SkillNr == SKILL_SWORD)){
+			continue;
+		}
+
+		if((Skills & 2) == 0 && SkillNr == SKILL_DISTANCE){
+			continue;
+		}
+
+		if((Skills & 4) == 0 && SkillNr == SKILL_SHIELDING){
+			continue;
+		}
+
+		TSkill *Skill = Victim->Skills[SkillNr];
+		if(Percent < -100){
+			Skill->SetMDAct(-Skill->Act - 20);
+		}else{
+			Skill->SetMDAct((Skill->Act * Percent) / 100);
+		}
+		Victim->SetTimer(SkillNr, Duration, 1, 1, -1);
+	}
+}
+
+// TOutfitImpact
+// =============================================================================
+TOutfitImpact::TOutfitImpact(TCreature *Actor, TOutfit Outfit, int Duration){
+	if(Actor == NULL){
+		error("TOutfitImpact::TOutfitImpact: Actor ist NULL.\n");
+	}
+
+	this->Actor = Actor;
+	this->Outfit = Outfit;
+	this->Duration = Duration;
+}
+
+void TOutfitImpact::handleCreature(TCreature *Victim){
+	if(Victim == NULL){
+		error("TOutfitImpact::handleCreature: Opfer existiert nicht.\n");
+		return;
+	}
+
+	Victim->Outfit = this->Outfit;
+	Victim->SetTimer(SKILL_ILLUSION, 1, this->Duration, this->Duration, -1);
+}
+
+// TSummonImpact
+// =============================================================================
+TSummonImpact::TSummonImpact(TCreature *Actor, int Race, int Maximum){
+	if(Actor == NULL){
+		error("TSummonImpact::TSummonImpact: Actor ist NULL.\n");
+	}
+
+	// TODO(fusion): I think there might be a `IsRaceValid` function that was inlined.
+	if(Race < 0 || Race >= NARRAY(RaceData)){
+		error("TSummonImpact::TSummonImpact: Ungültige Rassennummer %d.\n", Race);
+	}
+
+	this->Actor = Actor;
+	this->Race = Race;
+	this->Maximum = Maximum;
+}
+
+void TSummonImpact::handleField(int x, int y, int z){
+	TCreature *Actor = this->Actor;
+	int Race = this->Race;
+	int Maximum = this->Maximum;
+	if(Actor != NULL
+			&& Race >= 0 && Race < NARRAY(RaceData)
+			&& Actor->SummonedCreatures < Maximum){
+		int x, y, z;
+		if(SearchSummonField(&x, &y, &z, 2)){
+			CreateMonster(Race, x, y, z, 0, Actor->ID, true);
+		}
+	}
+}
+
 // Magic Related Functions
 // =============================================================================
 void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
@@ -157,6 +456,8 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 	}
 }
 
+// Magic Init Functions
+// =============================================================================
 static void InitCircles(void){
 	char FileName[4096];
 	snprintf(FileName, sizeof(FileName), "%s/circles.dat", DATAPATH);
@@ -229,7 +530,7 @@ static TSpellList *CreateSpell(int SpellNr, ...){
 	return Spell;
 }
 
-void InitSpells(void){
+static void InitSpells(void){
 	TSpellList *Spell;
 
 	Spell = CreateSpell(1, "ex", "ura", "");
