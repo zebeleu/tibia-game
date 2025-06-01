@@ -52,7 +52,7 @@ bool Object::exists(void){
 
 	uint32 EntryIndex = this->ObjectID & HashTableMask;
 	if(HashTableType[EntryIndex] == STATUS_SWAPPED){
-		UnswapSector((uint32)((uintptr)HashTableData[EntryIndex]));
+		UnswapSector((uintptr)HashTableData[EntryIndex]);
 	}
 
 	return HashTableType[EntryIndex] == STATUS_LOADED
@@ -545,7 +545,7 @@ static void ResizeHashTable(void){
 	for(uint32 i = 1; i < NewSize; i += 1){
 		if(HashTableType[i] != STATUS_FREE){
 			if(HashTableType[i] == STATUS_SWAPPED){
-				UnswapSector((uint32)((uintptr)HashTableData[i]));
+				UnswapSector((uintptr)HashTableData[i]);
 			}
 
 			if(HashTableType[i] == STATUS_LOADED){
@@ -603,7 +603,7 @@ static void PutFreeObjectSlot(TObject *Entry){
 	FirstFreeObject = Entry;
 }
 
-void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber){
+void SwapObject(TWriteBinaryFile *File, Object Obj, uintptr FileNumber){
 	ASSERT(Obj != NONE);
 
 	// NOTE(fusion): Does it make sense to swap an object that isn't loaded? We
@@ -611,7 +611,7 @@ void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber){
 	// sector if it was swapped out. We should probably have an assertion here.
 	uint32 EntryIndex = Obj.ObjectID & HashTableMask;
 	if(HashTableType[EntryIndex] != STATUS_LOADED){
-		error("SwapObject: Object doesn't exists or is not currently loaded.\n");
+		error("SwapObject: Object doesn't exist or is not currently loaded.\n");
 		return;
 	}
 
@@ -633,11 +633,11 @@ void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber){
 
 	PutFreeObjectSlot(Entry);
 	HashTableType[EntryIndex] = STATUS_SWAPPED;
-	HashTableData[EntryIndex] = (TObject*)((uintptr)FileNumber);
+	HashTableData[EntryIndex] = (TObject*)FileNumber;
 }
 
 void SwapSector(void){
-	static uint32 FileNumber = 0;
+	static uintptr FileNumber = 0;
 
 	TSector *Oldest = NULL;
 	int OldestSectorX = 0;
@@ -672,7 +672,7 @@ void SwapSector(void){
 		if(FileNumber > 99999999){
 			FileNumber = 1;
 		}
-		snprintf(FileName, sizeof(FileName), "%s/%08u.swp", SAVEPATH, FileNumber);
+		snprintf(FileName, sizeof(FileName), "%s/%08u.swp", SAVEPATH, (uint32)FileNumber);
 	}while(FileExists(FileName));
 
 	TWriteBinaryFile File;
@@ -698,9 +698,9 @@ void SwapSector(void){
 	}
 }
 
-void UnswapSector(uint32 FileNumber){
+void UnswapSector(uintptr FileNumber){
 	char FileName[4096];
-	snprintf(FileName, sizeof(FileName), "%s/%08u.swp", SAVEPATH, FileNumber);
+	snprintf(FileName, sizeof(FileName), "%s/%08u.swp", SAVEPATH, (uint32)FileNumber);
 
 	TReadBinaryFile File;
 	try{
@@ -1787,10 +1787,11 @@ TObject *AccessObject(Object Obj){
 
 	uint32 EntryIndex = Obj.ObjectID & HashTableMask;
 	if(HashTableType[EntryIndex] == STATUS_SWAPPED){
-		UnswapSector((uint32)((uintptr)HashTableData[EntryIndex]));
+		UnswapSector((uintptr)HashTableData[EntryIndex]);
 	}
 
-	if(HashTableType[EntryIndex] == STATUS_LOADED && HashTableData[EntryIndex]->ObjectID == Obj.ObjectID){
+	if(HashTableType[EntryIndex] == STATUS_LOADED
+	&& HashTableData[EntryIndex]->ObjectID == Obj.ObjectID){
 		return HashTableData[EntryIndex];
 	}else{
 		return HashTableData[0];
