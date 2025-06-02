@@ -147,11 +147,7 @@ TFieldImpact::TFieldImpact(TCreature *Actor, int FieldType){
 void TFieldImpact::handleField(int x, int y, int z){
 	TCreature *Actor = this->Actor;
 	if(Actor != NULL){
-		bool Peaceful = false;
-		if(WorldType == NON_PVP){
-			Peaceful = Actor->IsPeaceful();
-		}
-
+		bool Peaceful = (WorldType == NON_PVP && Actor->IsPeaceful());
 		CreateField(x, y, z, this->FieldType, Actor->ID, Peaceful);
 	}
 }
@@ -451,7 +447,7 @@ static void ExecuteCircleSpell(int DestX, int DestY, int DestZ,
 	}
 
 	bool Aggressive = Impact->isAggressive();
-	for(int R = 0; R < Radius; R += 1){
+	for(int R = 0; R <= Radius; R += 1){
 		int CirclePoints = Circle[R].Count;
 		for(int Point = 0; Point < CirclePoints; Point += 1){
 			int FieldX = DestX + Circle[R].x[Point];
@@ -634,20 +630,20 @@ int GetDirection(int dx, int dy){
 	return Result;
 }
 
-void CheckSpellbook(TCreature *Creature, int SpellNr){
-	if(Creature == NULL){
+void CheckSpellbook(TCreature *Actor, int SpellNr){
+	if(Actor == NULL){
 		error("CheckSpellbook: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)
-			&& !((TPlayer*)Creature)->SpellKnown(SpellNr)){
+	if(Actor->Type == PLAYER && !CheckRight(Actor->ID, ALL_SPELLS)
+			&& !((TPlayer*)Actor)->SpellKnown(SpellNr)){
 		throw SPELLUNKNOWN;
 	}
 }
 
-void CheckAccount(TCreature *Creature, int SpellNr){
-	if(Creature == NULL){
+void CheckAccount(TCreature *Actor, int SpellNr){
+	if(Actor == NULL){
 		error("CheckAccount: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
@@ -658,20 +654,20 @@ void CheckAccount(TCreature *Creature, int SpellNr){
 		throw ERROR;
 	}
 
-	if(Creature->Type == PLAYER && (SpellList[SpellNr].Flags & 2) != 0
-			&& !CheckRight(Creature->ID, PREMIUM_ACCOUNT)){
+	if(Actor->Type == PLAYER && (SpellList[SpellNr].Flags & 2) != 0
+			&& !CheckRight(Actor->ID, PREMIUM_ACCOUNT)){
 		throw NOPREMIUMACCOUNT;
 	}
 }
 
-void CheckLevel(TCreature *Creature, int SpellNr){
-	if(Creature == NULL){
+void CheckLevel(TCreature *Actor, int SpellNr){
+	if(Actor == NULL){
 		error("CheckLevel: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)){
-		TSkill *Level = Creature->Skills[SKILL_LEVEL];
+	if(Actor->Type == PLAYER && !CheckRight(Actor->ID, ALL_SPELLS)){
+		TSkill *Level = Actor->Skills[SKILL_LEVEL];
 		if(Level == NULL){
 			error("CheckLevel: Kein Skill LEVEL.\n");
 			throw ERROR;
@@ -683,14 +679,14 @@ void CheckLevel(TCreature *Creature, int SpellNr){
 	}
 }
 
-void CheckRuneLevel(TCreature *Creature, int SpellNr){
-	if(Creature == NULL){
+void CheckRuneLevel(TCreature *Actor, int SpellNr){
+	if(Actor == NULL){
 		error("CheckRuneLevel: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)){
-		TSkill *MagicLevel = Creature->Skills[SKILL_MAGIC_LEVEL];
+	if(Actor->Type == PLAYER && !CheckRight(Actor->ID, ALL_SPELLS)){
+		TSkill *MagicLevel = Actor->Skills[SKILL_MAGIC_LEVEL];
 		if(MagicLevel == NULL){
 			error("CheckLevel: Kein Skill MAGLEVEL.\n");
 			throw ERROR;
@@ -702,20 +698,20 @@ void CheckRuneLevel(TCreature *Creature, int SpellNr){
 	}
 }
 
-void CheckMagicItem(TCreature *Creature, ObjectType Type){
-	if(Creature == NULL){
+void CheckMagicItem(TCreature *Actor, ObjectType Type){
+	if(Actor == NULL){
 		error("CheckMagicObject: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)
-			&& CountInventoryObjects(Creature->ID, Type, 0) == 0){
+	if(Actor->Type == PLAYER && !CheckRight(Actor->ID, ALL_SPELLS)
+			&& CountInventoryObjects(Actor->ID, Type, 0) == 0){
 		throw MAGICITEM;
 	}
 }
 
-void CheckRing(TCreature *Creature, int SpellNr){
-	if(Creature == NULL){
+void CheckRing(TCreature *Actor, int SpellNr){
+	if(Actor == NULL){
 		error("CheckRing: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
@@ -723,27 +719,27 @@ void CheckRing(TCreature *Creature, int SpellNr){
 	// TODO(fusion): Not sure why this was present in the original function or
 	// what is the purpose of this function.
 #if 0
-	if(Creature->Type == PLAYER){
-		CheckRight(Creature->ID, ALL_SPELLS);
+	if(Actor->Type == PLAYER){
+		CheckRight(Actor->ID, ALL_SPELLS);
 	}
 #endif
 }
 
-void CheckAffectedPlayers(TCreature *Creature, int x, int y, int z){
-	if(Creature == NULL){
+void CheckAffectedPlayers(TCreature *Actor, int x, int y, int z){
+	if(Actor == NULL){
 		error("CheckAffectedPlayers: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
 	if(WorldType == NORMAL
-			&& Creature->Type == PLAYER
-			&& Creature->Combat.SecureMode == SECURE_MODE_ENABLED){
+			&& Actor->Type == PLAYER
+			&& Actor->Combat.SecureMode == SECURE_MODE_ENABLED){
 		Object Obj = GetFirstObject(x, y, z);
 		while(Obj != NONE){
 			if(Obj.getObjectType().isCreatureContainer()){
 				uint32 TargetID = Obj.getCreatureID();
-				if(IsCreaturePlayer(TargetID) && Creature->ID != TargetID
-						&& !((TPlayer*)Creature)->IsAttackJustified(TargetID)){
+				if(IsCreaturePlayer(TargetID) && Actor->ID != TargetID
+						&& !((TPlayer*)Actor)->IsAttackJustified(TargetID)){
 					throw SECUREMODE;
 				}
 			}
@@ -752,29 +748,29 @@ void CheckAffectedPlayers(TCreature *Creature, int x, int y, int z){
 	}
 }
 
-void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
-	if(Creature == NULL){
+void CheckMana(TCreature *Actor, int ManaPoints, int SoulPoints, int Delay){
+	if(Actor == NULL){
 		error("CheckMana: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature->Type != PLAYER || ManaPoints < 0){
+	if(Actor->Type != PLAYER || ManaPoints < 0){
 		return;
 	}
 
-	TSkill *Mana = Creature->Skills[SKILL_MANA];
+	TSkill *Mana = Actor->Skills[SKILL_MANA];
 	if(Mana == NULL){
 		error("CheckMana: Kein Skill MANA!\n");
 		throw ERROR;
 	}
 
-	TSkill *Soul = Creature->Skills[SKILL_SOUL];
+	TSkill *Soul = Actor->Skills[SKILL_SOUL];
 	if(Soul == NULL){
 		error("CheckMana: Kein Skill SOULPOINTS!\n");
 		throw ERROR;
 	}
 
-	if(!CheckRight(Creature->ID, UNLIMITED_MANA)){
+	if(!CheckRight(Actor->ID, UNLIMITED_MANA)){
 		if(Mana->Get() < ManaPoints){
 			throw NOTENOUGHMANA;
 		}
@@ -788,23 +784,23 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 	}
 
 	if(ManaPoints > 0){
-		Creature->Skills[SKILL_MAGIC_LEVEL]->Increase(ManaPoints);
+		Actor->Skills[SKILL_MAGIC_LEVEL]->Increase(ManaPoints);
 	}
 
 	uint32 EarliestSpellTime = ServerMilliseconds + Delay;
-	if(Creature->EarliestSpellTime < EarliestSpellTime){
-		Creature->EarliestSpellTime = EarliestSpellTime;
+	if(Actor->EarliestSpellTime < EarliestSpellTime){
+		Actor->EarliestSpellTime = EarliestSpellTime;
 	}
 }
 
-int ComputeDamage(TCreature *Creature, int SpellNr, int Damage, int Variation){
+int ComputeDamage(TCreature *Actor, int SpellNr, int Damage, int Variation){
 	if(Variation != 0){
 		Damage += random(-Variation, Variation);
 	}
 
-	if(Creature != NULL && Creature->Type == PLAYER){
-		int Level = Creature->Skills[SKILL_LEVEL]->Get();
-		int MagicLevel = Creature->Skills[SKILL_MAGIC_LEVEL]->Get();
+	if(Actor != NULL && Actor->Type == PLAYER){
+		int Level = Actor->Skills[SKILL_LEVEL]->Get();
+		int MagicLevel = Actor->Skills[SKILL_MAGIC_LEVEL]->Get();
 		int Multiplier = Level * 2 + MagicLevel * 3;
 		if(SpellNr != 0){
 			if((SpellList[SpellNr].Flags & 4) != 0 && Multiplier > 100){
@@ -830,22 +826,22 @@ bool IsAggressiveSpell(int SpellNr){
 	return (SpellList[SpellNr].Flags & 1) != 0;
 }
 
-void MassCombat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoints,
+void MassCombat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 		int Damage, int Effect, int Radius, int DamageType, int Animation){
 	if(!Target.exists()){
 		error("MassCombat: Übergebenes Ziel existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature != NULL){
+	if(Actor != NULL){
 		error("MassCombat: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
 
 	int TargetX, TargetY, TargetZ;
 	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
-	CheckAffectedPlayers(Creature, TargetX, TargetY, TargetZ);
-	if(!ThrowPossible(Creature->posx, Creature->posy, Creature->posz,
+	CheckAffectedPlayers(Actor, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz,
 				TargetX, TargetY, TargetZ, 0)){
 		throw CANNOTTHROW;
 	}
@@ -854,16 +850,16 @@ void MassCombat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoin
 	if(WorldType == PVP_ENFORCED){
 		Delay = 1000;
 	}
-	CheckMana(Creature, ManaPoints, SoulPoints, Delay);
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
-	TDamageImpact Impact(Creature, DamageType, Damage, false);
-	CircleShapeSpell(Creature, TargetX, TargetY, TargetZ,
+	TDamageImpact Impact(Actor, DamageType, Damage, false);
+	CircleShapeSpell(Actor, TargetX, TargetY, TargetZ,
 			INT_MAX, Animation, Radius, &Impact, Effect);
 }
 
-void AngleCombat(TCreature *Creature, int ManaPoints, int SoulPoints,
+void AngleCombat(TCreature *Actor, int ManaPoints, int SoulPoints,
 		int Damage, int Effect, int Range, int Angle, int DamageType){
-	if(Creature == NULL){
+	if(Actor == NULL){
 		error("AngleCombat: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
@@ -872,20 +868,20 @@ void AngleCombat(TCreature *Creature, int ManaPoints, int SoulPoints,
 	if(WorldType == PVP_ENFORCED || (Range == 1 && Angle == 0)){
 		Delay = 1000;
 	}
-	CheckMana(Creature, ManaPoints, SoulPoints, Delay);
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
-	TDamageImpact Impact(Creature, DamageType, Damage, false);
-	AngleShapeSpell(Creature, Angle, Range, &Impact, Effect);
+	TDamageImpact Impact(Actor, DamageType, Damage, false);
+	AngleShapeSpell(Actor, Angle, Range, &Impact, Effect);
 }
 
-void Combat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoints,
-		int Damage,int Effect, int Animation, int DamageType){
+void Combat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
+		int Damage, int Effect, int Animation, int DamageType){
 	if(!Target.exists()){
 		error("Combat: Übergebenes Ziel existiert nicht.\n");
 		throw ERROR;
 	}
 
-	if(Creature == NULL){
+	if(Actor == NULL){
 		error("Combat: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
@@ -900,8 +896,8 @@ void Combat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoints,
 		throw NOCREATURE;
 	}
 
-	CheckAffectedPlayers(Creature, TargetX, TargetY, TargetZ);
-	if(!ThrowPossible(Creature->posx, Creature->posy, Creature->posz,
+	CheckAffectedPlayers(Actor, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz,
 			TargetX, TargetY, TargetZ, 0)){
 		throw CANNOTTHROW;
 	}
@@ -910,16 +906,365 @@ void Combat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoints,
 	if(WorldType == PVP_ENFORCED){
 		Delay = 1000;
 	}
-	CheckMana(Creature, ManaPoints, SoulPoints, Delay);
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
-	TDamageImpact Impact(Creature, DamageType, Damage, false);
-	CircleShapeSpell(Creature, TargetX, TargetY, TargetZ,
+	TDamageImpact Impact(Actor, DamageType, Damage, false);
+	CircleShapeSpell(Actor, TargetX, TargetY, TargetZ,
 			INT_MAX, Animation, 0, &Impact, Effect);
 }
 
 // Spell Functions
 // =============================================================================
-// TODO
+void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
+	if(Actor == NULL){
+		error("KillAllMonsters: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type == PLAYER && !CheckRight(Actor->ID, CREATE_MONSTERS)){
+		return;
+	}
+
+	// TODO(fusion): This is similar to `ExecuteCircleSpell` which makes me think
+	// there is perhaps a common denominator?
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	int CenterX = Actor->posx;
+	int CenterY = Actor->posy;
+	int CenterZ = Actor->posz;
+	for(int R = 0; R <= Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = CenterX + Circle[R].x[Point];
+			int FieldY = CenterY + Circle[R].y[Point];
+			int FieldZ = CenterZ;
+
+			if(IsProtectionZone(FieldX, FieldY, FieldZ)){
+				continue;
+			}
+
+			if(!ThrowPossible(CenterX, CenterY, CenterZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			while(Obj != NONE){
+				if(Obj.getObjectType().isCreatureContainer()){
+					TCreature *Victim = GetCreature(Obj);
+					if(Victim == NULL){
+						error("KillAllMonsters: Ungültige Kreatur.\n");
+					}else if(Actor != Victim && Victim->Type == MONSTER){
+						print(3, "Töte %s...\n", Victim->Name);
+						Victim->Skills[SKILL_HITPOINTS]->Set(0);
+						Victim->Death();
+					}
+				}
+				Obj = Obj.getNextObject();
+			}
+
+			if(Effect != EFFECT_NONE){
+				GraphicalEffect(FieldX, FieldY, FieldZ, Effect);
+			}
+		}
+	}
+}
+
+void CreateField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int FieldType){
+	if(Actor == NULL){
+		error("CreateField: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("CreateField: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	if(!FieldPossible(TargetX, TargetY, TargetZ, FieldType)){
+		throw NOROOM;
+	}
+
+	CheckAffectedPlayers(Actor, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz,
+			TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	int Delay = 2000;
+	if(WorldType == PVP_ENFORCED){
+		Delay = 1000;
+	}
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
+
+	int Animation = ANIMATION_ENERGY;
+	if(FieldType == 1){
+		Animation = ANIMATION_FIRE;
+	}
+	Missile(Actor->CrObject, Target, Animation);
+
+	bool Peaceful = (WorldType == NON_PVP && Actor->IsPeaceful());
+	CreateField(TargetX, TargetY, TargetZ, FieldType, Actor->ID, Peaceful);
+
+	// TODO(fusion): Probably damaging fields?
+	if(FieldType == 1 || FieldType == 2 || FieldType == 3){
+		Actor->BlockLogout(60, true);
+	}
+}
+
+void CreateField(TCreature *Actor, int ManaPoints, int SoulPoints, int FieldType){
+	if(Actor == NULL){
+		error("CreateField: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	int TargetX = Actor->posx;
+	int TargetY = Actor->posy;
+	int TargetZ = Actor->posz;
+	switch(Actor->Direction){
+		case DIRECTION_NORTH:	TargetY -= 1; break;
+		case DIRECTION_EAST:	TargetX += 1; break;
+		case DIRECTION_SOUTH:	TargetY += 1; break;
+		case DIRECTION_WEST:	TargetX -= 1; break;
+	}
+
+	if(Actor->Type == PLAYER && !CheckRight(Actor->ID, ATTACK_EVERYWHERE)
+			&& IsProtectionZone(TargetX, TargetY, TargetZ)){
+		throw PROTECTIONZONE;
+	}
+
+	Object Target = GetMapContainer(TargetX, TargetY, TargetZ);
+	CreateField(Actor, Target, ManaPoints, SoulPoints, FieldType);
+}
+
+void MassCreateField(TCreature *Actor, Object Target,
+		int ManaPoints, int SoulPoints, int FieldType, int Radius){
+	if(Actor == NULL){
+		error("MassCreateField: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("MassCreateField: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	CheckAffectedPlayers(Actor, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz,
+			TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	int Delay = 2000;
+	if(WorldType == PVP_ENFORCED){
+		Delay = 1000;
+	}
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
+
+	if(Actor->posx != TargetX || Actor->posy != TargetY || Actor->posz != TargetZ){
+		int Animation = ANIMATION_ENERGY;
+		if(FieldType == 1){
+			Animation = ANIMATION_FIRE;
+		}
+		Missile(Actor->CrObject, Target, Animation);
+	}
+
+	// TODO(fusion): Same as `KillAllMonsters`. Perhaps the `ExecuteCircleSpell`
+	// function is getting inlined and TFieldImpact devirtualized?
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	bool Peaceful = (WorldType == NON_PVP && Actor->IsPeaceful());
+	for(int R = 0; R <= Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = TargetX + Circle[R].x[Point];
+			int FieldY = TargetY + Circle[R].y[Point];
+			int FieldZ = TargetZ;
+
+			if(IsProtectionZone(FieldX, FieldY, FieldZ)){
+				continue;
+			}
+
+			if(!ThrowPossible(TargetX, TargetY, TargetZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			CreateField(FieldX, FieldY, FieldZ, FieldType, Actor->ID, Peaceful);
+		}
+	}
+
+	if(FieldType == 1 || FieldType == 2 || FieldType == 3){
+		Actor->BlockLogout(60, true);
+	}
+}
+
+void CreateFieldWall(TCreature *Actor, Object Target,
+		int ManaPoints, int SoulPoints, int FieldType, int Width){
+	if(Actor == NULL){
+		error("CreateFieldWall: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("CreateFieldWall: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int ActorX = Actor->posx;
+	int ActorY = Actor->posy;
+	int ActorZ = Actor->posz;
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	CheckAffectedPlayers(Actor, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(ActorX, ActorY, ActorZ, TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	int Delay = 2000;
+	if(WorldType == PVP_ENFORCED){
+		Delay = 1000;
+	}
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
+
+	if(ActorX != TargetX || ActorY != TargetY || ActorZ != TargetZ){
+		int Animation = ANIMATION_ENERGY;
+		if(FieldType == 1){
+			Animation = ANIMATION_FIRE;
+		}
+		Missile(Actor->CrObject, Target, Animation);
+	}
+
+	int StepX, StepY;
+	int Direction = GetDirection(TargetX - ActorX, TargetY - ActorY);
+	switch(Direction){
+		case DIRECTION_NORTH:
+		case DIRECTION_SOUTH:{
+			StepX = 1;
+			StepY = 0;
+			break;
+		}
+
+		case DIRECTION_EAST:
+		case DIRECTION_WEST:{
+			StepX = 0;
+			StepY = 1;
+			break;
+		}
+
+		case DIRECTION_SOUTHWEST:
+		case DIRECTION_NORTHEAST:{
+			StepX = 1;
+			StepY = 1;
+			break;
+		}
+
+		case DIRECTION_SOUTHEAST:
+		case DIRECTION_NORTHWEST:{
+			StepX = -1;
+			StepY = 1;
+			break;
+		}
+
+		case DIRECTION_INVALID:{
+			throw NOROOM;
+		}
+
+		default:{
+			error("CreateFieldWall: Ungültige Richtung %d.\n", Direction);
+			throw ERROR;
+		}
+	}
+
+	bool Peaceful = (WorldType == NON_PVP && Actor->IsPeaceful());
+	CreateField(TargetX, TargetY, TargetZ, FieldType, Actor->ID, Peaceful);
+	for(int i = 1; i <= Width; i += 1){
+		// NOTE(fusion): Forward.
+		{
+			int FieldX = TargetX + i * StepX;
+			int FieldY = TargetY + i * StepY;
+			int FieldZ = TargetZ;
+			if(ThrowPossible(ActorX, ActorY, ActorZ, FieldX, FieldY, FieldZ, 0)
+					&& !IsProtectionZone(FieldX, FieldY, FieldZ)){
+				CreateField(FieldX, FieldY, FieldZ, FieldType, Actor->ID, Peaceful);
+			}
+		}
+
+		// NOTE(fusion): Forward diagonal.
+		if(StepX != 0 && StepY != 0){
+			int FieldX = TargetX + i * StepX;
+			int FieldY = TargetY + (i - 1) * StepY;
+			int FieldZ = TargetZ;
+			if(ThrowPossible(ActorX, ActorY, ActorZ, FieldX, FieldY, FieldZ, 0)
+					&& !IsProtectionZone(FieldX, FieldY, FieldZ)){
+				CreateField(FieldX, FieldY, FieldZ, FieldType, Actor->ID, Peaceful);
+			}
+		}
+
+		// NOTE(fusion): Backward.
+		{
+			int FieldX = TargetX - i * StepX;
+			int FieldY = TargetY - i * StepY;
+			int FieldZ = TargetZ;
+			if(ThrowPossible(ActorX, ActorY, ActorZ, FieldX, FieldY, FieldZ, 0)
+					&& !IsProtectionZone(FieldX, FieldY, FieldZ)){
+				CreateField(FieldX, FieldY, FieldZ, FieldType, Actor->ID, Peaceful);
+			}
+		}
+
+		// NOTE(fusion): Backward Diagonal.
+		if(StepX != 0 && StepY != 0){
+			int FieldX = TargetX - i * StepX;
+			int FieldY = TargetY - (i - 1) * StepY;
+			int FieldZ = TargetZ;
+			if(ThrowPossible(ActorX, ActorY, ActorZ, FieldX, FieldY, FieldZ, 0)
+					&& !IsProtectionZone(FieldX, FieldY, FieldZ)){
+				CreateField(FieldX, FieldY, FieldZ, FieldType, Actor->ID, Peaceful);
+			}
+		}
+	}
+
+	if(FieldType == 1 || FieldType == 2 || FieldType == 3){
+		Actor->BlockLogout(60, true);
+	}
+}
+
+void DeleteField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints){
+	if(Actor == NULL){
+		error("DeleteField: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("DeleteField: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	if(!FieldPossible(TargetX, TargetY, TargetZ, 0)){
+		throw NOROOM;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	Object Obj = GetFirstObject(TargetX, TargetY, TargetZ);
+	while(Obj != NONE){
+		Object Next = Obj.getNextObject();
+		if(Obj.getObjectType().getFlag(MAGICFIELD)){
+			Delete(Obj, -1);
+		}
+		Obj = Next;
+	}
+
+	GraphicalEffect(TargetX, TargetY, TargetZ, EFFECT_POFF);
+}
 
 // Magic Init Functions
 // =============================================================================

@@ -32,6 +32,7 @@ extern void CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master
 extern void CreatePlayerList(bool Online);
 extern void CreatePool(Object Con, ObjectType Type, uint32 Value);
 extern void Delete(Object Obj, int Count);
+extern bool FieldPossible(int x, int y, int z, int FieldType);
 extern Object GetBodyObject(uint32 CreatureID, int Position);
 extern TCreature *GetCreature(uint32 CreatureID);
 extern TCreature *GetCreature(Object Obj);
