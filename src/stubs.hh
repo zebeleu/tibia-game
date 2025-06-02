@@ -26,6 +26,7 @@ extern void CircleShapeSpell(TCreature *Actor, int DestX, int DestY, int DestZ,
 				int Range, int Animation, int Radius, TImpact *Impact, int Effect);
 extern void CleanHouseField(int x, int y, int z);
 extern int ComputeDamage(TCreature *Creature, int SpellNr, int Damage, int Variation);
+extern int CountInventoryObjects(uint32 CreatureID, ObjectType Type, uint32 Value);
 extern void CreateField(int x, int y, int z, int FieldType, uint32 Owner, bool Peaceful);
 extern void CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master, bool ShowEffect);
 extern void CreatePlayerList(bool Online);
@@ -33,6 +34,7 @@ extern void CreatePool(Object Con, ObjectType Type, uint32 Value);
 extern void Delete(Object Obj, int Count);
 extern Object GetBodyObject(uint32 CreatureID, int Position);
 extern TCreature *GetCreature(uint32 CreatureID);
+extern TCreature *GetCreature(Object Obj);
 extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
 extern TPlayer *GetPlayer(uint32 CreatureID);

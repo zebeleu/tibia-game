@@ -144,4 +144,9 @@ struct TCreature: TSkillBase {
 	TConnection *Connection;
 };
 
+// TODO(fusion): These probably belong elsewhere but we should come back to
+// this when we're wrapping up creature files.
+bool IsCreaturePlayer(uint32 CreatureID);
+void AddKillStatistics(int AttackerRace, int DefenderRace);
+
 #endif //TIBIA_CREATURE_HH_

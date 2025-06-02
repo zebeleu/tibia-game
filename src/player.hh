@@ -75,6 +75,8 @@ struct TPlayer: TCreature {
 
 	uint32 GetPartyLeader(bool CheckFormer);
 
+	bool SpellKnown(int SpellNr);
+
 	bool IsAttackJustified(uint32 Victim);
 	void RecordAttack(uint32 Victim);
 	void RecordMurder(uint32 Victim);

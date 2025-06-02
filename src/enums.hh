@@ -89,6 +89,19 @@ enum DamageType: int {
 	DAMAGE_MANADRAIN			= 0x0200,
 };
 
+// NOTE(fusion): Not in debug symbols.
+enum Direction: int {
+	DIRECTION_INVALID			= -1,
+	DIRECTION_NORTH				= 0,
+	DIRECTION_EAST				= 1,
+	DIRECTION_SOUTH				= 2,
+	DIRECTION_WEST				= 3,
+	DIRECTION_SOUTHWEST			= 4,
+	DIRECTION_SOUTHEAST			= 5,
+	DIRECTION_NORTHWEST			= 6,
+	DIRECTION_NORTHEAST			= 7,
+};
+
 // TODO(fusion): Review these names.
 enum EffectType: int {
 	EFFECT_NONE					= 0,

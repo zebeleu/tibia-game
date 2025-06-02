@@ -58,13 +58,13 @@ void TCreature::Attack(void){
 
 // TODO(fusion): This probably belongs elsewhere but we should come back to
 // this when we're wrapping up creature files.
-static bool IsCreaturePlayer(uint32 CreatureID){
+bool IsCreaturePlayer(uint32 CreatureID){
 	return CreatureID < 0x40000000;
 }
 
 // TODO(fusion): This probably belongs elsewhere but we should come back to
 // this when we're wrapping up creature files.
-static void AddKillStatistics(int AttackerRace, int DefenderRace){
+void AddKillStatistics(int AttackerRace, int DefenderRace){
 	// NOTE(fusion): I think the race name can be "human" only for players,
 	// which means we're probably tracking how many creatures are killed by
 	// players with `KilledCreatures`, and how many players are killed by

@@ -64,6 +64,28 @@ static const char SpellSyllable[51][6] = {
 	"",
 };
 
+static bool IsAggressionValid(TCreature *Actor, TCreature *Victim){
+	ASSERT(Actor != NULL && Victim != NULL);
+
+	if(Actor == Victim){
+		return false;
+	}
+
+	if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
+		return false;
+	}
+
+	if(GetRaceNoParalyze(Victim->Race)){
+		return false;
+	}
+
+	if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
+		return false;
+	}
+
+	return true;
+}
+
 // TImpact
 // =============================================================================
 void TImpact::handleField(int a, int b, int c){
@@ -197,26 +219,9 @@ void TSpeedImpact::handleCreature(TCreature *Victim){
 	}
 
 	int Percent = this->Percent;
-	if(Percent < 0){
-		// TODO(fusion): This looks like some inlined function to check if an
-		// aggression is valid.
-		if(Actor == Victim){
-			return;
-		}
-
-		if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
-			return;
-		}
-
-		if(GetRaceNoParalyze(Victim->Race)){
-			return;
-		}
-
-		if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
-			return;
-		}
+	if(Percent < 0 && !IsAggressionValid(Actor, Victim)){
+		return;
 	}
-
 
 	TSkill *GoStrength = Victim->Skills[SKILL_GO_STRENGTH];
 	if(Percent < -100){
@@ -253,31 +258,15 @@ void TDrunkenImpact::handleCreature(TCreature *Victim){
 	}
 
 	TCreature *Actor = this->Actor;
-	if(Actor != NULL){
-		// TODO(fusion): This looks like some inlined function to check if an
-		// aggression is valid.
-		if(Actor == Victim){
-			return;
-		}
+	if(Actor == NULL || !IsAggressionValid(Actor, Victim)){
+		return;
+	}
 
-		if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
-			return;
-		}
-
-		if(GetRaceNoParalyze(Victim->Race)){
-			return;
-		}
-
-		if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
-			return;
-		}
-
-		int Power = this->Power;
-		int Duration = this->Duration;
-		TSkill *Drunk = Victim->Skills[SKILL_DRUNK];
-		if(Drunk->TimerValue() <= Power){
-			Victim->SetTimer(SKILL_DRUNK, Power, Duration, Duration, -1);
-		}
+	int Power = this->Power;
+	int Duration = this->Duration;
+	TSkill *Drunk = Victim->Skills[SKILL_DRUNK];
+	if(Drunk->TimerValue() <= Power){
+		Victim->SetTimer(SKILL_DRUNK, Power, Duration, Duration, -1);
 	}
 }
 
@@ -306,29 +295,12 @@ void TStrengthImpact::handleCreature(TCreature *Victim){
 	}
 
 	int Percent = this->Percent;
-	if(Percent < 0){
-		// TODO(fusion): This looks like some inlined function to check if an
-		// aggression is valid.
-		if(Actor == Victim){
-			return;
-		}
-
-		if(WorldType == NON_PVP && Actor->IsPeaceful() && Victim->IsPeaceful()){
-			return;
-		}
-
-		if(GetRaceNoParalyze(Victim->Race)){
-			return;
-		}
-
-		if(Victim->Type == PLAYER && CheckRight(Victim->ID, INVULNERABLE)){
-			return;
-		}
+	if(Percent < 0 && !IsAggressionValid(Actor, Victim)){
+		return;
 	}
 
 	int Skills = this->Skills;
 	int Duration = this->Duration;
-
 	for(int SkillNr = 6; SkillNr <= 11; SkillNr += 1){
 		if((Skills & 1) == 0
 				&& (SkillNr == SKILL_SWORD
@@ -409,8 +381,377 @@ void TSummonImpact::handleField(int x, int y, int z){
 	}
 }
 
-// Magic Related Functions
+// Spell Primitives
 // =============================================================================
+void ActorShapeSpell(TCreature *Actor, TImpact *Impact, int Effect){
+	if(Actor == NULL){
+		error("ActorShapeSpell: Sprecher existiert nicht.\n");
+		return;
+	}
+
+	if(Impact->isAggressive() && IsProtectionZone(Actor->posx, Actor->posy, Actor->posz)){
+		return;
+	}
+
+	Impact->handleCreature(Actor);
+	if(Effect != EFFECT_NONE){
+		GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, Effect);
+	}
+}
+
+void VictimShapeSpell(TCreature *Actor, TCreature *Victim,
+		int Range, int Animation, TImpact *Impact, int Effect){
+	if(Actor == NULL){
+		error("VictimShapeSpell: Sprecher existiert nicht.\n");
+		return;
+	}
+
+	if(Victim == NULL || Actor->posz != Victim->posz){
+		return;
+	}
+
+	int Distance = std::max<int>(
+			std::abs(Actor->posx - Victim->posx),
+			std::abs(Actor->posy - Victim->posy));
+	if(Distance > Range){
+		return;
+	}
+
+	// TODO(fusion): We don't check whether `Actor` is inside a protection zone.
+	// It might be checked elsewhere.
+	if(Impact->isAggressive() && IsProtectionZone(Victim->posx, Victim->posy, Victim->posz)){
+		return;
+	}
+
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz,
+			Victim->posx, Victim->posy, Victim->posz, 0)){
+		return;
+	}
+
+	if(Animation != ANIMATION_NONE && Distance > 0){
+		Missile(Actor->CrObject, Victim->CrObject, Animation);
+	}
+
+	Impact->handleCreature(Victim);
+
+	if(Effect != EFFECT_NONE){
+		GraphicalEffect(Victim->posx, Victim->posy, Victim->posz, Effect);
+	}
+}
+
+// TODO(fusion): This function wasn't in the debug symbols but it was repeated
+// in both `OriginShapeSpell` and `CircleShapeSpell` so I'm almost sure it was
+// inlined there.
+static void ExecuteCircleSpell(int DestX, int DestY, int DestZ,
+						int Radius, TImpact *Impact, int Effect){
+	// TODO(fusion): This clamping wasn't present in the original function but
+	// it is probably a good idea.
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	bool Aggressive = Impact->isAggressive();
+	for(int R = 0; R < Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = DestX + Circle[R].x[Point];
+			int FieldY = DestY + Circle[R].y[Point];
+			int FieldZ = DestZ;
+
+			if(Aggressive && IsProtectionZone(FieldX, FieldY, FieldZ)){
+				continue;
+			}
+
+			if(!ThrowPossible(DestX, DestY, DestZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			Impact->handleField(FieldX, FieldY, FieldZ);
+
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			while(Obj != NONE){
+				if(Obj.getObjectType().isCreatureContainer()){
+					TCreature *Victim = GetCreature(Obj);
+					if(Victim != NULL){
+						Impact->handleCreature(Victim);
+					}
+				}
+				Obj = Obj.getNextObject();
+			}
+
+			if(Effect != EFFECT_NONE){
+				GraphicalEffect(FieldX, FieldY, FieldZ, Effect);
+			}
+		}
+	}
+}
+
+void OriginShapeSpell(TCreature *Actor, int Radius, TImpact *Impact, int Effect){
+	if(Actor == NULL){
+		error("OriginShapeSpell: Übergebene Kreatur existiert nicht.\n");
+		return;
+	}
+
+	ExecuteCircleSpell(Actor->posx, Actor->posy, Actor->posz, Radius, Impact, Effect);
+}
+
+void CircleShapeSpell(TCreature *Actor, int DestX, int DestY, int DestZ,
+		int Range, int Animation, int Radius, TImpact *Impact, int Effect){
+	if(Actor == NULL){
+		error("CircleShapeSpell: Sprecher existiert nicht.\n");
+		return;
+	}
+
+	int Distance = std::max<int>(
+			std::abs(Actor->posx - DestX),
+			std::abs(Actor->posy - DestY));
+	if(Distance > Range || Actor->posz != DestZ){
+		return;
+	}
+
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz, DestX, DestY, DestZ, 0)){
+		return;
+	}
+
+	if(Animation != ANIMATION_NONE && Distance > 0){
+		Missile(Actor->CrObject, GetMapContainer(DestX, DestY, DestZ), Animation);
+	}
+
+	ExecuteCircleSpell(DestX, DestY, DestZ, Radius, Impact, Effect);
+}
+
+void DestinationShapeSpell(TCreature *Actor, TCreature *Victim,
+		int Range, int Animation, int Radius, TImpact *Impact, int Effect){
+	if(Actor == NULL){
+		error("DestinationShapeSpell: Sprecher existiert nicht.\n");
+		return;
+	}
+
+	if(Victim != NULL){
+		CircleShapeSpell(Actor, Victim->posx, Victim->posy, Victim->posz,
+				Range, Animation, Radius, Impact, Effect);
+	}
+}
+
+void AngleShapeSpell(TCreature *Actor, int Angle, int Range, TImpact *Impact, int Effect){
+	if(Actor == NULL){
+		error("AngleShapeSpell: Übergebene Kreatur existiert nicht.\n");
+		return;
+	}
+
+	int ActorX = Actor->posx;
+	int ActorY = Actor->posy;
+	int ActorZ = Actor->posz;
+	int Direction = Actor->Direction;
+	bool Aggressive = Impact->isAggressive();
+	for(int Forward = 1; Forward <= Range; Forward += 1){
+		int Left = -(Forward * Angle) / 90;
+		int Right = +(Forward * Angle) / 90;
+		for(int Across = Left; Across <= Right; Across += 1){
+			int FieldX = ActorX;
+			int FieldY = ActorY;
+			int FieldZ = ActorZ;
+			if(Direction == DIRECTION_NORTH){
+				FieldX += Across;
+				FieldY -= Forward;
+			}else if(Direction == DIRECTION_EAST){
+				FieldX += Forward;
+				FieldY += Across;
+			}else if(Direction == DIRECTION_SOUTH){
+				FieldX -= Across;
+				FieldY += Forward;
+			}else if(Direction == DIRECTION_WEST){
+				FieldX -= Forward;
+				FieldY -= Across;
+			}else{
+				error("AngleShapeSpell: Ungültige Blickrichtung %d.\n", Direction);
+				return;
+			}
+
+			if(Aggressive && IsProtectionZone(FieldX, FieldY, FieldZ)){
+				continue;
+			}
+
+			if(!ThrowPossible(ActorX, ActorZ, ActorZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			Impact->handleField(FieldX, FieldY, FieldZ);
+
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			while(Obj != NONE){
+				if(Obj.getObjectType().isCreatureContainer()){
+					TCreature *Victim = GetCreature(Obj);
+					if(Victim != NULL){
+						Impact->handleCreature(Victim);
+					}
+				}
+				Obj = Obj.getNextObject();
+			}
+
+			if(Effect != EFFECT_NONE){
+				GraphicalEffect(FieldX, FieldY, FieldZ, Effect);
+			}
+		}
+	}
+}
+
+// Spell Casting
+// =============================================================================
+int GetDirection(int dx, int dy){
+	// TODO(fusion): This function originally returned directions different from
+	// the ones used by creatures. I've converted it to use the same values which
+	// are also defined in `enums.hh` for simplicity.
+	int Result;
+	if(dx == 0){
+		if(dy < 0){
+			Result = DIRECTION_NORTH;
+		}else if(dy > 0){
+			Result = DIRECTION_SOUTH;
+		}else{
+			Result = DIRECTION_INVALID;
+		}
+	}else{
+		// NOTE(fusion): This function uses the approximate tangent value, avoiding
+		// floating point calculations, for whatever reason. The tangent is unique
+		// and odd in the interval (-PI/2, +PI/2). We also need to recall that the
+		// Y-axis is inverted in Tibia, so we need to negate `dy`.
+		constexpr int Tangent_67_5 = 618;	// => 618 / 256 ~ 2.41 ~ tan(67.5 deg)
+		constexpr int Tangent_22_5 = 106;	// => 106 / 256 ~ 0.41 ~ tan(22.5 deg)
+		int Tangent = (-dy * 256) / dx;		// => (dy * 256) / dx ~ (dy / dx) * 256
+		if(Tangent >= Tangent_67_5){
+			Result = DIRECTION_NORTH;
+		}else if(Tangent >= Tangent_22_5){
+			Result = (dx < 0) ? DIRECTION_NORTHWEST : DIRECTION_NORTHEAST;
+		}else if(Tangent >= -Tangent_22_5){
+			Result = (dx < 0) ? DIRECTION_WEST : DIRECTION_EAST;
+		}else if(Tangent >= -Tangent_67_5){
+			Result = (dx < 0) ? DIRECTION_SOUTHWEST : DIRECTION_SOUTHEAST;
+		}else{
+			Result = DIRECTION_SOUTH;
+		}
+	}
+	return Result;
+}
+
+void CheckSpellbook(TCreature *Creature, int SpellNr){
+	if(Creature == NULL){
+		error("CheckSpellbook: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)
+			&& !((TPlayer*)Creature)->SpellKnown(SpellNr)){
+		throw SPELLUNKNOWN;
+	}
+}
+
+void CheckAccount(TCreature *Creature, int SpellNr){
+	if(Creature == NULL){
+		error("CheckAccount: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): Why is this the only function that checks the spell number?
+	if(SpellNr < 1 || SpellNr >= NARRAY(SpellList)){
+		error("CheckAccount: Ungültige Spruchnummer %d.\n", SpellNr);
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER && (SpellList[SpellNr].Flags & 2) != 0
+			&& !CheckRight(Creature->ID, PREMIUM_ACCOUNT)){
+		throw NOPREMIUMACCOUNT;
+	}
+}
+
+void CheckLevel(TCreature *Creature, int SpellNr){
+	if(Creature == NULL){
+		error("CheckLevel: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)){
+		TSkill *Level = Creature->Skills[SKILL_LEVEL];
+		if(Level == NULL){
+			error("CheckLevel: Kein Skill LEVEL.\n");
+			throw ERROR;
+		}
+
+		if(Level->Get() < SpellList[SpellNr].Level){
+			throw LOWLEVEL;
+		}
+	}
+}
+
+void CheckRuneLevel(TCreature *Creature, int SpellNr){
+	if(Creature == NULL){
+		error("CheckRuneLevel: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)){
+		TSkill *MagicLevel = Creature->Skills[SKILL_MAGIC_LEVEL];
+		if(MagicLevel == NULL){
+			error("CheckLevel: Kein Skill MAGLEVEL.\n");
+			throw ERROR;
+		}
+
+		if(MagicLevel->Get() < SpellList[SpellNr].RuneLevel){
+			throw LOWMAGICLEVEL;
+		}
+	}
+}
+
+void CheckMagicItem(TCreature *Creature, ObjectType Type){
+	if(Creature == NULL){
+		error("CheckMagicObject: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER && !CheckRight(Creature->ID, ALL_SPELLS)
+			&& CountInventoryObjects(Creature->ID, Type, 0) == 0){
+		throw MAGICITEM;
+	}
+}
+
+void CheckRing(TCreature *Creature, int SpellNr){
+	if(Creature == NULL){
+		error("CheckRing: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): Not sure why this was present in the original function or
+	// what is the purpose of this function.
+#if 0
+	if(Creature->Type == PLAYER){
+		CheckRight(Creature->ID, ALL_SPELLS);
+	}
+#endif
+}
+
+void CheckAffectedPlayers(TCreature *Creature, int x, int y, int z){
+	if(Creature == NULL){
+		error("CheckAffectedPlayers: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(WorldType == NORMAL
+			&& Creature->Type == PLAYER
+			&& Creature->Combat.SecureMode == SECURE_MODE_ENABLED){
+		Object Obj = GetFirstObject(x, y, z);
+		while(Obj != NONE){
+			if(Obj.getObjectType().isCreatureContainer()){
+				uint32 TargetID = Obj.getCreatureID();
+				if(IsCreaturePlayer(TargetID) && Creature->ID != TargetID
+						&& !((TPlayer*)Creature)->IsAttackJustified(TargetID)){
+					throw SECUREMODE;
+				}
+			}
+			Obj = Obj.getNextObject();
+		}
+	}
+}
+
 void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 	if(Creature == NULL){
 		error("CheckMana: Übergebene Kreatur existiert nicht.\n");
@@ -455,6 +796,130 @@ void CheckMana(TCreature *Creature, int ManaPoints, int SoulPoints, int Delay){
 		Creature->EarliestSpellTime = EarliestSpellTime;
 	}
 }
+
+int ComputeDamage(TCreature *Creature, int SpellNr, int Damage, int Variation){
+	if(Variation != 0){
+		Damage += random(-Variation, Variation);
+	}
+
+	if(Creature != NULL && Creature->Type == PLAYER){
+		int Level = Creature->Skills[SKILL_LEVEL]->Get();
+		int MagicLevel = Creature->Skills[SKILL_MAGIC_LEVEL]->Get();
+		int Multiplier = Level * 2 + MagicLevel * 3;
+		if(SpellNr != 0){
+			if((SpellList[SpellNr].Flags & 4) != 0 && Multiplier > 100){
+				Multiplier = 100;
+			}
+
+			if((SpellList[SpellNr].Flags & 8) != 0 && Multiplier < 100){
+				Multiplier = 100;
+			}
+		}
+		Damage = (Damage * Multiplier) / 100;
+	}
+
+	return Damage;
+}
+
+bool IsAggressiveSpell(int SpellNr){
+	if(SpellNr < 1 || SpellNr >= NARRAY(SpellList)){
+		error("IsAggressiveSpell: Ungültige Spruchnummer %d.\n", SpellNr);
+		return false;
+	}
+
+	return (SpellList[SpellNr].Flags & 1) != 0;
+}
+
+void MassCombat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoints,
+		int Damage, int Effect, int Radius, int DamageType, int Animation){
+	if(!Target.exists()){
+		error("MassCombat: Übergebenes Ziel existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature != NULL){
+		error("MassCombat: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	CheckAffectedPlayers(Creature, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(Creature->posx, Creature->posy, Creature->posz,
+				TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	int Delay = 2000;
+	if(WorldType == PVP_ENFORCED){
+		Delay = 1000;
+	}
+	CheckMana(Creature, ManaPoints, SoulPoints, Delay);
+
+	TDamageImpact Impact(Creature, DamageType, Damage, false);
+	CircleShapeSpell(Creature, TargetX, TargetY, TargetZ,
+			INT_MAX, Animation, Radius, &Impact, Effect);
+}
+
+void AngleCombat(TCreature *Creature, int ManaPoints, int SoulPoints,
+		int Damage, int Effect, int Range, int Angle, int DamageType){
+	if(Creature == NULL){
+		error("AngleCombat: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int Delay = 2000;
+	if(WorldType == PVP_ENFORCED || (Range == 1 && Angle == 0)){
+		Delay = 1000;
+	}
+	CheckMana(Creature, ManaPoints, SoulPoints, Delay);
+
+	TDamageImpact Impact(Creature, DamageType, Damage, false);
+	AngleShapeSpell(Creature, Angle, Range, &Impact, Effect);
+}
+
+void Combat(TCreature *Creature, Object Target, int ManaPoints, int SoulPoints,
+		int Damage,int Effect, int Animation, int DamageType){
+	if(!Target.exists()){
+		error("Combat: Übergebenes Ziel existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature == NULL){
+		error("Combat: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	if(!Target.getObjectType().isCreatureContainer()){
+		Target = GetFirstSpecObject(TargetX, TargetY, TargetZ, TYPEID_CREATURE_CONTAINER);
+	}
+
+	if(Target == NONE){
+		throw NOCREATURE;
+	}
+
+	CheckAffectedPlayers(Creature, TargetX, TargetY, TargetZ);
+	if(!ThrowPossible(Creature->posx, Creature->posy, Creature->posz,
+			TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	int Delay = 2000;
+	if(WorldType == PVP_ENFORCED){
+		Delay = 1000;
+	}
+	CheckMana(Creature, ManaPoints, SoulPoints, Delay);
+
+	TDamageImpact Impact(Creature, DamageType, Damage, false);
+	CircleShapeSpell(Creature, TargetX, TargetY, TargetZ,
+			INT_MAX, Animation, 0, &Impact, Effect);
+}
+
+// Spell Functions
+// =============================================================================
+// TODO
 
 // Magic Init Functions
 // =============================================================================
