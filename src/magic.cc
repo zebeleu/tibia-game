@@ -1,6 +1,7 @@
 #include "magic.hh"
 #include "config.hh"
 #include "creature.hh"
+#include "info.hh"
 #include "monster.hh"
 
 #include "stubs.hh"
@@ -1021,6 +1022,7 @@ void CreateField(TCreature *Actor, int ManaPoints, int SoulPoints, int FieldType
 		throw ERROR;
 	}
 
+	// TODO(fusion): This is probably an inlined function `TCreature::GetForwardPosition`.
 	int TargetX = Actor->posx;
 	int TargetY = Actor->posy;
 	int TargetZ = Actor->posz;
@@ -1264,6 +1266,285 @@ void DeleteField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints
 	}
 
 	GraphicalEffect(TargetX, TargetY, TargetZ, EFFECT_POFF);
+}
+
+void CleanupField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints){
+	if(Actor == NULL){
+		error("CleanupField: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("CleanupField: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+
+	int Distance = std::min<int>(
+			std::abs(Actor->posx - TargetX),
+			std::abs(Actor->posy - TargetY));
+	if(Distance > 1 || Actor->posz != TargetZ){
+		throw OUTOFRANGE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	Object Obj = GetFirstObject(TargetX, TargetY, TargetZ);
+	while(Obj != NONE){
+		Object Next = Obj.getNextObject();
+		ObjectType ObjType = Obj.getObjectType();
+		// TODO(fusion): It seems that corpse type can be either 0 for human
+		// corpses or 1 for other/monster corpses, so we're avoiding deleting
+		// human corpses here.
+		if(!ObjType.getFlag(UNMOVE) && !ObjType.isCreatureContainer()
+		&& (!ObjType.getFlag(CORPSE) || ObjType.getAttribute(CORPSETYPE) != 0)){
+			Delete(Obj, -1);
+		}
+		Obj = Next;
+	}
+	GraphicalEffect(TargetX, TargetY, TargetZ, EFFECT_POFF);
+	Actor->BlockLogout(60, true);
+}
+
+void CleanupField(TCreature *Actor){
+	if(Actor == NULL){
+		error("CleanupField: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("CleanupField: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, CLEANUP_FIELDS)){
+		return;
+	}
+
+	// TODO(fusion): This is probably an inlined function `TCreature::GetForwardPosition`.
+	int TargetX = Actor->posx;
+	int TargetY = Actor->posy;
+	int TargetZ = Actor->posz;
+	switch(Actor->Direction){
+		case DIRECTION_NORTH:	TargetY -= 1; break;
+		case DIRECTION_EAST:	TargetX += 1; break;
+		case DIRECTION_SOUTH:	TargetY += 1; break;
+		case DIRECTION_WEST:	TargetX -= 1; break;
+	}
+
+	Object Target = GetMapContainer(TargetX, TargetY, TargetZ);
+	CleanupField(Actor, Target, 0, 0);
+}
+
+void Teleport(TCreature *Actor, char *Param){
+	if(Actor == NULL){
+		error("Teleport: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("Teleport: Param ist NULL.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("Teleport: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	int DestX = Actor->posx;
+	int DestY = Actor->posy;
+	int DestZ = Actor->posz;
+	// TODO(fusion): The `HouseID` parameter of `SearchFreeField` can be 0xFFFF
+	// as a wildcard to any house. This is probably only used for these special
+	// commands and we should have a `HOUSEID_ANY` constant defined somewhere.
+	//	If it is something else, the function will try to find a free field with
+	// the same house id. I'm not sure why we use it with marks but I think we
+	// should only use 0xFFFF here.
+	uint16 HouseID = 0xFFFF;
+	int MDGoStrength = Actor->Skills[SKILL_GO_STRENGTH]->MDAct;
+
+	if(stricmp(Param, "up") == 0){
+		if(!CheckRight(Actor->ID, TELEPORT_VERTICAL)){
+			return;
+		}
+		DestZ -= 1;
+	}else if(stricmp(Param, "down") == 0){
+		if(!CheckRight(Actor->ID, TELEPORT_VERTICAL)){
+			return;
+		}
+		DestZ += 1;
+	}else if(stricmp(Param, "fast") == 0){
+		if(!CheckRight(Actor->ID, MODIFY_GOSTRENGTH)){
+			return;
+		}
+		MDGoStrength = 100;
+	}else if(stricmp(Param, "fastest") == 0){
+		if(!CheckRight(Actor->ID, MODIFY_GOSTRENGTH)){
+			return;
+		}
+		MDGoStrength = 200;
+	}else if(stricmp(Param, "slow") == 0
+			|| stricmp(Param, "normal") == 0){
+		if(!CheckRight(Actor->ID, MODIFY_GOSTRENGTH)){
+			return;
+		}
+		MDGoStrength = 0;
+	}else{
+		int ParamX, ParamY, ParamZ;
+		if(sscanf(Param, "%d,%d,%d", &ParamX, &ParamY, &ParamZ) == 3
+		|| sscanf(Param, "[%d,%d,%d]", &ParamX, &ParamY, &ParamZ) == 3){
+			if(!CheckRight(Actor->ID, TELEPORT_TO_COORDINATE)){
+				return;
+			}
+
+			if(IsOnMap(ParamX, ParamY, ParamZ)){
+				DestX = ParamX;
+				DestY = ParamY;
+				DestZ = ParamZ;
+			}else if(IsOnMap(DestX + ParamX, DestY + ParamY, DestZ + ParamZ)){
+				DestX += ParamX;
+				DestY += ParamY;
+				DestZ += ParamZ;
+			}else{
+				SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "Invalid coordinates.");
+				return;
+			}
+		}else{
+			if(!CheckRight(Actor->ID, TELEPORT_TO_MARK)){
+				return;
+			}
+
+			if(GetMarkPosition(Param, &ParamX, &ParamY, &ParamZ)){
+				DestX = ParamX;
+				DestY = ParamY;
+				DestZ = ParamZ;
+				// TODO(fusion): Not sure why we do this here.
+				HouseID = GetHouseID(DestX, DestY, DestZ);
+			}else{
+				SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "There is no mark of this name.");
+				return;
+			}
+		}
+	}
+
+	if(DestX != Actor->posx || DestY != Actor->posy || DestZ != Actor->posz){
+		if(!SearchFreeField(&DestX, &DestY, &DestZ, 1, HouseID, true)){
+			throw NOROOM;
+		}
+		Object Dest = GetMapContainer(DestX, DestY, DestZ);
+		Move(0, Actor->CrObject, Dest, -1, false, NONE);
+		GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
+	}else if(MDGoStrength != Actor->Skills[SKILL_GO_STRENGTH]->MDAct){
+		Actor->Skills[SKILL_GO_STRENGTH]->SetMDAct(MDGoStrength);
+		AnnounceChangedCreature(Actor->ID, 4); // CREATURE_GO_STRENGTH_CHANGED ?
+		GraphicalEffect(DestX, DestY, DestZ, EFFECT_MAGIC_BLUE);
+	}
+}
+
+void TeleportToCreature(TCreature *Actor, const char *Name){
+	if(Actor == NULL){
+		error("TeleportToCreature: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("TeleportToCreature: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, TELEPORT_TO_CHARACTER)){
+		return;
+	}
+
+	if(Name == NULL || Name[0] == 0){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "You must enter a name.");
+		return;
+	}
+
+	TPlayer *Player;
+	bool IgnoreGamemasters = !CheckRight(Actor->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(Name, false, IgnoreGamemasters, &Player)){
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+		default:{
+			error("TeleportToCreature: Ungültiger Rückgabewert von IdentifyPlayer.\n");
+			throw ERROR;
+		}
+	}
+
+	if(Actor == Player){
+		GraphicalEffect(Actor->CrObject, EFFECT_TELEPORT);
+		return;
+	}
+
+	GraphicalEffect(Actor->CrObject, EFFECT_POFF);
+
+	// TODO(fusion): I assume `SearchFreeField` won't modify the input position
+	// so we're either teleporting to a nearby free position or to the player's
+	// position if it's not protection zone.
+	int DestX = Player->posx;
+	int DestY = Player->posy;
+	int DestZ = Player->posz;
+	uint16 HouseID = GetHouseID(DestX, DestY, DestZ);
+	if(!SearchFreeField(&DestX, &DestY, &DestZ, 1, HouseID, true)
+			|| IsProtectionZone(DestX, DestY, DestZ)){
+		throw NOROOM;
+	}
+
+	Object Dest = GetMapContainer(DestX, DestY, DestZ);
+	Move(0, Actor->CrObject, Dest, -1, false, NONE);
+	GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
+	Log("banish", "%s teleportiert sich zu %s.\n", Actor->Name, Player->Name);
+}
+
+void TeleportPlayerToMe(TCreature *Actor, const char *Name){
+	if(Actor == NULL){
+		error("TeleportPlayerToMe: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("TeleportPlayerToMe: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, RETRIEVE)){
+		return;
+	}
+
+	if(Name == NULL || Name[0] == 0){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "You must enter a name.");
+		return;
+	}
+
+	TPlayer *Player;
+	bool IgnoreGamemasters = !CheckRight(Actor->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(Name, false, IgnoreGamemasters, &Player)){
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+		default:{
+			error("TeleportPlayerToMe: Ungültiger Rückgabewert von IdentifyPlayer.\n");
+			throw ERROR;
+		}
+	}
+
+	GraphicalEffect(Player->CrObject, EFFECT_POFF);
+
+	int DestX = Actor->posx;
+	int DestY = Actor->posy;
+	int DestZ = Actor->posz;
+	uint16 HouseID = GetHouseID(DestX, DestY, DestZ);
+	if(!SearchFreeField(&DestX, &DestY, &DestZ, 1, HouseID, false)){
+		throw NOROOM;
+	}
+
+	Object Dest = GetMapContainer(DestX, DestY, DestZ);
+	Move(0, Player->CrObject, Dest, -1, false, NONE);
+	GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
 }
 
 // Magic Init Functions

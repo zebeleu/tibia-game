@@ -78,7 +78,7 @@ func main() {
 	fmt.Fprint(&output, "\tCFLAGS += -g -O0\n")
 	fmt.Fprint(&output, "else\n")
 	fmt.Fprint(&output, "\tCFLAGS += -O2\n")
-	fmt.Fprint(&output, "endif\n")
+	fmt.Fprint(&output, "endif\n\n")
 
 	// HEADERS
 	fmt.Fprint(&output, "HEADERS =")
