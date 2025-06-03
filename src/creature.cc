@@ -56,14 +56,16 @@ void TCreature::Attack(void){
 	this->Combat.Attack();
 }
 
-// TODO(fusion): This probably belongs elsewhere but we should come back to
+// Temporary Location
+// =============================================================================
+// =============================================================================
+// TODO(fusion): These probably belong elsewhere but we should come back to
 // this when we're wrapping up creature files.
+
 bool IsCreaturePlayer(uint32 CreatureID){
 	return CreatureID < 0x40000000;
 }
 
-// TODO(fusion): This probably belongs elsewhere but we should come back to
-// this when we're wrapping up creature files.
 void AddKillStatistics(int AttackerRace, int DefenderRace){
 	// NOTE(fusion): I think the race name can be "human" only for players,
 	// which means we're probably tracking how many creatures are killed by
@@ -79,6 +81,20 @@ void AddKillStatistics(int AttackerRace, int DefenderRace){
 		KilledPlayers[AttackerRace] += 1;
 	}
 }
+
+int GetRaceByName(const char *RaceName){
+	int Result = 0;
+	for(int Race = 1; Race < NARRAY(RaceData); Race += 1){
+		if(stricmp(RaceName, RaceData[Race].Name) == 0){
+			Result = Race;
+			break;
+		}
+	}
+	return Result;
+}
+
+// =============================================================================
+// =============================================================================
 
 int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 	if(this->IsDead || this->Type == NPC){

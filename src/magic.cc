@@ -927,7 +927,7 @@ void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
 	}
 
 	// TODO(fusion): This is similar to `ExecuteCircleSpell` which makes me think
-	// there is perhaps a common denominator?
+	// it got inlined and whatever `TImpact` this is got devirtualized.
 	if(Radius >= NARRAY(Circle)){
 		Radius = NARRAY(Circle) - 1;
 	}
@@ -1076,8 +1076,7 @@ void MassCreateField(TCreature *Actor, Object Target,
 		Missile(Actor->CrObject, Target, Animation);
 	}
 
-	// TODO(fusion): Same as `KillAllMonsters`. Perhaps the `ExecuteCircleSpell`
-	// function is getting inlined and TFieldImpact devirtualized?
+	// TODO(fusion): Same as `KillAllMonsters`.
 	if(Radius >= NARRAY(Circle)){
 		Radius = NARRAY(Circle) - 1;
 	}
@@ -1282,7 +1281,7 @@ void CleanupField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoint
 	int TargetX, TargetY, TargetZ;
 	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
 
-	int Distance = std::min<int>(
+	int Distance = std::max<int>(
 			std::abs(Actor->posx - TargetX),
 			std::abs(Actor->posy - TargetY));
 	if(Distance > 1 || Actor->posz != TargetZ){
@@ -1753,6 +1752,7 @@ void CreateFood(TCreature *Actor, int ManaPoints, int SoulPoints){
 	for(int i = 0; i < Count; i += 1){
 		uint8 Group, Number;
 		switch(rand() % 7){
+			default: // NOTE(fusion): To avoid compiler warnings.
 			case 0: Group = 134; Number =  0; break;
 			case 1: Group = 130; Number =  2; break;
 			case 2: Group = 136; Number =  0; break;
@@ -1760,7 +1760,6 @@ void CreateFood(TCreature *Actor, int ManaPoints, int SoulPoints){
 			case 4: Group = 131; Number =  1; break;
 			case 5: Group = 131; Number =  9; break;
 			case 6: Group = 134; Number =  1; break;
-			default: ASSERT(!"unreachable"); break;
 		}
 		CreateAtCreature(Actor->ID, GetNewObjectType(Group, Number), 1);
 	}
@@ -1791,6 +1790,581 @@ void CreateArrows(TCreature *Actor, int ManaPoints, int SoulPoints, int ArrowTyp
 
 	CreateAtCreature(Actor->ID, GetNewObjectType(94, Number), Count);
 	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void SummonCreature(TCreature *Actor, int ManaPoints, int Race, bool God){
+	if(Actor == NULL){
+		error("SummonCreature: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Race < 1 || Race >= NARRAY(RaceData)){
+		error("SummonCreature: Ungültige Rassennummer %d übergeben.\n", Race);
+		throw ERROR;
+	}
+
+	// TODO(fusion): These checks are weird. We should probably just split the
+	// function in two?
+	if(God){
+		// TODO(fusion): What happened to checking if the creature is a player
+		// before using `CheckRight`?
+		if(!CheckRight(Actor->ID, CREATE_MONSTERS)){
+			return;
+		}
+	}else if(Actor->Type == PLAYER){
+		if(!CheckRight(Actor->ID, CREATE_MONSTERS) && GetRaceNoSummon(Race)){
+			throw NOTACCESSIBLE;
+		}
+
+		if(Actor->SummonedCreatures > 1){
+			throw TOOMANYSLAVES;
+		}
+	}
+
+	int SummonX = Actor->posx;
+	int SummonY = Actor->posy;
+	int SummonZ = Actor->posz;
+	if(!SearchSummonField(&SummonX, &SummonY, &SummonZ, 2)){
+		throw NOROOM;
+	}
+
+	uint32 Master = 0;
+	if(!God){
+		int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
+		ManaPoints += GetRaceSummonCost(Race);
+		CheckMana(Actor, ManaPoints, 0, Delay);
+		Master = Actor->ID;
+	}
+
+	CreateMonster(Race, SummonX, SummonY, SummonZ, 0, Master, true);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void SummonCreature(TCreature *Actor, int Mana, const char *RaceName, bool God){
+	if(Actor == NULL){
+		error("SummonCreature: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(RaceName == NULL){
+		error("SummonCreature: Ungültiger Rassenname übergeben.\n");
+		throw ERROR;
+	}
+
+	int Race = GetRaceByName(RaceName);
+	if(Race == 0){
+		throw CREATURENOTEXISTING;
+	}
+
+	SummonCreature(Actor, Mana, Race, God);
+}
+
+void StartMonsterraid(TCreature *Actor, const char *RaidName){
+	if(Actor == NULL){
+		error("StartMonsterraid: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(RaidName == NULL){
+		error("StartMonsterraid: Ungültiger Raidname übergeben.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): What happened to checking if the creature is a player
+	// before using `CheckRight`?
+	if(!CheckRight(Actor->ID, CREATE_MONSTERS)){
+		return;
+	}
+
+	char RaidNameLower[512];
+	strcpy(RaidNameLower, RaidName);
+	strLower(RaidNameLower);
+
+	char FileName[4096];
+	snprintf(FileName, sizeof(FileName), "%s/%s.evt", MONSTERPATH, RaidNameLower);
+	if(FileExists(FileName)){
+		LoadMonsterRaid(FileName, RoundNr, NULL, NULL, NULL, NULL);
+		GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+	}else{
+		GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
+	}
+}
+
+void RaiseDead(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints){
+	if(Actor == NULL){
+		error("RaiseDead: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("RaiseDead: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+
+	// TODO(fusion): Could this be some `CheckRange` function inlined?
+	int Distance = std::max<int>(
+			std::abs(Actor->posx - TargetX),
+			std::abs(Actor->posy - TargetY));
+	if(Distance > 1 || Actor->posz != TargetZ){
+		throw OUTOFRANGE;
+	}
+
+	Object Obj = GetFirstObject(TargetX, TargetY, TargetZ);
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		// TODO(fusion): Same as in `CleanupField` except we're looking for a
+		// non human corpse to summon a skeleton from.
+		if(ObjType.getFlag(CORPSE) && ObjType.getAttribute(CORPSETYPE) == 1){
+			break;
+		}
+		Obj = Obj.getNextObject();
+	}
+
+	if(Obj == NONE){
+		throw NOTUSABLE;
+	}
+
+	if(!SearchFreeField(&TargetX, &TargetY, &TargetZ, 1, 0, false)
+			|| IsProtectionZone(TargetX, TargetY, TargetZ)){
+		throw NOROOM;
+	}
+
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
+	Delete(Obj, -1);
+
+	// NOTE(fusion): The race of a common skeleton is 33 but it should probably
+	// be a constant somewhere.
+	CreateMonster(33, TargetX, TargetY, TargetZ, 0, Actor->ID, true);
+}
+
+void MassRaiseDead(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int Radius){
+	if(Actor == NULL){
+		error("MassRaiseDead: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("MassRaiseDead: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): Unless `ThrowPossible` also does some max range check, this
+	// spell doesn't check range or floor.
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz, TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
+	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
+
+	if(Actor->posx != TargetX || Actor->posy != TargetY || Actor->posz != TargetZ){
+		Missile(Actor->CrObject, Target, ANIMATION_ENERGY);
+	}
+
+	// TODO(fusion): Same as `KillAllMonsters`.
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	for(int R = 0; R <= Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = TargetX + Circle[R].x[Point];
+			int FieldY = TargetY + Circle[R].y[Point];
+			int FieldZ = TargetZ;
+
+			if(!ThrowPossible(TargetX, TargetY, TargetZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			GraphicalEffect(FieldX, FieldY, FieldZ, EFFECT_MAGIC_BLUE);
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			while(Obj != NONE){
+				Object Next = Obj.getNextObject();
+				ObjectType ObjType = Obj.getObjectType();
+				// NOTE(fusion): Same as `RaiseDead`.
+				if(ObjType.getFlag(CORPSE) && ObjType.getAttribute(CORPSETYPE) == 1){
+					int SummonX = FieldX;
+					int SummonY = FieldY;
+					int SummonZ = FieldZ;
+					if(SearchFreeField(&SummonX, &SummonY, &SummonZ, 1, 0, false)
+							&& !IsProtectionZone(SummonX, SummonY, SummonZ)){
+						Delete(Obj, -1);
+						CreateMonster(33, SummonX, SummonY, SummonZ, 0, Actor->ID, false);
+					}
+				}
+				Obj = Next;
+			}
+		}
+	}
+}
+
+void Heal(TCreature *Actor, int ManaPoints, int SoulPoints, int Amount){
+	if(Actor == NULL){
+		error("Heal: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): This looks weird, then you peek at `IsPeaceful` and realize
+	// it actually determines whether the creature is a player's summon, then it
+	// gets weirder.
+	if(WorldType == NON_PVP && !Actor->IsPeaceful()){
+		throw NOTACCESSIBLE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	TSkill *HitPoints = Actor->Skills[SKILL_HITPOINTS];
+	if(HitPoints == NULL){
+		error("Heal: Skill HITPOINTS existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(HitPoints->Get() > 0){
+		// TODO(fusion): This looks a lot like `THealingImpact::handleCreature`
+		// and I'm starting to think most of these spells use a single `TImpact`
+		// on the stack to execute their effects. We don't see any sign of them
+		// because they either get devirtualized by the optimizer or don't exist.
+		HitPoints->Change(Amount);
+		if(Actor->Skills[SKILL_GO_STRENGTH]->MDAct < 0){
+			Actor->SetTimer(SKILL_GO_STRENGTH, 0, 0, 0, -1);
+		}
+
+		GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+	}
+}
+
+
+void MassHeal(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int Amount, int Radius){
+	if(Actor == NULL){
+		error("MassHeal: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("MassHeal: Übergebenes Ziel existiert nicht.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): Same as `MassRaiseDead`.
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz, TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	if(Actor->posx != TargetX || Actor->posy != TargetY || Actor->posz != TargetZ){
+		Missile(Actor->CrObject, Target, ANIMATION_ENERGY);
+	}
+
+	// TODO(fusion): Same as `KillAllMonsters`.
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	for(int R = 0; R <= Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = TargetX + Circle[R].x[Point];
+			int FieldY = TargetY + Circle[R].y[Point];
+			int FieldZ = TargetZ;
+
+			if(!ThrowPossible(TargetX, TargetY, TargetZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			GraphicalEffect(FieldX, FieldY, FieldZ, EFFECT_MAGIC_BLUE);
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			while(Obj != NONE){
+				ObjectType ObjType = Obj.getObjectType();
+				if(ObjType.isCreatureContainer()){
+					TCreature *Victim = GetCreature(Obj);
+					if(Victim == NULL){
+						error("MassHeal: Ungültige Kreatur.\n");
+					}else if(WorldType != NON_PVP || Victim->IsPeaceful()){
+						// TODO(fusion): Do we really want to throw here? If not
+						// having hitpoints is a problem, it should have been
+						// enforced ealier for all creatures.
+						TSkill *HitPoints = Victim->Skills[SKILL_HITPOINTS];
+						if(HitPoints == NULL){
+							error("MassHeal: Skill HITPOINTS existiert nicht.\n");
+							throw ERROR;
+						}
+
+						if(HitPoints->Get() > 0){
+							HitPoints->Change(Amount);
+							if(Victim->Skills[SKILL_GO_STRENGTH]->MDAct < 0){
+								Victim->SetTimer(SKILL_GO_STRENGTH, 0, 0, 0, -1);
+							}
+						}
+					}
+				}
+				Obj = Obj.getNextObject();
+			}
+		}
+	}
+}
+
+void HealFriend(TCreature *Actor, char *TargetName, int ManaPoints, int SoulPoints, int Amount){
+	if(Actor == NULL){
+		error("HealFriend: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(TargetName == NULL){
+		error("HealFriend: Ungültigen Namen übergeben.\n");
+		throw ERROR;
+	}
+
+	TPlayer *Target;
+	switch(IdentifyPlayer(TargetName, false, true, &Target)){
+		default:
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+	}
+
+	// TODO(fusion): These distances are related to the client's viewport.
+	if(Actor->posz != Target->posz
+			|| std::abs(Actor->posx - Target->posx) > 7
+			|| std::abs(Actor->posy - Target->posy) > 5){
+		throw OUTOFRANGE;
+	}
+
+	TSkill *HitPoints = Target->Skills[SKILL_HITPOINTS];
+	if(HitPoints == NULL){
+		error("HealFriend: Skill HITPOINTS existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(HitPoints->Get() <= 0){
+		throw PLAYERNOTONLINE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	HitPoints->Change(Amount);
+	if(Target->Skills[SKILL_GO_STRENGTH]->MDAct < 0){
+		Target->SetTimer(SKILL_GO_STRENGTH, 0, 0, 0, -1);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+	GraphicalEffect(Target->posx, Target->posy, Target->posz, EFFECT_MAGIC_GREEN);
+}
+
+void RefreshMana(TCreature *Actor, int ManaPoints, int SoulPoints, int Amount){
+	if(Actor == NULL){
+		error("RefreshMana: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	TSkill *Mana = Actor->Skills[SKILL_MANA];
+	if(Mana == NULL){
+		error("RefreshMana: Skill MANA existiert nicht.\n");
+		throw ERROR;
+	}
+
+	Mana->Change(Amount);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void MagicGoStrength(TCreature *Actor, TCreature *Target, int ManaPoints, int SoulPoints, int Percent, int Duration){
+	if(Actor == NULL){
+		error("MagicGoStrength: Übergebene Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Target == NULL){
+		error("MagicGoStrength: Übergebene Ziel Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Percent < 0){
+		if(GetRaceNoParalyze(Target->Race)){
+			throw NOTACCESSIBLE;
+		}
+
+		if(WorldType == NON_PVP && Actor->IsPeaceful() && Target->IsPeaceful()){
+			throw ATTACKNOTALLOWED;
+		}
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	TSkill *GoStrength = Target->Skills[SKILL_GO_STRENGTH];
+	if(Percent < -100){
+		GoStrength->SetMDAct(-GoStrength->Act - 20);
+	}else{
+		GoStrength->SetMDAct((GoStrength->Act * Percent) / 100);
+	}
+
+	Target->SetTimer(SKILL_GO_STRENGTH, Duration, 10, 10, -1);
+
+	// TODO(fusion): We should probably check if the actor is different from the
+	// target before blocking the actor's logout or sending the first graphical
+	// effect.
+	if(Percent < 0){
+		Actor->BlockLogout(60, Target->Type == PLAYER);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+	GraphicalEffect(Target->posx, Target->posy, Target->posz, EFFECT_MAGIC_RED);
+}
+
+void Shielding(TCreature *Actor, int ManaPoints, int SoulPoints, int Duration){
+	if(Actor == NULL){
+		error("Shielding: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	Actor->SetTimer(SKILL_MANASHIELD, 1, Duration, Duration, -1);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void NegatePoison(TCreature *Actor, TCreature *Target, int ManaPoints, int SoulPoints){
+	if(Actor == NULL){
+		error("NegatePoison: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Target == NULL){
+		error("NegatePoison: Zielkreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	Target->SetTimer(SKILL_POISON, 0, 0, 0, -1);
+	GraphicalEffect(Target->posx, Target->posy, Target->posz, EFFECT_MAGIC_BLUE);
+}
+
+void Enlight(TCreature *Actor, int ManaPoints, int SoulPoints, int Radius, int Duration){
+	if(Actor == NULL){
+		error("Enlight: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	if(Actor->Skills[SKILL_LIGHT]->TimerValue() <= Radius){
+		Actor->SetTimer(SKILL_LIGHT, Radius, Duration / Radius, Duration / Radius, -1);
+	}
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void Invisibility(TCreature *Actor, int ManaPoints, int SoulPoints, int Duration){
+	if(Actor == NULL){
+		error("Invisibility: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	Actor->Outfit = TOutfit{};
+	Actor->SetTimer(SKILL_ILLUSION, 1, Duration, Duration, -1);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int Radius){
+	if(Actor == NULL){
+		error("CancelInvisibility: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("CancelInvisibility: Übergebenes Ziel existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TargetX, TargetY, TargetZ;
+	GetObjectCoordinates(Target, &TargetX, &TargetY, &TargetZ);
+	if(!ThrowPossible(Actor->posx, Actor->posy, Actor->posz, TargetX, TargetY, TargetZ, 0)){
+		throw CANNOTTHROW;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	if(Actor->posx != TargetX || Actor->posy != TargetY || Actor->posz != TargetZ){
+		Missile(Actor->CrObject, Target, ANIMATION_ENERGY);
+	}
+
+	// TODO(fusion): Same as `KillAllMonsters`.
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	for(int R = 0; R <= Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = TargetX + Circle[R].x[Point];
+			int FieldY = TargetY + Circle[R].y[Point];
+			int FieldZ = TargetZ;
+
+			if(IsProtectionZone(FieldX, FieldY, FieldZ)){
+				continue;
+			}
+
+			if(!ThrowPossible(TargetX, TargetY, TargetZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			int Effect = EFFECT_MAGIC_BLUE;
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			while(Obj != NONE){
+				ObjectType ObjType = Obj.getObjectType();
+				if(ObjType.isCreatureContainer()){
+					TCreature *Victim = GetCreature(Obj);
+					if(Victim == NULL){
+						error("CancelInvisibility: Ungültige Kreatur.\n");
+					}else if(Victim->Outfit.OutfitID == 0 && Victim->Outfit.ObjectType == 0
+							&& (WorldType != NON_PVP || !Victim->IsPeaceful())){
+						Victim->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
+						if(Victim->Skills[SKILL_ILLUSION]->Get() == 0){
+							Victim->Outfit = Victim->OrgOutfit;
+							AnnounceChangedCreature(Victim->ID, 3); // CREATURE_OUTFIT_CHANGED ?
+							NotifyAllCreatures(Victim->CrObject, 2, NONE); // CREATURE_APPEAR ?
+						}else{
+							Effect = EFFECT_BLOCK_HIT;
+
+							// NOTE(fusion): If the victim still has an illusion effect up, it
+							// it must come from an item and it seems there is a change to destroy
+							// it on pvp enforced worlds.
+							// TODO(fusion): This is probably an inlined function.
+							if(WorldType == PVP_ENFORCED){
+								for(int Position = 1; Position <= 10; Position += 1){
+									Object Item = GetBodyObject(Victim->ID, Position);
+									if(Item == NONE){
+										continue;
+									}
+
+									ObjectType ItemType = Item.getObjectType();
+									if(ItemType.getFlag(SKILLBOOST)
+									&& (int)ItemType.getAttribute(BODYPOSITION) == Position
+									&& (int)ItemType.getAttribute(SKILLNUMBER) == SKILL_ILLUSION){
+										if(random(1, 5) == 1){
+											Delete(Item, -1);
+										}
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+				Obj = Obj.getNextObject();
+			}
+
+			GraphicalEffect(FieldX, FieldY, FieldZ, Effect);
+		}
+	}
 }
 
 // Magic Init Functions

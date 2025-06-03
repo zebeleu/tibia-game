@@ -41,11 +41,15 @@ extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
 extern TPlayer *GetPlayer(uint32 CreatureID);
 extern bool GetRaceNoParalyze(int Race);
+extern bool GetRaceNoSummon(int Race);
 extern int GetRacePoison(int Race);
+extern int GetRaceSummonCost(int Race);
 extern void GraphicalEffect(int x, int y, int z, int Type);
 extern void GraphicalEffect(Object Obj, int Type);
 extern int IdentifyPlayer(const char *Name, bool ExactMatch, bool IgnoreGamemasters, TPlayer **Player);
 extern void InitLog(const char *ProtocolName);
+extern void LoadMonsterRaid(const char *FileName, int Start,
+		bool *Type, int *Date, int *Interval, int *Duration);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutAllPlayers(void);
 extern void Missile(Object Start, Object Dest, int Type);

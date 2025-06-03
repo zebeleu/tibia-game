@@ -148,5 +148,6 @@ struct TCreature: TSkillBase {
 // this when we're wrapping up creature files.
 bool IsCreaturePlayer(uint32 CreatureID);
 void AddKillStatistics(int AttackerRace, int DefenderRace);
+int GetRaceByName(const char *RaceName);
 
 #endif //TIBIA_CREATURE_HH_
