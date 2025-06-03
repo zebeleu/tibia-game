@@ -27,6 +27,7 @@ extern void CircleShapeSpell(TCreature *Actor, int DestX, int DestY, int DestZ,
 extern void CleanHouseField(int x, int y, int z);
 extern int ComputeDamage(TCreature *Creature, int SpellNr, int Damage, int Variation);
 extern int CountInventoryObjects(uint32 CreatureID, ObjectType Type, uint32 Value);
+extern Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value);
 extern void CreateField(int x, int y, int z, int FieldType, uint32 Owner, bool Peaceful);
 extern void CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master, bool ShowEffect);
 extern void CreatePlayerList(bool Online);

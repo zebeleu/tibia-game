@@ -1356,13 +1356,7 @@ void Teleport(TCreature *Actor, char *Param){
 	int DestX = Actor->posx;
 	int DestY = Actor->posy;
 	int DestZ = Actor->posz;
-	// TODO(fusion): The `HouseID` parameter of `SearchFreeField` can be 0xFFFF
-	// as a wildcard to any house. This is probably only used for these special
-	// commands and we should have a `HOUSEID_ANY` constant defined somewhere.
-	//	If it is something else, the function will try to find a free field with
-	// the same house id. I'm not sure why we use it with marks but I think we
-	// should only use 0xFFFF here.
-	uint16 HouseID = 0xFFFF;
+	uint16 HouseID = HOUSEID_ANY;
 	int MDGoStrength = Actor->Skills[SKILL_GO_STRENGTH]->MDAct;
 
 	if(stricmp(Param, "up") == 0){
@@ -1420,7 +1414,8 @@ void Teleport(TCreature *Actor, char *Param){
 				DestX = ParamX;
 				DestY = ParamY;
 				DestZ = ParamZ;
-				// TODO(fusion): Not sure why we do this here.
+				// TODO(fusion): Not sure why we do this here. Maybe `TELEPORT_TO_MARK`
+				// was also assigned to a couple of non GM characters?
 				HouseID = GetHouseID(DestX, DestY, DestZ);
 			}else{
 				SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "There is no mark of this name.");
@@ -1545,6 +1540,257 @@ void TeleportPlayerToMe(TCreature *Actor, const char *Name){
 	Object Dest = GetMapContainer(DestX, DestY, DestZ);
 	Move(0, Player->CrObject, Dest, -1, false, NONE);
 	GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
+}
+
+void MagicRope(TCreature *Actor, int ManaPoints, int SoulPoints){
+	if(Actor == NULL){
+		error("MagicRope: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	int OrigX = Actor->posx;
+	int OrigY = Actor->posy;
+	int OrigZ = Actor->posz;
+	if(!CoordinateFlag(OrigX, OrigY, OrigZ, ROPESPOT)){
+		throw NOTACCESSIBLE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	Object Dest = GetMapContainer(OrigX, OrigY + 1, OrigZ - 1);
+	Move(0, Actor->CrObject, Dest, -1, false, NONE);
+	GraphicalEffect(OrigX, OrigY, OrigZ, EFFECT_TELEPORT);
+}
+
+void MagicClimbing(TCreature *Actor, int ManaPoints, int SoulPoints, const char *Param){
+	if(Actor == NULL){
+		error("MagicClimbing: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("MagicClimbing: Ungültige Richtung übergeben.\n");
+		throw ERROR;
+	}
+
+	int OrigX = Actor->posx;
+	int OrigY = Actor->posy;
+	int OrigZ = Actor->posz;
+
+	// TODO(fusion): This is probably an inlined function `TCreature::GetForwardPosition`.
+	int DestX = OrigX;
+	int DestY = OrigY;
+	int DestZ = OrigZ;
+	switch(Actor->Direction){
+		case DIRECTION_NORTH:	DestY -= 1; break;
+		case DIRECTION_EAST:	DestX += 1; break;
+		case DIRECTION_SOUTH:	DestY += 1; break;
+		case DIRECTION_WEST:	DestX -= 1; break;
+	}
+
+	if(stricmp(Param, "up") == 0){
+		if(OrigZ > 0 && !CoordinateFlag(OrigX, OrigY, OrigZ - 1, BANK)
+				&& !CoordinateFlag(OrigX, OrigY, OrigZ - 1, UNPASS)
+				&& Actor->MovePossible(DestX, DestY, OrigZ - 1, true, true)){
+			DestZ -= 1;
+		}
+	}else if(stricmp(Param, "down") == 0){
+		if(OrigZ < 15 && !CoordinateFlag(DestX, DestY, OrigZ, BANK)
+				&& !CoordinateFlag(DestX, DestY, OrigZ, UNPASS)
+				&& Actor->MovePossible(DestX, DestY, OrigZ + 1, true, true)){
+			DestZ += 1;
+		}
+	}
+
+	if(DestZ == OrigZ){
+		throw NOTACCESSIBLE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	Object Dest = GetMapContainer(DestX, DestY, DestZ);
+	Move(0, Actor->CrObject, Dest, -1, false, NONE);
+	GraphicalEffect(OrigX, OrigY, OrigZ, EFFECT_TELEPORT);
+}
+
+void MagicClimbing(TCreature *Actor, const char *Param){
+	// TODO(fusion): I think this is a version used by GM characters.
+	if(Actor == NULL){
+		error("MagicClimbing: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("MagicClimbing: Ungültige Richtung übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("MagicClimbing: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, LEVITATE)){
+		MagicClimbing(Actor, 0, 0, Param);
+	}
+}
+
+void CreateThing(TCreature *Actor, const char *Param1, const char *Param2){
+	if(Actor == NULL){
+		error("CreateThing: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param1 == NULL){
+		error("CreateThing: Ungültiger Parameter \"Param1\".\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("CreateThing: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, CREATE_OBJECTS)){
+		return;
+	}
+
+	int TypeID = atoi(Param1);
+	if(TypeID != 0){
+		if(TypeID < 100 || !ObjectTypeExists(TypeID)
+				|| ObjectType(TypeID).getFlag(UNMOVE)){
+			TypeID = 0;
+		}
+	}else{
+		TypeID = GetObjectTypeByName(Param1, true).TypeID;
+	}
+
+	if(TypeID == 0){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+				"There is no such takeable object.");
+		return;
+	}
+
+	int Count = (Param2 != NULL ? atoi(Param2) : 1);
+	if(Count < 1 || Count > 100){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+				"You may only create 1 to 100 objects.");
+		return;
+	}
+
+	ObjectType ObjType(TypeID);
+	if(!ObjType.getFlag(TAKE) && Count > 0){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+				"You may only create one untakeable object.");
+		return;
+	}
+
+	if(!ObjType.getFlag(CUMULATIVE)){
+		for(int i = 0; i < Count; i += 1){
+			CreateAtCreature(Actor->ID, ObjType, 1);
+		}
+	}else{
+		CreateAtCreature(Actor->ID, ObjType, Count);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+}
+
+void CreateMoney(TCreature *Actor, const char *Param){
+	if(Actor == NULL){
+		error("CreateMoney: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("CreateMoney: Ungültiger Parameter \"Param1\".\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("CreateMoney: Zauberspruch kann nur von Spieler angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, CREATE_MONEY)){
+		return;
+	}
+
+	int Amount = atoi(Param);
+	if(Amount < 1 || Amount > 1000000){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+				"You may only create 1 to 1,000,000 gold.");
+	}
+
+	int Crystal		= (Amount / 10000);
+	int Platinum	= (Amount % 10000) / 100;
+	int Gold		= (Amount % 10000) % 100;
+
+	if(Crystal > 0){
+		CreateAtCreature(Actor->ID, GetSpecialObject(MONEY_TENTHOUSAND), Crystal);
+	}
+
+	if(Platinum > 0){
+		CreateAtCreature(Actor->ID, GetSpecialObject(MONEY_HUNDRED), Platinum);
+	}
+
+	if(Gold > 0){
+		CreateAtCreature(Actor->ID, GetSpecialObject(MONEY_ONE), Gold);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+}
+
+void CreateFood(TCreature *Actor, int ManaPoints, int SoulPoints){
+	if(Actor == NULL){
+		error("CreateFood: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	int Count = (rand() % 2) + 1;
+	for(int i = 0; i < Count; i += 1){
+		uint8 Group, Number;
+		switch(rand() % 7){
+			case 0: Group = 134; Number =  0; break;
+			case 1: Group = 130; Number =  2; break;
+			case 2: Group = 136; Number =  0; break;
+			case 3: Group = 130; Number = 13; break;
+			case 4: Group = 131; Number =  1; break;
+			case 5: Group = 131; Number =  9; break;
+			case 6: Group = 134; Number =  1; break;
+			default: ASSERT(!"unreachable"); break;
+		}
+		CreateAtCreature(Actor->ID, GetNewObjectType(Group, Number), 1);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+}
+
+void CreateArrows(TCreature *Actor, int ManaPoints, int SoulPoints, int ArrowType, int Count){
+	if(Actor == NULL){
+		error("CreateArrows: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	uint8 Number;
+	switch(ArrowType){
+		case 0: Number = 1; break;
+		case 1: Number = 2; break;
+		case 2: Number = 3; break;
+		case 3: Number = 0; break;
+		case 4: Number = 4; break;
+		default:{
+			error("CreateArrows: Ungültiger Pfeiltyp %d.\n", ArrowType);
+			throw ERROR;
+		}
+	}
+
+	CreateAtCreature(Actor->ID, GetNewObjectType(94, Number), Count);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
 }
 
 // Magic Init Functions
