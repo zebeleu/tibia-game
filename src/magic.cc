@@ -3007,6 +3007,226 @@ void NameLock(TCreature *Actor, const char *Name){
 			"Spell is not available any more. Press Ctrl+Y for the dialog.");
 }
 
+void BanishAccount(TCreature *Actor, const char *Name, int Duration, const char *Reason){
+	if(Actor == NULL){
+		error("BanishAccount: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("BanishAccount: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Reason == NULL){
+		error("BanishAccount: Ungültiger Grund übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("BanishAccount: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
+}
+
+void DeleteAccount(TCreature *Actor, const char *Name, const char *Reason){
+	if(Actor == NULL){
+		error("DeleteAccount: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("DeleteAccount: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Reason == NULL){
+		error("DeleteAccount: Ungültiger Grund übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("DeleteAccount: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
+}
+
+void BanishCharacter(TCreature *Actor, const char *Name, int Duration, const char *Reason){
+	if(Actor == NULL){
+		error("BanishCharacter: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("BanishCharacter: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Reason == NULL){
+		error("BanishCharacter: Ungültiger Grund übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("BanishCharacter: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
+}
+
+void DeleteCharacter(TCreature *Actor, const char *Name, const char *Reason){
+	if(Actor == NULL){
+		error("DeleteCharacter: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("DeleteCharacter: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Reason == NULL){
+		error("DeleteCharacter: Ungültiger Grund übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("DeleteCharacter: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
+}
+
+void IPBanishment(TCreature *Actor, const char *Name, const char *Reason){
+	if(Actor == NULL){
+		error("IPBanishment: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("IPBanishment: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Reason == NULL){
+		error("IPBanishment: Ungültiger Grund übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("IPBanishment: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
+}
+
+void SetNameRule(TCreature *Actor, const char *Name){
+	if(Actor == NULL){
+		error("SetNameRule: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("SetNameRule: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("SetNameRule: Zauberspruch kann nur von Spieler angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more.");
+}
+
+void KickPlayer(TCreature *Actor, const char *Name){
+	if(Actor == NULL){
+		error("KickPlayer: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("KickPlayer: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("KickPlayer: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, KICK)){
+		return;
+	}
+
+	TPlayer *Player;
+	bool IgnoreGamemasters = !CheckRight(Actor->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(Name, false, IgnoreGamemasters, &Player)){
+		default:
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+	}
+
+	GraphicalEffect(Player->posx, Player->posy, Player->posz, EFFECT_MAGIC_GREEN);
+	Player->StartLogout(true, true);
+	SendMessage(Actor->Connection, TALK_INFO_MESSAGE,
+			"Player %s kicked out of the game.", Player->Name);
+	Log("banish", "%s kickt %s.\n", Actor->Name, Player->Name);
+}
+
+void HomeTeleport(TCreature *Actor, const char *Name){
+	if(Actor == NULL){
+		error("HomeTeleport: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL || Name[0] == 0){
+		error("HomeTeleport: Name existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("HomeTeleport: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, HOME_TELEPORT)){
+		return;
+	}
+
+	TPlayer *Player;
+	bool IgnoreGamemasters = !CheckRight(Actor->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(Name, false, IgnoreGamemasters, &Player)){
+		default:
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+	}
+
+	Object Dest = GetMapContainer(Player->startx, Player->starty, Player->startz);
+	GraphicalEffect(Player->posx, Player->posy, Player->posz, EFFECT_POFF);
+	Move(0, Player->CrObject, Dest, -1, false, NONE);
+	GraphicalEffect(Player->posx, Player->posy, Player->posz, EFFECT_TELEPORT);
+
+	SendMessage(Actor->Connection, TALK_INFO_MESSAGE,
+			"Player %s has been moved to the temple.", Player->Name);
+	Log("banish", "%s teleportiert %s zum Tempel.\n", Actor->Name, Player->Name);
+}
+
 // Magic Init Functions
 // =============================================================================
 static void InitCircles(void){

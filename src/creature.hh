@@ -76,6 +76,7 @@ struct TCreature: TSkillBase {
 	TCreature(void);
 	void Attack(void);
 	int Damage(TCreature *Attacker, int Damage, int DamageType);
+	void StartLogout(bool Force, bool StopFight);
 	void BlockLogout(int Delay, bool BlockProtectionZone);
 	void ToDoGo(int DestX, int DestY, int DestZ, bool Dest, int MaxSteps);
 
