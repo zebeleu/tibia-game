@@ -72,6 +72,11 @@ struct TPlayer: TCreature {
 	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
 	bool GetActivePromotion(void);
+	void ClearProfession(void);
+	void SetProfession(uint8 Profession);
+
+	int GetQuestValue(int Number);
+	void SetQuestValue(int Number, int Value);
 
 	uint32 GetPartyLeader(bool CheckFormer);
 

@@ -847,10 +847,7 @@ void MassCombat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 		throw CANNOTTHROW;
 	}
 
-	int Delay = 2000;
-	if(WorldType == PVP_ENFORCED){
-		Delay = 1000;
-	}
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
 	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
 	TDamageImpact Impact(Actor, DamageType, Damage, false);
@@ -903,10 +900,7 @@ void Combat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 		throw CANNOTTHROW;
 	}
 
-	int Delay = 2000;
-	if(WorldType == PVP_ENFORCED){
-		Delay = 1000;
-	}
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
 	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
 	TDamageImpact Impact(Actor, DamageType, Damage, false);
@@ -995,10 +989,7 @@ void CreateField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints
 		throw CANNOTTHROW;
 	}
 
-	int Delay = 2000;
-	if(WorldType == PVP_ENFORCED){
-		Delay = 1000;
-	}
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
 	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
 	int Animation = ANIMATION_ENERGY;
@@ -1062,10 +1053,7 @@ void MassCreateField(TCreature *Actor, Object Target,
 		throw CANNOTTHROW;
 	}
 
-	int Delay = 2000;
-	if(WorldType == PVP_ENFORCED){
-		Delay = 1000;
-	}
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
 	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
 	if(Actor->posx != TargetX || Actor->posy != TargetY || Actor->posz != TargetZ){
@@ -1128,10 +1116,7 @@ void CreateFieldWall(TCreature *Actor, Object Target,
 		throw CANNOTTHROW;
 	}
 
-	int Delay = 2000;
-	if(WorldType == PVP_ENFORCED){
-		Delay = 1000;
-	}
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
 	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
 	if(ActorX != TargetX || ActorY != TargetY || ActorZ != TargetZ){
@@ -1816,7 +1801,7 @@ void SummonCreature(TCreature *Actor, int ManaPoints, int Race, bool God){
 			throw NOTACCESSIBLE;
 		}
 
-		if(Actor->SummonedCreatures > 1){
+		if(Actor->SummonedCreatures >= 2){
 			throw TOOMANYSLAVES;
 		}
 	}
@@ -2365,6 +2350,661 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 			GraphicalEffect(FieldX, FieldY, FieldZ, Effect);
 		}
 	}
+}
+
+void CreatureIllusion(TCreature *Actor, const char *RaceName, int ManaPoints, int SoulPoints, int Duration){
+	if(Actor == NULL){
+		error("CreatureIllusion: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(RaceName == NULL){
+		error("CreatureIllusion: Ungültiger Rassenname übergeben.\n");
+		throw ERROR;
+	}
+
+	int Race = GetRaceByName(RaceName);
+	if(Race == 0){
+		throw CREATURENOTEXISTING;
+	}
+
+	if(GetRaceNoIllusion(Race)){
+		throw NOTACCESSIBLE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	if(Actor->Skills[SKILL_ILLUSION]->Get() == 0){
+		Actor->Outfit = GetRaceOutfit(Race);
+		Actor->SetTimer(SKILL_ILLUSION, 1, Duration, Duration, -1);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void ObjectIllusion(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int Duration){
+	if(Actor == NULL){
+		error("ObjectIllusion: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(!Target.exists()){
+		error("ObjectIllusion: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType TargetType = Target.getObjectType();
+	if(TargetType.isCreatureContainer() || TargetType.getFlag(UNMOVE)){
+		throw NOTMOVABLE;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	if(Actor->Skills[SKILL_ILLUSION]->Get() == 0){
+		Actor->Outfit.OutfitID = 0;
+		if(TargetType.getFlag(DISGUISE)){
+			Actor->Outfit.ObjectType = (uint16)TargetType.getAttribute(DISGUISETARGET);
+		}else{
+			Actor->Outfit.ObjectType = (uint16)TargetType.TypeID;
+		}
+		Actor->SetTimer(SKILL_ILLUSION, 1, Duration, Duration, -1);
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void ChangeData(TCreature *Actor, const char *Param){
+	if(Actor == NULL){
+		error("ChangeData: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("ChangeData: Ungültiger Parameter übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("ChangeData: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, CREATE_OBJECTS)){
+		return;
+	}
+
+	Object RightHand = GetBodyObject(Actor->ID, 5); // RIGHTHAND ?
+	Object LeftHand = GetBodyObject(Actor->ID, 6);	// LEFTHAND ?
+	if(RightHand != NONE && LeftHand != NONE){
+		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "First drop one object.");
+		return;
+	}
+
+	Object Obj = RightHand;
+	if(Obj == NONE){
+		Obj = LeftHand;
+	}
+
+	if(Obj == NONE){
+		Obj = GetFirstObject(Actor->posx, Actor->posy, Actor->posz);
+		while(Obj != NONE){
+			if(Obj.getObjectType().getFlag(KEYDOOR)){
+				break;
+			}
+			Obj = Obj.getNextObject();
+		}
+	}
+
+	if(Obj != NONE){
+		int Attribute = -1;
+		int Value = atoi(Param);
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(LIQUIDCONTAINER)){
+			Attribute = CONTAINERLIQUIDTYPE;
+		}else if(ObjType.getFlag(KEY)){
+			if(Value > 0){
+				Attribute = KEYNUMBER;
+			}
+		}else if(ObjType.getFlag(KEYDOOR)){
+			if(Value > 0){
+				Attribute = KEYHOLENUMBER;
+			}
+		}else if(ObjType.getFlag(CUMULATIVE)){
+			if(Value > 0 && Value <= 100){
+				Attribute = AMOUNT;
+			}
+		}else if(ObjType.getFlag(RUNE)){
+			if(Value > 0 && Value <= 99){
+				Attribute = CHARGES;
+			}
+		}
+
+		if(Attribute != -1){
+			Change(Obj, Attribute, Value);
+			GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+		}else{
+			SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+					"You can\'t change %s in this way.", GetName(Obj));
+		}
+	}
+}
+
+void EnchantObject(TCreature *Actor, int ManaPoints, int SoulPoints, ObjectType OldType, ObjectType NewType){
+	if(Actor == NULL){
+		error("EnchantObject: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	Object Obj = GetBodyObject(Actor->ID, 5); // RIGHTHAND ?
+	if(Obj == NONE || Obj.getObjectType() != OldType){
+		Obj = GetBodyObject(Actor->ID, 6); // LEFTHAND ?
+		if(Obj == NONE || Obj.getObjectType() != OldType){
+			throw MAGICITEM;
+		}
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+	Change(Obj, NewType, 0);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+}
+
+void Convince(TCreature *Actor, TCreature *Target){
+	// TODO(fusion): All of a sudden we're not checking if `Actor` is NULL?
+
+	if(Target->Type != MONSTER){
+		throw ATTACKNOTALLOWED;
+	}
+
+	if(Actor->Type == PLAYER && Actor->SummonedCreatures >= 2){
+		throw TOOMANYSLAVES;
+	}
+
+	if(WorldType == NON_PVP && Actor->IsPeaceful() && Target->IsPeaceful()){
+		throw ATTACKNOTALLOWED;
+	}
+
+	if(GetRaceNoConvince(Target->Race)){
+		throw NOTACCESSIBLE;
+	}
+
+	int SummonCost = GetRaceSummonCost(Target->Race);
+	int Delay = (WorldType == PVP_ENFORCED) ? 1000 : 2000;
+	CheckMana(Actor, SummonCost, 0, Delay);
+	ConvinceMonster(Actor, Target);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+	GraphicalEffect(Target->posx, Target->posy, Target->posz, EFFECT_BONE_HIT);
+}
+
+void Challenge(TCreature *Actor, int ManaPoints, int SoulPoints, int Radius){
+	// TODO(fusion): All of a sudden we're not checking if `Actor` is NULL?
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	// TODO(fusion): Same as `KillAllMonsters`.
+	if(Radius >= NARRAY(Circle)){
+		Radius = NARRAY(Circle) - 1;
+	}
+
+	int ActorX = Actor->posx;
+	int ActorY = Actor->posx;
+	int ActorZ = Actor->posx;
+	for(int R = 0; R <= Radius; R += 1){
+		int CirclePoints = Circle[R].Count;
+		for(int Point = 0; Point < CirclePoints; Point += 1){
+			int FieldX = ActorX + Circle[R].x[Point];
+			int FieldY = ActorY + Circle[R].y[Point];
+			int FieldZ = ActorZ;
+
+			if(!ThrowPossible(ActorX, ActorY, ActorZ, FieldX, FieldY, FieldZ, 0)){
+				continue;
+			}
+
+			GraphicalEffect(FieldX, FieldY, FieldZ, EFFECT_MAGIC_BLUE);
+			Object Obj = GetFirstSpecObject(FieldX, FieldY, FieldZ, TYPEID_CREATURE_CONTAINER);
+			if(Obj != NONE){
+				TCreature *Victim = GetCreature(Obj);
+				if(Victim == NULL){
+					error("Challenge: Ungültige Kreatur.\n");
+				}else if(Victim->Type == MONSTER){
+					ChallengeMonster(Actor, Victim);
+				}
+			}
+		}
+	}
+}
+
+void FindPerson(TCreature *Actor, const char *TargetName, int ManaPoints, int SoulPoints){
+	// TODO(fusion): And we're back.
+	if(Actor == NULL){
+		error("FindPerson: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(TargetName == NULL){
+		error("FindPerson: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("FindPerson: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	TPlayer *Target;
+	bool IgnoreGamemasters = !CheckRight(Actor->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(TargetName, false, IgnoreGamemasters, &Target)){
+		default:
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+	}
+
+	if(Target == NULL){
+		error("FindPerson: Opp ist NULL.\n");
+		throw ERROR;
+	}
+
+	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+
+	int Distance = std::max<int>(
+			std::abs(Actor->posx - Target->posx),
+			std::abs(Actor->posy - Target->posy));
+	if(Distance <= 4){
+		if(Actor->posz > Target->posz){
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is above you.", Target->Name);
+		}else if(Actor->posz < Target->posz){
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is below you.", Target->Name);
+		}else{
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is standing next to you.", Target->Name);
+		}
+	}else{
+		const char *Direction = "";
+		switch(GetDirection(Target->posx - Actor->posx, Target->posy - Actor->posy)){
+			case DIRECTION_NORTH:		Direction = "north"; break;
+			case DIRECTION_EAST:		Direction = "east"; break;
+			case DIRECTION_SOUTH:		Direction = "south"; break;
+			case DIRECTION_WEST:		Direction = "west"; break;
+			case DIRECTION_SOUTHWEST:	Direction = "south-west"; break;
+			case DIRECTION_SOUTHEAST:	Direction = "south-east"; break;
+			case DIRECTION_NORTHWEST:	Direction = "north-west"; break;
+			case DIRECTION_NORTHEAST:	Direction = "north-east"; break;
+			default:{
+				error("FindPerson: Richtung ist Null.\n");
+				throw ERROR;
+			}
+		}
+
+		if(Distance <= 99){
+			if(Actor->posz > Target->posz){
+				SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is on a higher level to the %s.", Target->Name, Direction);
+			}else if(Actor->posz < Target->posz){
+				SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is on a lower level to the %s.", Target->Name, Direction);
+			}else{
+				SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is to the %s.", Target->Name, Direction);
+			}
+		}else if(Distance <= 250){
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is far to the %s.", Target->Name, Direction);
+		}else{
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "%s is very far to the %s.", Target->Name, Direction);
+		}
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void GetPosition(TCreature *Actor){
+	if(Actor == NULL){
+		error("GetPosition: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("GetPosition: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, SHOW_COORDINATE)){
+		SendMessage(Actor->Connection, TALK_EVENT_MESSAGE,
+				"Your position is [%d,%d,%d].",
+				Actor->posx, Actor->posy, Actor->posz);
+	}
+}
+
+void GetQuestValue(TCreature *Actor, const char *Param){
+	if(Actor == NULL){
+		error("GetQuestValue: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("GetQuestValue: Param ist NULL.\n");
+		return; // TODO(fusion): Why don't we throw here?
+	}
+
+	if(Actor->Type != PLAYER){
+		error("GetQuestValue: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, CHANGE_SKILLS)){
+		int QuestNumber = atoi(Param);
+		if(QuestNumber >= 0 && QuestNumber < NARRAY(TPlayer::QuestValues)){
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "Quest value %d is %d.",
+					QuestNumber, ((TPlayer*)Actor)->GetQuestValue(QuestNumber));
+		}else{
+			SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "Invalid quest number.");
+		}
+	}
+}
+
+void SetQuestValue(TCreature *Actor, const char *Param1, const char *Param2){
+	if(Actor == NULL){
+		error("SetQuestValue: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param1 == NULL){
+		error("SetQuestValue: Param1 ist NULL.\n");
+		return; // TODO(fusion): Why don't we throw here?
+	}
+
+	if(Param2 == NULL){
+		error("SetQuestValue: Param2 ist NULL.\n");
+		return; // TODO(fusion): Why don't we throw here?
+	}
+
+	if(Actor->Type != PLAYER){
+		error("SetQuestValue: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, CHANGE_SKILLS)){
+		int QuestNumber = atoi(Param1);
+		int QuestValue = atoi(Param2);
+		if(QuestNumber >= 0 && QuestNumber < NARRAY(TPlayer::QuestValues)){
+			SendMessage(Actor->Connection, TALK_INFO_MESSAGE,
+					"Quest value %d set to %d.", QuestNumber, QuestValue);
+		}else{
+			SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "Invalid quest number.");
+		}
+	}
+}
+
+void ClearQuestValues(TCreature *Actor){
+	if(Actor == NULL){
+		error("ClearQuestValues: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("ClearQuestValues: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, CHANGE_SKILLS)){
+		for(int QuestNumber = 0;
+				QuestNumber < NARRAY(TPlayer::QuestValues);
+				QuestNumber += 1){
+			((TPlayer*)Actor)->SetQuestValue(QuestNumber, 0);
+		}
+		SendMessage(Actor->Connection, TALK_INFO_MESSAGE, "All quest values deleted.");
+	}
+}
+
+void CreateKnowledge(TCreature *Actor, const char *Param1, const char *Param2){
+	if(Actor == NULL){
+		error("CreateKnowledge: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param1 == NULL){
+		error("CreateKnowledge: Ungültiger Parameter 1 übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("CreateKnowledge: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, CHANGE_SKILLS)){
+		int Skill = (Param2 != NULL) ? atoi(Param1) : 0;
+		int Amount = (Param2 != NULL) ? atoi(Param2) : atoi(Param1);
+		if(Skill < 0 || Skill >= NARRAY(Actor->Skills) || Amount < 1){
+			return;
+		}
+		Actor->Skills[Skill]->Increase(Amount);
+		GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
+	}
+}
+
+void ChangeProfession(TCreature *Actor, const char *Param){
+	if(Actor == NULL){
+		error("ChangeProfession: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Param == NULL){
+		error("ChangeProfession: Ungültigen Parameter übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("ChangeProfession: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, CHANGE_PROFESSION)){
+		return;
+	}
+
+	if(stricmp(Param, "male") == 0){
+		Actor->Sex = 1;
+	}else if(stricmp(Param, "female") == 0){
+		Actor->Sex = 2;
+	}else if(stricmp(Param, "none") == 0){
+		((TPlayer*)Actor)->ClearProfession();
+	}else if(stricmp(Param, "knight") == 0){
+		((TPlayer*)Actor)->ClearProfession();
+		((TPlayer*)Actor)->SetProfession(PROFESSION_KNIGHT);
+	}else if(stricmp(Param, "paladin") == 0){
+		((TPlayer*)Actor)->ClearProfession();
+		((TPlayer*)Actor)->SetProfession(PROFESSION_PALADIN);
+	}else if(stricmp(Param, "sorcerer") == 0){
+		((TPlayer*)Actor)->ClearProfession();
+		((TPlayer*)Actor)->SetProfession(PROFESSION_SORCERER);
+	}else if(stricmp(Param, "druid") == 0){
+		((TPlayer*)Actor)->ClearProfession();
+		((TPlayer*)Actor)->SetProfession(PROFESSION_DRUID);
+	}else if(stricmp(Param, "promotion") == 0){
+		// TODO(fusion): Probably some inlined function to check whether the
+		// player is already promoted.
+		uint8 RealProfession = ((TPlayer*)Actor)->GetRealProfession();
+		if(RealProfession == 0 || RealProfession >= 10){
+			return;
+		}
+
+		// NOTE(fusion): Using the value 10 with `TPlayer::SetProfession` will
+		// cause the player to be promoted.
+		((TPlayer*)Actor)->SetProfession(10);
+	}else{
+		return;
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void EditGuests(TCreature *Actor){
+	if(Actor == NULL){
+		error("EditGuests: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("EditGuests: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	uint16 HouseID = GetHouseID(Actor->posx, Actor->posy, Actor->posz);
+	if(HouseID == 0){
+		throw NOTACCESSIBLE;
+	}
+
+	// TODO(fusion): Now this can be problematic. If we don't sanitize house
+	// lists to be under 4KB, we can easily get a buffer overflow here.
+	char GuestList[4096];
+	ShowGuestList(HouseID, (TPlayer*)Actor, GuestList);
+	SendEditList(Actor->Connection, GUESTLIST, HouseID, GuestList);
+}
+
+void EditSubowners(TCreature *Actor){
+	if(Actor == NULL){
+		error("EditSubowners: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("EditSubowners: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	uint16 HouseID = GetHouseID(Actor->posx, Actor->posy, Actor->posz);
+	if(HouseID == 0){
+		throw NOTACCESSIBLE;
+	}
+
+	// TODO(fusion): Now this can be problematic. If we don't sanitize house
+	// lists to be under 4KB, we can easily get a buffer overflow here.
+	char SubOwnerList[4096];
+	ShowSubownerList(HouseID, (TPlayer*)Actor, SubOwnerList);
+	SendEditList(Actor->Connection, SUBOWNERLIST, HouseID, SubOwnerList);
+}
+
+void EditNameDoor(TCreature *Actor){
+	if(Actor == NULL){
+		error("EditNameDoor: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("EditNameDoor: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	int DoorX = Actor->posx;
+	int DoorY = Actor->posy;
+	int DoorZ = Actor->posz;
+	Object Obj = GetFirstObject(DoorX, DoorY, DoorZ);
+	while(Obj != NONE){
+		if(Obj.getObjectType().getFlag(NAMEDOOR)){
+			break;
+		}
+		Obj = Obj.getNextObject();
+	}
+
+	if(Obj == NONE){
+		// TODO(fusion): This is probably an inlined function `TCreature::GetForwardPosition`.
+		switch(Actor->Direction){
+			case DIRECTION_NORTH:	DoorY -= 1; break;
+			case DIRECTION_EAST:	DoorX += 1; break;
+			case DIRECTION_SOUTH:	DoorY += 1; break;
+			case DIRECTION_WEST:	DoorX -= 1; break;
+		}
+
+		// TODO(fusion): This could be some inlined function to retrieve the
+		// first object with a given flag.
+		Obj = GetFirstObject(DoorX, DoorY, DoorZ);
+		while(Obj != NONE){
+			if(Obj.getObjectType().getFlag(NAMEDOOR)){
+				break;
+			}
+			Obj = Obj.getNextObject();
+		}
+	}
+
+	if(Obj == NONE){
+		print(3, "Keine NameDoor gefunden.\n");
+		throw NOTACCESSIBLE;
+	}
+
+	char DoorList[4096];
+	ShowNameDoor(Obj, (TPlayer*)Actor, DoorList);
+	SendEditList(Actor->Connection, DOORLIST, Obj.ObjectID, DoorList);
+}
+
+void KickGuest(TCreature *Actor, const char *GuestName){
+	if(Actor == NULL){
+		error("KickGuest(magic): Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(GuestName == NULL){
+		error("KickGuest(magic): Ungültigen Gast übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("KickGuest(magic): Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	TPlayer *Guest;
+	bool IgnoreGamemasters = !CheckRight(Actor->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(GuestName, false, IgnoreGamemasters, &Guest)){
+		default:
+		case  0:	break; // PLAYERFOUND ?
+		case -1:	throw PLAYERNOTONLINE;
+		case -2:	throw NAMEAMBIGUOUS;
+	}
+
+	uint16 HouseID = GetHouseID(Guest->posx, Guest->posy, Guest->posz);
+	if(HouseID == 0){
+		throw NOTACCESSIBLE;
+	}
+
+	KickGuest(HouseID, (TPlayer*)Actor, Guest);
+}
+
+void Notation(TCreature *Actor, const char *Name, const char *Comment){
+	if(Actor == NULL){
+		error("Notation: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("Notation: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Comment == NULL){
+		error("Notation: Ungültige Bemerkung übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("Notation: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
+}
+
+void NameLock(TCreature *Actor, const char *Name){
+	if(Actor == NULL){
+		error("NameLock: Ungültige Kreatur übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Name == NULL){
+		error("NameLock: Ungültiger Name übergeben.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error("NameLock: Zauberspruch kann nur von Spielern angewendet werden.\n");
+		throw ERROR;
+	}
+
+	SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
+			"Spell is not available any more. Press Ctrl+Y for the dialog.");
 }
 
 // Magic Init Functions
