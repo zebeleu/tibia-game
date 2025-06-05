@@ -187,7 +187,7 @@ void RandomShuffle(T *Buffer, int Size){
 
 struct TReadStream {
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	virtual bool readFlag(void);														// VTABLE[0]
 	virtual uint8 readByte(void) = 0;													// VTABLE[1]
 	virtual uint16 readWord(void);														// VTABLE[2]
@@ -199,12 +199,10 @@ struct TReadStream {
 };
 
 struct TReadBuffer: TReadStream {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TReadBuffer(const uint8 *Data, int Size);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	uint8 readByte(void) override;
 	uint16 readWord(void) override;
 	uint32 readQuad(void) override;
@@ -213,7 +211,7 @@ struct TReadBuffer: TReadStream {
 	void skip(int Count) override;
 
 	// DATA
-	// =========================================================================
+	// =================
 	const uint8 *Data;
 	int Size;
 	int Position;
@@ -221,7 +219,7 @@ struct TReadBuffer: TReadStream {
 
 struct TWriteStream {
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	virtual void writeFlag(bool Flag);													// VTABLE[0]
 	virtual void writeByte(uint8 Byte) = 0;												// VTABLE[1]
 	virtual void writeWord(uint16 Word);												// VTABLE[2]
@@ -231,33 +229,29 @@ struct TWriteStream {
 };
 
 struct TWriteBuffer: TWriteStream {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TWriteBuffer(uint8 *Data, int Size);
 	void reset(void) { this->Position = 0; }
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	void writeByte(uint8 Byte) override;
 	void writeWord(uint16 Word) override;
 	void writeQuad(uint32 Quad) override;
 	void writeBytes(const uint8 *Buffer, int Count) override;
 
 	// DATA
-	// =========================================================================
+	// =================
 	uint8 *Data;
 	int Size;
 	int Position;
 };
 
 struct TDynamicWriteBuffer: TWriteBuffer {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TDynamicWriteBuffer(int InitialSize);
 	void resizeBuffer(void);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	void writeByte(uint8 Byte) override;
 	void writeWord(uint16 Word) override;
 	void writeQuad(uint32 Quad) override;

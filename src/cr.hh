@@ -93,8 +93,6 @@ struct TRaceData {
 // TSkillBase 
 // =============================================================================
 struct TSkill{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TSkill(int SkNr, TCreature *Master);
 	int Get(void);
 	int GetProgress(void);
@@ -109,7 +107,7 @@ struct TSkill{
 			int *Exp, int *FactorPercent, int *NextLevel, int *Delta);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	virtual ~TSkill(void);																// VTABLE[ 0]
 	// Duplicate destructor that also calls operator delete.							// VTABLE[ 1]
 	virtual void Set(int Value);														// VTABLE[ 2]
@@ -129,7 +127,7 @@ struct TSkill{
 	virtual void Reset(void);															// VTABLE[16]
 
 	// DATA
-	// =========================================================================
+	// =================
 	//void *VTABLE;		// IMPLICIT
 	int DAct;			// Delta Value - Probably from equipment.
 	int MDAct;			// Delta Magic Value - Probably from spells.
@@ -240,8 +238,6 @@ struct TSkillEnergy: TSkill {
 };
 
 struct TSkillBase{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TSkillBase(void);
 	~TSkillBase(void);
 	bool NewSkill(uint16 SkillNo, TCreature *Creature);
@@ -251,7 +247,7 @@ struct TSkillBase{
 	void DelTimer(uint16 SkNr);
 
 	// DATA
-	// =========================================================================
+	// =================
 	TSkill *Skills[25];
 	TSkill *TimerList[25];
 	uint16 FirstFreeTimer;
@@ -266,8 +262,6 @@ struct TCombatEntry{
 };
 
 struct TCombat{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TCombat(void);
 	void GetWeapon(void);
 	void GetAmmo(void);
@@ -297,7 +291,7 @@ struct TCombat{
 
 
 	// DATA
-	// =========================================================================
+	// =================
 	TCreature *Master;
 	uint32 EarliestAttackTime;
 	uint32 EarliestDefendTime;
@@ -378,8 +372,6 @@ struct TToDoEntry {
 };
 
 struct TCreature: TSkillBase {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TCreature(void);
 	void Attack(void);
 	int Damage(TCreature *Attacker, int Damage, int DamageType);
@@ -388,7 +380,7 @@ struct TCreature: TSkillBase {
 	void ToDoGo(int DestX, int DestY, int DestZ, bool Dest, int MaxSteps);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	virtual ~TCreature(void);															// VTABLE[ 0]
 	// Duplicate destructor that also calls operator delete.							// VTABLE[ 1]
 	virtual void Death(void);															// VTABLE[ 2]
@@ -402,7 +394,7 @@ struct TCreature: TSkillBase {
 	virtual void AttackStimulus(uint32 AttackerID);										// VTABLE[10]
 
 	// DATA
-	// =========================================================================
+	// =================
 	//void *VTABLE;					// IMPLICIT
 	//TSkillBase super_TSkillBase;	// IMPLICIT
 	TCombat Combat;
@@ -533,8 +525,6 @@ struct TPlayerData {
 };
 
 struct TPlayer: TCreature {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	uint8 GetRealProfession(void);
 	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
@@ -556,11 +546,11 @@ struct TPlayer: TCreature {
 	void CheckState(void);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	// TODO
 
 	// DATA
-	// =========================================================================
+	// =================
 	//TCreature super_TCreature;	// IMPLICIT
 	uint32 AccountID;
 	char Guild[31];

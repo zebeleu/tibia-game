@@ -8,8 +8,6 @@
 // index is valid, even for negative indices.
 template<typename T>
 struct vector{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	vector(int min, int max, int block){
 		int space = (max - min) + 1;
 		if(space < 1){
@@ -111,7 +109,7 @@ struct vector{
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	int min;
 	int max;
 	int start;
@@ -130,8 +128,6 @@ struct priority_queue_entry{
 
 template<typename K, typename T>
 struct priority_queue{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	priority_queue(int capacity, int increment){
 		Entry = new vector<priority_queue_entry<K, T>>(1, capacity, increment);
 		Entries = 0;
@@ -202,19 +198,13 @@ struct priority_queue{
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	vector<priority_queue_entry<K, T>> *Entry;
 	int Entries;
 };
 
-// TODO(fusion): We only use this structure two global queues:
-//	priority_queue<uint32, uint32>			ToDoQueue(5000, 1000);
-//	priority_queue<uint32, TAttackWave*>	AttackWaveQueue(100, 100);
-
 template<typename T>
 struct matrix{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	matrix(int xmin, int xmax, int ymin, int ymax){
 		int dx = (xmax - xmin) + 1;
 		int dy = (ymax - ymin) + 1;
@@ -262,7 +252,7 @@ struct matrix{
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	int xmin;
 	int ymin;
 	int dx;
@@ -272,8 +262,6 @@ struct matrix{
 
 template<typename T>
 struct matrix3d{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	matrix3d(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
 		int dx = (xmax - xmin) + 1;
 		int dy = (ymax - ymin) + 1;
@@ -333,7 +321,7 @@ struct matrix3d{
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	int xmin;
 	int ymin;
 	int zmin;
@@ -352,8 +340,6 @@ struct listnode{
 
 template<typename T>
 struct list{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	list(void){
 		firstNode = NULL;
 		lastNode = NULL;
@@ -405,15 +391,13 @@ struct list{
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	listnode<T> *firstNode;
 	listnode<T> *lastNode;
 };
 
 template<typename T>
 struct fifo{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	fifo(int InitialSize){
 		ASSERT(InitialSize > 0);
 		this->Entry = new T[InitialSize];
@@ -468,7 +452,7 @@ struct fifo{
 	// functions were inlined so I'm not sure it is needed.
 
 	// DATA
-	// =========================================================================
+	// =================
     T *Entry;
     int Size;
     int Head;
@@ -495,8 +479,6 @@ struct storeunit{
 // It is also known as a slab allocator.
 template<typename T, usize N>
 struct store{
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	store(void){
 		this->Units = new list<storeunit<T, N>>;
 		this->firstFreeItem = NULL;
@@ -529,7 +511,7 @@ struct store{
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	list<storeunit<T, N>> *Units;
 	storeitem<T> *firstFreeItem;
 };

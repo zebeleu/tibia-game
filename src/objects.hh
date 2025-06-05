@@ -20,8 +20,6 @@ enum : int{
 };
 
 struct ObjectType {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	ObjectType(void) { this->setTypeID(0); }
 	ObjectType(int TypeID) { this->setTypeID(TypeID); }
 	void setTypeID(int TypeID);
@@ -61,7 +59,7 @@ struct ObjectType {
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	int TypeID;
 };
 

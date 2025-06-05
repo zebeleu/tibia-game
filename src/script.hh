@@ -7,8 +7,6 @@
 #define MAX_IDENT_LENGTH 30
 
 struct TReadScriptFile {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TReadScriptFile(void);
 	~TReadScriptFile(void);
 	void open(const char *FileName);
@@ -66,7 +64,7 @@ struct TReadScriptFile {
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	TOKEN Token;
 	FILE *File[3];
 	char Filename[3][4096];
@@ -82,8 +80,6 @@ struct TReadScriptFile {
 };
 
 struct TWriteScriptFile {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TWriteScriptFile(void);
 	~TWriteScriptFile(void);
 	void open(const char *FileName);
@@ -97,15 +93,13 @@ struct TWriteScriptFile {
 	void writeBytesequence(const uint8 *Sequence, int Length);
 
 	// DATA
-	// =========================================================================
+	// =================
 	FILE *File;
 	char Filename[4096];
 	int Line;
 };
 
 struct TReadBinaryFile: TReadStream {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TReadBinaryFile(void);
 	void open(const char *FileName);
 	void close(void);
@@ -115,7 +109,7 @@ struct TReadBinaryFile: TReadStream {
 	void seek(int Offset);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	uint8 readByte(void) override;
 	void readBytes(uint8 *Buffer, int Count) override;
 	bool eof(void) override;
@@ -128,22 +122,20 @@ struct TReadBinaryFile: TReadStream {
 	// Duplicate destructor that also calls operator delete.							// VTABLE[9]
 
 	// DATA
-	// =========================================================================
+	// =================
 	FILE *File;
 	char Filename[4096];
 	int FileSize;
 };
 
 struct TWriteBinaryFile: TWriteStream {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	TWriteBinaryFile(void);
 	void open(const char *FileName);
 	void close(void);
 	void error(const char *Text);
 
 	// VIRTUAL FUNCTIONS
-	// =========================================================================
+	// =================
 	void writeByte(uint8 Byte) override;
 	void writeBytes(const uint8 *Buffer, int Count) override;
 
@@ -153,7 +145,7 @@ struct TWriteBinaryFile: TWriteStream {
 	virtual ~TWriteBinaryFile(void);
 
 	// DATA
-	// =========================================================================
+	// =================
 	FILE *File;
 	char Filename[4096];
 };

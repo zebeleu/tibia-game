@@ -30,8 +30,6 @@ enum : int {
 };
 
 struct Object {
-	// REGULAR FUNCTIONS
-	// =========================================================================
 	constexpr Object(void) : ObjectID(0) {}
 	constexpr Object(uint32 ObjectID): ObjectID(ObjectID) {}
 
@@ -55,7 +53,7 @@ struct Object {
 	}
 
 	// DATA
-	// =========================================================================
+	// =================
 	uint32 ObjectID;
 };
 
