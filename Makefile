@@ -13,9 +13,9 @@ else
 	CFLAGS += -O2
 endif
 
-HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/config.hh $(SRCDIR)/connection.hh $(SRCDIR)/containers.hh $(SRCDIR)/crcombat.hh $(SRCDIR)/creature.hh $(SRCDIR)/crskill.hh $(SRCDIR)/enums.hh $(SRCDIR)/info.hh $(SRCDIR)/magic.hh $(SRCDIR)/map.hh $(SRCDIR)/monster.hh $(SRCDIR)/objects.hh $(SRCDIR)/player.hh $(SRCDIR)/script.hh $(SRCDIR)/stubs.hh $(SRCDIR)/thread.hh
+HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/config.hh $(SRCDIR)/connection.hh $(SRCDIR)/containers.hh $(SRCDIR)/cr.hh $(SRCDIR)/enums.hh $(SRCDIR)/info.hh $(SRCDIR)/magic.hh $(SRCDIR)/map.hh $(SRCDIR)/objects.hh $(SRCDIR)/script.hh $(SRCDIR)/stubs.hh $(SRCDIR)/thread.hh
 
-$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/creature.obj $(BUILDDIR)/crskill.obj $(BUILDDIR)/info.obj $(BUILDDIR)/magic.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/player.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
+$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/crmain.obj $(BUILDDIR)/crplayer.obj $(BUILDDIR)/crskill.obj $(BUILDDIR)/info.obj $(BUILDDIR)/magic.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
 	$(CC) -c $(CFLAGS) $(LFLAGS) -o $@ $^
 
 $(BUILDDIR)/config.obj: $(SRCDIR)/config.cc $(HEADERS)
@@ -26,7 +26,11 @@ $(BUILDDIR)/crcombat.obj: $(SRCDIR)/crcombat.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(BUILDDIR)/creature.obj: $(SRCDIR)/creature.cc $(HEADERS)
+$(BUILDDIR)/crmain.obj: $(SRCDIR)/crmain.cc $(HEADERS)
+	@mkdir -p $(@D)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(BUILDDIR)/crplayer.obj: $(SRCDIR)/crplayer.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
@@ -51,10 +55,6 @@ $(BUILDDIR)/map.obj: $(SRCDIR)/map.cc $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILDDIR)/objects.obj: $(SRCDIR)/objects.cc $(HEADERS)
-	@mkdir -p $(@D)
-	$(CC) -c $(CFLAGS) -o $@ $<
-
-$(BUILDDIR)/player.obj: $(SRCDIR)/player.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 

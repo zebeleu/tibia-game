@@ -1,5 +1,4 @@
-#include "creature.hh"
-#include "monster.hh"
+#include "cr.hh"
 
 #include "stubs.hh"
 

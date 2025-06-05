@@ -1,5 +1,5 @@
 #include "info.hh"
-#include "creature.hh"
+#include "cr.hh"
 
 #include "stubs.hh"
 

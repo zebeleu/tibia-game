@@ -1,5 +1,4 @@
-#include "player.hh"
-#include "enums.hh"
+#include "cr.hh"
 
 #include "stubs.hh"
 

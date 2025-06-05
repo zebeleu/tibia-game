@@ -2,7 +2,7 @@
 #define TIBIA_MAGIC_HH_ 1
 
 #include "common.hh"
-#include "creature.hh"
+#include "cr.hh"
 
 enum : int {
 	FIELD_TYPE_FIRE = 1,

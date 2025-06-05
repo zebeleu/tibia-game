@@ -4,10 +4,9 @@
 #include "common.hh"
 #include "enums.hh"
 #include "connection.hh"
-#include "creature.hh"
+#include "cr.hh"
 #include "magic.hh"
 #include "map.hh"
-#include "player.hh"
 
 // IMPORTANT(fusion): These function definitions exist to test compilation. They're
 // not yet implemented and will cause the linker to fail with unresolved symbols.

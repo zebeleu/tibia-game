@@ -1,9 +1,24 @@
-#include "creature.hh"
-#include "monster.hh"
+#include "cr.hh"
 #include "enums.hh"
 
 #include "stubs.hh"
 
+static uint32 NextCreatureID;
+static matrix<uint32> *FirstChainCreature;
+static TCreature *HashList[1000];
+
+static int FirstFreeCreature;
+static vector<TCreature*> CreatureList(0, 10000, 1000);
+
+static priority_queue<uint32, uint32> ToDoQueue(5000, 1000);
+//static priority_queue<uint32, TAttackWave*> AttackWaveQueue(100, 100);
+
+TRaceData RaceData[MAX_RACES];
+int KilledCreatures[MAX_RACES];
+int KilledPlayers[MAX_RACES];
+
+// TCreature
+// =============================================================================
 TCreature::TCreature(void) :
 		TSkillBase(),
 		Combat(),
@@ -55,46 +70,6 @@ TCreature::TCreature(void) :
 void TCreature::Attack(void){
 	this->Combat.Attack();
 }
-
-// Temporary Location
-// =============================================================================
-// =============================================================================
-// TODO(fusion): These probably belong elsewhere but we should come back to
-// this when we're wrapping up creature files.
-
-bool IsCreaturePlayer(uint32 CreatureID){
-	return CreatureID < 0x40000000;
-}
-
-void AddKillStatistics(int AttackerRace, int DefenderRace){
-	// NOTE(fusion): I think the race name can be "human" only for players,
-	// which means we're probably tracking how many creatures are killed by
-	// players with `KilledCreatures`, and how many players are killed by
-	// creatures with `KilledPlayers`.
-
-	if(strcmp(RaceData[AttackerRace].Name, "human") == 0){
-		KilledCreatures[DefenderRace] += 1;
-	}
-
-	// NOTE(fusion): This seems to track how many players are killed by
-	if(strcmp(RaceData[DefenderRace].Name, "human") == 0){
-		KilledPlayers[AttackerRace] += 1;
-	}
-}
-
-int GetRaceByName(const char *RaceName){
-	int Result = 0;
-	for(int Race = 1; Race < NARRAY(RaceData); Race += 1){
-		if(stricmp(RaceName, RaceData[Race].Name) == 0){
-			Result = Race;
-			break;
-		}
-	}
-	return Result;
-}
-
-// =============================================================================
-// =============================================================================
 
 int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 	if(this->IsDead || this->Type == NPC){
@@ -486,3 +461,129 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 	AnnounceChangedCreature(this->ID, 1); // CREATURE_HITPOINTS_CHANGED ?
 	return Damage;
 }
+
+// Creature
+// =============================================================================
+bool IsCreaturePlayer(uint32 CreatureID){
+	return CreatureID < 0x40000000;
+}
+
+//
+
+void DeleteChainCreature(TCreature *Creature){
+	if(Creature == NULL){
+		error("DeleteChainCreature: Übegebene Kreatur existiert nicht.\n");
+		return;
+	}
+
+	// NOTE(fusion): All creatures in each 16x16 region form a creature linked
+	// list, despite its current floor. Whether that is a good idea is a whole
+	// other matter.
+	int BlockX = Creature->posx / 16;
+	int BlockY = Creature->posy / 16;
+	uint32 *FirstID = FirstChainCreature->at(BlockX, BlockY);
+
+	if(*FirstID == Creature->ID){
+		*FirstID = Creature->NextChainCreature;
+	}else{
+		uint32 CurrentID = *FirstID;
+		while(true){
+			if(CurrentID == 0){
+				error("DeleteChainCreature: Kreatur nicht gefunden.\n");
+				return;
+			}
+
+			TCreature *Current = GetCreature(CurrentID);
+			if(Current == NULL){
+				error("DeleteChainCreature: Kreatur existiert nicht.\n");
+				return;
+			}
+
+			if(Current->NextChainCreature == Creature->ID){
+				Current->NextChainCreature = Creature->NextChainCreature;
+				break;
+			}
+
+			CurrentID = Current->NextChainCreature;
+		}
+	}
+}
+
+// Kill Statistics
+// =============================================================================
+void AddKillStatistics(int AttackerRace, int DefenderRace){
+	// NOTE(fusion): I think the race name can be "human" only for players,
+	// which means we're probably tracking how many creatures are killed by
+	// players with `KilledCreatures`, and how many players are killed by
+	// creatures with `KilledPlayers`.
+
+	if(strcmp(RaceData[AttackerRace].Name, "human") == 0){
+		KilledCreatures[DefenderRace] += 1;
+	}
+
+	// NOTE(fusion): This seems to track how many players are killed by
+	if(strcmp(RaceData[DefenderRace].Name, "human") == 0){
+		KilledPlayers[AttackerRace] += 1;
+	}
+}
+
+// Race
+// =============================================================================
+TRaceData::TRaceData(void) :
+		Skill(1, 5, 5),
+		Talk(1, 5, 5),
+		Item(1, 5, 5),
+		Spell(1, 5, 5)
+{
+	this->Name[0] = 0;
+	this->Article[0] = 0;
+	this->Outfit.OutfitID = 0;
+	this->Outfit.ObjectType = 0;
+	this->Blood = BT_BLOOD;
+	this->ExperiencePoints = 0;
+	this->FleeThreshold = 0;
+	this->Attack = 0;
+	this->Defend = 0;
+	this->Armor = 0;
+	this->Poison = 0;
+	this->SummonCost = 0;
+	this->LoseTarget = 0;
+	this->Strategy[0] = 100;
+	this->Strategy[1] = 0;
+	this->Strategy[2] = 0;
+	this->Strategy[3] = 0;
+	this->KickBoxes = false;
+	this->KickCreatures = false;
+	this->SeeInvisible = false;
+	this->Unpushable = false;
+	this->DistanceFighting = false;
+	this->NoSummon = false;
+	this->NoIllusion = false;
+	this->NoConvince = false;
+	this->NoBurning = false;
+	this->NoPoison = false;
+	this->NoEnergy = false;
+	this->NoHit = false;
+	this->NoLifeDrain = false;
+	this->NoParalyze = false;
+	this->Skills = 0;
+	this->Talks = 0;
+	this->Items = 0;
+	this->Spells = 0;
+}
+
+int GetRaceByName(const char *RaceName){
+	int Result = 0;
+	for(int Race = 1; Race < NARRAY(RaceData); Race += 1){
+		if(stricmp(RaceName, RaceData[Race].Name) == 0){
+			Result = Race;
+			break;
+		}
+	}
+	return Result;
+}
+
+// Raid
+// =============================================================================
+
+

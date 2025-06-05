@@ -1,6 +1,4 @@
-#include "creature.hh"
-#include "monster.hh"
-#include "player.hh"
+#include "cr.hh"
 #include "config.hh"
 #include "magic.hh"
 

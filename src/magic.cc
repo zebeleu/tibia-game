@@ -1,8 +1,6 @@
 #include "magic.hh"
 #include "config.hh"
-#include "creature.hh"
 #include "info.hh"
-#include "monster.hh"
 
 #include "stubs.hh"
 
