@@ -7,6 +7,26 @@
 #include "stubs.hh"
 
 #include <fstream>
+#include <sstream>
+
+struct TCircle {
+	int x[32];
+	int y[32];
+	int Count;
+};
+
+struct TSpellList {
+	uint8 Syllable[10];
+	uint8 RuneGr;
+	uint8 RuneNr;
+	const char *Comment;
+	uint16 Level;
+	uint16 RuneLevel;
+	uint16 Flags;
+	int Mana;
+	int SoulPoints;
+	int Amount;
+};
 
 static TSpellList SpellList[256];
 static TCircle Circle[10];
@@ -593,44 +613,6 @@ void AngleShapeSpell(TCreature *Actor, int Angle, int Range, TImpact *Impact, in
 	}
 }
 
-// Spell Casting
-// =============================================================================
-int GetDirection(int dx, int dy){
-	// TODO(fusion): This function originally returned directions different from
-	// the ones used by creatures. I've converted it to use the same values which
-	// are also defined in `enums.hh` for simplicity.
-	int Result;
-	if(dx == 0){
-		if(dy < 0){
-			Result = DIRECTION_NORTH;
-		}else if(dy > 0){
-			Result = DIRECTION_SOUTH;
-		}else{
-			Result = DIRECTION_INVALID;
-		}
-	}else{
-		// NOTE(fusion): This function uses the approximate tangent value, avoiding
-		// floating point calculations, for whatever reason. The tangent is unique
-		// and odd in the interval (-PI/2, +PI/2). We also need to recall that the
-		// Y-axis is inverted in Tibia, so we need to negate `dy`.
-		constexpr int Tangent_67_5 = 618;	// => 618 / 256 ~ 2.41 ~ tan(67.5 deg)
-		constexpr int Tangent_22_5 = 106;	// => 106 / 256 ~ 0.41 ~ tan(22.5 deg)
-		int Tangent = (-dy * 256) / dx;		// => (dy * 256) / dx ~ (dy / dx) * 256
-		if(Tangent >= Tangent_67_5){
-			Result = DIRECTION_NORTH;
-		}else if(Tangent >= Tangent_22_5){
-			Result = (dx < 0) ? DIRECTION_NORTHWEST : DIRECTION_NORTHEAST;
-		}else if(Tangent >= -Tangent_22_5){
-			Result = (dx < 0) ? DIRECTION_WEST : DIRECTION_EAST;
-		}else if(Tangent >= -Tangent_67_5){
-			Result = (dx < 0) ? DIRECTION_SOUTHWEST : DIRECTION_SOUTHEAST;
-		}else{
-			Result = DIRECTION_SOUTH;
-		}
-	}
-	return Result;
-}
-
 void CheckSpellbook(TCreature *Actor, int SpellNr){
 	if(Actor == NULL){
 		error("CheckSpellbook: Übergebene Kreatur existiert nicht.\n");
@@ -908,6 +890,42 @@ void Combat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 			INT_MAX, Animation, 0, &Impact, Effect);
 }
 
+int GetDirection(int dx, int dy){
+	// TODO(fusion): This function originally returned directions different from
+	// the ones used by creatures. I've converted it to use the same values which
+	// are also defined in `enums.hh` for simplicity.
+	int Result;
+	if(dx == 0){
+		if(dy < 0){
+			Result = DIRECTION_NORTH;
+		}else if(dy > 0){
+			Result = DIRECTION_SOUTH;
+		}else{
+			Result = DIRECTION_INVALID;
+		}
+	}else{
+		// NOTE(fusion): This function uses the approximate tangent value, avoiding
+		// floating point calculations, for whatever reason. The tangent is unique
+		// and odd in the interval (-PI/2, +PI/2). We also need to recall that the
+		// Y-axis is inverted in Tibia, so we need to negate `dy`.
+		constexpr int Tangent_67_5 = 618;	// => 618 / 256 ~ 2.41 ~ tan(67.5 deg)
+		constexpr int Tangent_22_5 = 106;	// => 106 / 256 ~ 0.41 ~ tan(22.5 deg)
+		int Tangent = (-dy * 256) / dx;		// => (dy * 256) / dx ~ (dy / dx) * 256
+		if(Tangent >= Tangent_67_5){
+			Result = DIRECTION_NORTH;
+		}else if(Tangent >= Tangent_22_5){
+			Result = (dx < 0) ? DIRECTION_NORTHWEST : DIRECTION_NORTHEAST;
+		}else if(Tangent >= -Tangent_22_5){
+			Result = (dx < 0) ? DIRECTION_WEST : DIRECTION_EAST;
+		}else if(Tangent >= -Tangent_67_5){
+			Result = (dx < 0) ? DIRECTION_SOUTHWEST : DIRECTION_SOUTHEAST;
+		}else{
+			Result = DIRECTION_SOUTH;
+		}
+	}
+	return Result;
+}
+
 // Spell Functions
 // =============================================================================
 void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
@@ -966,6 +984,72 @@ void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
 	}
 }
 
+void CreateField(int x, int y, int z, int FieldType, uint32 Owner, bool Peaceful){
+	if(!FieldPossible(x, y, z, FieldType)){
+		return;
+	}
+
+	SPECIALMEANING Meaning;
+	switch(FieldType){
+		case FIELD_TYPE_FIRE:{
+			if(Peaceful){
+				Meaning = MAGICFIELD_FIRE_HARMLESS;
+			}else{
+				Meaning = MAGICFIELD_FIRE_DANGEROUS;
+			}
+			break;
+		}
+
+		case FIELD_TYPE_POISON:{
+			if(Peaceful){
+				Meaning = MAGICFIELD_POISON_HARMLESS;
+			}else{
+				Meaning = MAGICFIELD_POISON_DANGEROUS;
+			}
+			break;
+		}
+
+		case FIELD_TYPE_ENERGY:{
+			if(Peaceful){
+				Meaning = MAGICFIELD_ENERGY_HARMLESS;
+			}else{
+				Meaning = MAGICFIELD_ENERGY_DANGEROUS;
+			}
+			break;
+		}
+
+		case FIELD_TYPE_MAGICWALL:{
+			Meaning = MAGICFIELD_MAGICWALL;
+			break;
+		}
+
+		case FIELD_TYPE_WILDGROWTH:{
+			Meaning = MAGICFIELD_RUSHWOOD;
+			break;
+		}
+
+		default:{
+			error("CreateField: Ungültiger Feldtyp %d.\n", FieldType);
+			throw ERROR;
+		}
+	}
+
+	// NOTE(fusion): Delete other magic fields?
+	Object Obj = GetFirstObject(x, y, z);
+	while(Obj != NONE){
+		Object Next = Obj.getNextObject();
+		if(Obj.getObjectType().getFlag(MAGICFIELD)){
+			Delete(Obj, -1);
+		}
+		Obj = Next;
+	}
+
+	// NOTE(fusion): Create field, at last.
+	Create(GetMapContainer(x, y, z),
+			GetSpecialObject(Meaning),
+			Owner);
+}
+
 void CreateField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int FieldType){
 	if(Actor == NULL){
 		error("CreateField: Ungültige Kreatur übergeben.\n");
@@ -993,7 +1077,7 @@ void CreateField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints
 	CheckMana(Actor, ManaPoints, SoulPoints, Delay);
 
 	int Animation = ANIMATION_ENERGY;
-	if(FieldType == 1){
+	if(FieldType == FIELD_TYPE_FIRE){
 		Animation = ANIMATION_FIRE;
 	}
 	Missile(Actor->CrObject, Target, Animation);
@@ -1001,8 +1085,9 @@ void CreateField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints
 	bool Peaceful = (WorldType == NON_PVP && Actor->IsPeaceful());
 	CreateField(TargetX, TargetY, TargetZ, FieldType, Actor->ID, Peaceful);
 
-	// TODO(fusion): Probably damaging fields?
-	if(FieldType == 1 || FieldType == 2 || FieldType == 3){
+	if(FieldType == FIELD_TYPE_FIRE
+			|| FieldType == FIELD_TYPE_POISON
+			|| FieldType == FIELD_TYPE_ENERGY){
 		Actor->BlockLogout(60, true);
 	}
 }
@@ -1058,7 +1143,7 @@ void MassCreateField(TCreature *Actor, Object Target,
 
 	if(Actor->posx != TargetX || Actor->posy != TargetY || Actor->posz != TargetZ){
 		int Animation = ANIMATION_ENERGY;
-		if(FieldType == 1){
+		if(FieldType == FIELD_TYPE_FIRE){
 			Animation = ANIMATION_FIRE;
 		}
 		Missile(Actor->CrObject, Target, Animation);
@@ -1089,7 +1174,9 @@ void MassCreateField(TCreature *Actor, Object Target,
 		}
 	}
 
-	if(FieldType == 1 || FieldType == 2 || FieldType == 3){
+	if(FieldType == FIELD_TYPE_FIRE
+			|| FieldType == FIELD_TYPE_POISON
+			|| FieldType == FIELD_TYPE_ENERGY){
 		Actor->BlockLogout(60, true);
 	}
 }
@@ -1121,7 +1208,7 @@ void CreateFieldWall(TCreature *Actor, Object Target,
 
 	if(ActorX != TargetX || ActorY != TargetY || ActorZ != TargetZ){
 		int Animation = ANIMATION_ENERGY;
-		if(FieldType == 1){
+		if(FieldType == FIELD_TYPE_FIRE){
 			Animation = ANIMATION_FIRE;
 		}
 		Missile(Actor->CrObject, Target, Animation);
@@ -1216,7 +1303,9 @@ void CreateFieldWall(TCreature *Actor, Object Target,
 		}
 	}
 
-	if(FieldType == 1 || FieldType == 2 || FieldType == 3){
+	if(FieldType == FIELD_TYPE_FIRE
+			|| FieldType == FIELD_TYPE_POISON
+			|| FieldType == FIELD_TYPE_ENERGY){
 		Actor->BlockLogout(60, true);
 	}
 }
@@ -1321,7 +1410,7 @@ void CleanupField(TCreature *Actor){
 	CleanupField(Actor, Target, 0, 0);
 }
 
-void Teleport(TCreature *Actor, char *Param){
+void Teleport(TCreature *Actor, const char *Param){
 	if(Actor == NULL){
 		error("Teleport: Ungültige Kreatur übergeben.\n");
 		throw ERROR;
@@ -1414,7 +1503,7 @@ void Teleport(TCreature *Actor, char *Param){
 		}
 		Object Dest = GetMapContainer(DestX, DestY, DestZ);
 		Move(0, Actor->CrObject, Dest, -1, false, NONE);
-		GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
+		GraphicalEffect(DestX, DestY, DestZ, EFFECT_ENERGY);
 	}else if(MDGoStrength != Actor->Skills[SKILL_GO_STRENGTH]->MDAct){
 		Actor->Skills[SKILL_GO_STRENGTH]->SetMDAct(MDGoStrength);
 		AnnounceChangedCreature(Actor->ID, 4); // CREATURE_GO_STRENGTH_CHANGED ?
@@ -1455,7 +1544,7 @@ void TeleportToCreature(TCreature *Actor, const char *Name){
 	}
 
 	if(Actor == Player){
-		GraphicalEffect(Actor->CrObject, EFFECT_TELEPORT);
+		GraphicalEffect(Actor->CrObject, EFFECT_ENERGY);
 		return;
 	}
 
@@ -1475,7 +1564,7 @@ void TeleportToCreature(TCreature *Actor, const char *Name){
 
 	Object Dest = GetMapContainer(DestX, DestY, DestZ);
 	Move(0, Actor->CrObject, Dest, -1, false, NONE);
-	GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
+	GraphicalEffect(DestX, DestY, DestZ, EFFECT_ENERGY);
 	Log("banish", "%s teleportiert sich zu %s.\n", Actor->Name, Player->Name);
 }
 
@@ -1523,7 +1612,7 @@ void TeleportPlayerToMe(TCreature *Actor, const char *Name){
 
 	Object Dest = GetMapContainer(DestX, DestY, DestZ);
 	Move(0, Player->CrObject, Dest, -1, false, NONE);
-	GraphicalEffect(DestX, DestY, DestZ, EFFECT_TELEPORT);
+	GraphicalEffect(DestX, DestY, DestZ, EFFECT_ENERGY);
 }
 
 void MagicRope(TCreature *Actor, int ManaPoints, int SoulPoints){
@@ -1543,7 +1632,7 @@ void MagicRope(TCreature *Actor, int ManaPoints, int SoulPoints){
 
 	Object Dest = GetMapContainer(OrigX, OrigY + 1, OrigZ - 1);
 	Move(0, Actor->CrObject, Dest, -1, false, NONE);
-	GraphicalEffect(OrigX, OrigY, OrigZ, EFFECT_TELEPORT);
+	GraphicalEffect(OrigX, OrigY, OrigZ, EFFECT_ENERGY);
 }
 
 void MagicClimbing(TCreature *Actor, int ManaPoints, int SoulPoints, const char *Param){
@@ -1594,7 +1683,7 @@ void MagicClimbing(TCreature *Actor, int ManaPoints, int SoulPoints, const char 
 
 	Object Dest = GetMapContainer(DestX, DestY, DestZ);
 	Move(0, Actor->CrObject, Dest, -1, false, NONE);
-	GraphicalEffect(OrigX, OrigY, OrigZ, EFFECT_TELEPORT);
+	GraphicalEffect(OrigX, OrigY, OrigZ, EFFECT_ENERGY);
 }
 
 void MagicClimbing(TCreature *Actor, const char *Param){
@@ -1825,7 +1914,7 @@ void SummonCreature(TCreature *Actor, int ManaPoints, int Race, bool God){
 	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
 }
 
-void SummonCreature(TCreature *Actor, int Mana, const char *RaceName, bool God){
+void SummonCreature(TCreature *Actor, int ManaPoints, const char *RaceName, bool God){
 	if(Actor == NULL){
 		error("SummonCreature: Ungültige Kreatur übergeben.\n");
 		throw ERROR;
@@ -1841,7 +1930,7 @@ void SummonCreature(TCreature *Actor, int Mana, const char *RaceName, bool God){
 		throw CREATURENOTEXISTING;
 	}
 
-	SummonCreature(Actor, Mana, Race, God);
+	SummonCreature(Actor, ManaPoints, Race, God);
 }
 
 void StartMonsterraid(TCreature *Actor, const char *RaidName){
@@ -2025,7 +2114,6 @@ void Heal(TCreature *Actor, int ManaPoints, int SoulPoints, int Amount){
 	}
 }
 
-
 void MassHeal(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int Amount, int Radius){
 	if(Actor == NULL){
 		error("MassHeal: Ungültige Kreatur übergeben.\n");
@@ -2098,7 +2186,7 @@ void MassHeal(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, i
 	}
 }
 
-void HealFriend(TCreature *Actor, char *TargetName, int ManaPoints, int SoulPoints, int Amount){
+void HealFriend(TCreature *Actor, const char *TargetName, int ManaPoints, int SoulPoints, int Amount){
 	if(Actor == NULL){
 		error("HealFriend: Ungültige Kreatur übergeben.\n");
 		throw ERROR;
@@ -2352,7 +2440,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 	}
 }
 
-void CreatureIllusion(TCreature *Actor, const char *RaceName, int ManaPoints, int SoulPoints, int Duration){
+void CreatureIllusion(TCreature *Actor, int ManaPoints, int SoulPoints, const char *RaceName, int Duration){
 	if(Actor == NULL){
 		error("CreatureIllusion: Ungültige Kreatur übergeben.\n");
 		throw ERROR;
@@ -2381,7 +2469,7 @@ void CreatureIllusion(TCreature *Actor, const char *RaceName, int ManaPoints, in
 	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
 }
 
-void ObjectIllusion(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int Duration){
+void ObjectIllusion(TCreature *Actor, int ManaPoints, int SoulPoints, Object Target, int Duration){
 	if(Actor == NULL){
 		error("ObjectIllusion: Ungültige Kreatur übergeben.\n");
 		throw ERROR;
@@ -2570,7 +2658,7 @@ void Challenge(TCreature *Actor, int ManaPoints, int SoulPoints, int Radius){
 	}
 }
 
-void FindPerson(TCreature *Actor, const char *TargetName, int ManaPoints, int SoulPoints){
+void FindPerson(TCreature *Actor, int ManaPoints, int SoulPoints, const char *TargetName){
 	// TODO(fusion): And we're back.
 	if(Actor == NULL){
 		error("FindPerson: Ungültige Kreatur übergeben.\n");
@@ -3220,11 +3308,1038 @@ void HomeTeleport(TCreature *Actor, const char *Name){
 	Object Dest = GetMapContainer(Player->startx, Player->starty, Player->startz);
 	GraphicalEffect(Player->posx, Player->posy, Player->posz, EFFECT_POFF);
 	Move(0, Player->CrObject, Dest, -1, false, NONE);
-	GraphicalEffect(Player->posx, Player->posy, Player->posz, EFFECT_TELEPORT);
+	GraphicalEffect(Player->posx, Player->posy, Player->posz, EFFECT_ENERGY);
 
 	SendMessage(Actor->Connection, TALK_INFO_MESSAGE,
 			"Player %s has been moved to the temple.", Player->Name);
 	Log("banish", "%s teleportiert %s zum Tempel.\n", Actor->Name, Player->Name);
+}
+
+// Spell Casting
+// =============================================================================
+static void SpellFailed(uint32 CreatureID){
+	TCreature *Actor = GetCreature(CreatureID);
+	if(Actor == NULL){
+		error("SpellFailed: Kreatur existiert nicht.\n");
+		return;
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
+}
+
+static void CharacterRightSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512]){
+	TCreature *Actor = GetCreature(CreatureID);
+	if(Actor == NULL){
+		error("CharacterRightSpell: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		return;
+	}
+
+	switch(SpellNr) {
+		case 34: CreateThing(Actor, SpellStr[2], SpellStr[3]); 		break;
+		case 35: CreateThing(Actor, SpellStr[2], NULL); 			break;
+		case 37: Teleport(Actor, SpellStr[2]); 						break;
+		case 40: CreateKnowledge(Actor, SpellStr[3], NULL); 		break;
+		case 41: ChangeData(Actor, SpellStr[2]); 					break;
+		case 46: CreateKnowledge(Actor, SpellStr[3], SpellStr[4]); 	break;
+		case 47: TeleportToCreature(Actor, SpellStr[3]); 			break;
+		case 52: TeleportPlayerToMe(Actor, SpellStr[3]); 			break;
+		case 53: SummonCreature(Actor, 0, SpellStr[3], true); 		break;
+		case 58: GetPosition(Actor); 								break;
+		case 63: CreateMoney(Actor, SpellStr[3]); 					break;
+		case 64: ChangeProfession(Actor, SpellStr[3]); 				break;
+		case 71: EditGuests(Actor); 								break;
+		case 72: EditSubowners(Actor); 								break;
+		case 73: KickGuest(Actor, SpellStr[3]); 					break;
+		case 74: EditNameDoor(Actor); 								break;
+		case 96: GetQuestValue(Actor, SpellStr[3]); 				break;
+		case 97: SetQuestValue(Actor, SpellStr[3], SpellStr[4]); 	break;
+		case 98: CleanupField(Actor); 								break;
+		case 99: MagicClimbing(Actor, SpellStr[3]); 				break;
+		case 100: ClearQuestValues(Actor); 							break;
+		case 101: KillAllMonsters(Actor, EFFECT_DEATH, 2); 			break;
+		case 102: StartMonsterraid(Actor, SpellStr[4]); 			break;
+	}
+}
+
+static void AccountRightSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512]){
+	TCreature *Actor = GetCreature(CreatureID);
+	if(Actor == NULL){
+		error("AccountRightSpell: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		return;
+	}
+
+	switch(SpellNr) {
+		case 57: BanishAccount(Actor,  SpellStr[3], atoi(SpellStr[4]), SpellStr[5]);	break;
+		case 60: HomeTeleport(Actor, SpellStr[2]);										break;
+		case 61: DeleteAccount(Actor, SpellStr[4], SpellStr[5]);						break;
+		case 62: SetNameRule(Actor, SpellStr[2]);										break;
+		case 65: Notation(Actor, SpellStr[2], SpellStr[3]);								break;
+		case 66: NameLock(Actor, SpellStr[3]);											break;
+		case 67: KickPlayer(Actor, SpellStr[2]);										break;
+		case 68: DeleteCharacter(Actor, SpellStr[4], SpellStr[5]);						break;
+		case 69: IPBanishment(Actor, SpellStr[3], SpellStr[4]);							break;
+		case 70: BanishCharacter(Actor, SpellStr[3], atoi(SpellStr[4]), SpellStr[5]);	break;
+	}
+}
+
+static void CastSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512]){
+	TCreature *Actor = GetCreature(CreatureID);
+	if(Actor == NULL){
+		error("CastSpell: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	CheckSpellbook(Actor, SpellNr);
+	CheckAccount(Actor, SpellNr);
+	CheckLevel(Actor, SpellNr);
+	CheckRing(Actor, SpellNr);
+
+	if(Actor->EarliestSpellTime > ServerMilliseconds){
+		throw EXHAUSTED;
+	}
+
+	if(IsAggressiveSpell(SpellNr) && Actor->Type == PLAYER
+			&& !CheckRight(Actor->ID, ATTACK_EVERYWHERE)
+			&& IsProtectionZone(Actor->posx, Actor->posy, Actor->posz)){
+		throw PROTECTIONZONE;
+	}
+
+	int ManaPoints = SpellList[SpellNr].Mana;
+	int SoulPoints = SpellList[SpellNr].SoulPoints;
+	switch(SpellNr) {
+		case 1:{
+			int Amount = ComputeDamage(Actor, SpellNr, 20, 10);
+			Heal(Actor, ManaPoints, SoulPoints, Amount);
+			break;
+		}
+
+		case 2:{
+			int Amount = ComputeDamage(Actor, SpellNr, 40, 20);
+			Heal(Actor, ManaPoints, SoulPoints, Amount);
+			break;
+		}
+
+		case 3:{
+			int Amount = ComputeDamage(Actor, SpellNr, 250, 50);
+			Heal(Actor, ManaPoints, SoulPoints, Amount);
+			break;
+		}
+
+		case 6:{
+			MagicGoStrength(Actor, Actor, ManaPoints, SoulPoints, 30, 3);
+			break;
+		}
+
+		case 9:{
+			SummonCreature(Actor, ManaPoints, SpellStr[3], false);
+			break;
+		}
+
+		case 10:{
+			Enlight(Actor, ManaPoints, SoulPoints, 6, 500);
+			break;
+		}
+
+		case 11:{
+			Enlight(Actor, ManaPoints, SoulPoints, 8, 1000);
+			break;
+		}
+
+		case 13:{
+			int Damage = ComputeDamage(Actor, SpellNr, 150, 50);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_ENERGY, 5, 30, DAMAGE_ENERGY);
+			break;
+		}
+
+		case 19:{
+			int Damage = ComputeDamage(Actor, SpellNr, 30, 10);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_FIRE, 4, 45, DAMAGE_FIRE);
+			break;
+		}
+
+		case 20:{
+			FindPerson(Actor, ManaPoints, SoulPoints, SpellStr[2]);
+			break;
+		}
+
+		case 22:{
+			int Damage = ComputeDamage(Actor, SpellNr, 60, 20);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_FIRE_BURST, 5, 0, DAMAGE_ENERGY);
+			break;
+		}
+
+		case 23:{
+			int Damage = ComputeDamage(Actor, SpellNr, 120, 80);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_FIRE_BURST, 8, 0, DAMAGE_ENERGY);
+			break;
+		}
+
+		case 24:{
+			int Damage = ComputeDamage(Actor, SpellNr, 250, 50);
+			MassCombat(Actor, Actor->CrObject, ManaPoints, SoulPoints, Damage,
+					EFFECT_FIRE_EXPLOSION, 6, DAMAGE_PHYSICAL, ANIMATION_FIRE);
+			break;
+		}
+
+		case 29:{
+			NegatePoison(Actor, Actor, ManaPoints, SoulPoints);
+			break;
+		}
+
+		case 38:{
+			CreatureIllusion(Actor, ManaPoints, SoulPoints, SpellStr[4], 200);
+			break;
+		}
+
+		case 39:{
+			MagicGoStrength(Actor, Actor, ManaPoints, SoulPoints, 70, 2);
+			break;
+		}
+
+		case 42:{
+			CreateFood(Actor, ManaPoints, SoulPoints);
+			break;
+		}
+
+		case 44:{
+			Shielding(Actor, ManaPoints, SoulPoints, 200);
+			break;
+		}
+
+		case 45:{
+			Invisibility(Actor, ManaPoints, SoulPoints, 200);
+			break;
+		}
+
+		case 48:{
+			CreateArrows(Actor, ManaPoints, SoulPoints, 1, 5);
+			break;
+		}
+
+		case 49:{
+			CreateArrows(Actor, ManaPoints, SoulPoints, 2, 3);
+			break;
+		}
+
+		case 51:{
+			CreateArrows(Actor, ManaPoints, SoulPoints, 0, 10);
+			break;
+		}
+
+		case 56:{
+			int Damage = ComputeDamage(Actor, SpellNr, 200, 50);
+			MassCombat(Actor, Actor->CrObject, ManaPoints, SoulPoints, Damage,
+					EFFECT_POISON, 8, DAMAGE_POISON_PERIODIC, ANIMATION_NONE);
+			break;
+		}
+
+		case 75:{
+			Enlight(Actor, ManaPoints, SoulPoints, 9, 2000);
+			break;
+		}
+
+		case 76:{
+			MagicRope(Actor, ManaPoints, SoulPoints);
+			break;
+		}
+
+		case 79:{
+			CreateArrows(Actor, ManaPoints, SoulPoints, 3, 5);
+			break;
+		}
+
+		case 80:{
+			int Level = Actor->Skills[SKILL_LEVEL]->Get();
+			int Damage = (Level * ComputeDamage(Actor, SpellNr, 80, 20)) / 25;
+			MassCombat(Actor, Actor->CrObject, Level * 4, 0, Damage,
+					EFFECT_BONE_HIT, 2, DAMAGE_PHYSICAL, ANIMATION_NONE);
+			break;
+		}
+
+		case 81:{
+			MagicClimbing(Actor, ManaPoints, SoulPoints, SpellStr[3]);
+			break;
+		}
+
+		case 82:{
+			int Amount = ComputeDamage(Actor, SpellNr, 200, 40);
+			MassHeal(Actor, Actor->CrObject, ManaPoints, SoulPoints, Amount, 4);
+			break;
+		}
+
+		case 84:{
+			int Amount = ComputeDamage(Actor,SpellNr,120,40);
+			HealFriend(Actor, SpellStr[3], ManaPoints, SoulPoints, Amount);
+			break;
+		}
+
+		case 85:{
+			MassRaiseDead(Actor, Actor->CrObject, ManaPoints, SoulPoints, 4);
+			break;
+		}
+
+		case 87:{
+			int Damage = ComputeDamage(Actor, SpellNr, 45, 10);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_DEATH, 1, 0, DAMAGE_PHYSICAL);
+			break;
+		}
+
+		case 88:{
+			int Damage = ComputeDamage(Actor, SpellNr, 45, 10);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_ENERGY, 1, 0, DAMAGE_ENERGY);
+			break;
+		}
+
+		case 89:{
+			int Damage = ComputeDamage(Actor, SpellNr, 45, 10);
+			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
+					EFFECT_FIRE, 1, 0, DAMAGE_FIRE);
+			break;
+		}
+
+		case 90:{
+			CancelInvisibility(Actor, Actor->CrObject, ManaPoints, SoulPoints, 4);
+			break;
+		}
+
+		case 92:{
+			ObjectType OldType = GetNewObjectType(90, 25);
+			ObjectType NewType = GetNewObjectType(90, 57);
+			EnchantObject(Actor, ManaPoints, SoulPoints, OldType, NewType);
+			break;
+		}
+
+		case 93:{
+			Challenge(Actor, ManaPoints, SoulPoints, 2);
+			break;
+		}
+
+		case 94:{
+			CreateField(Actor, ManaPoints, SoulPoints, FIELD_TYPE_WILDGROWTH);
+			break;
+		}
+
+		case 95:{
+			CreateArrows(Actor, ManaPoints, SoulPoints, 4, 1);
+			break;
+		}
+	}
+
+	if(IsAggressiveSpell(SpellNr)){
+		Actor->BlockLogout(60, false);
+	}
+}
+
+static void RuneSpell(uint32 CreatureID, int SpellNr){
+	TCreature *Actor = GetCreature(CreatureID);
+	if(Actor == NULL){
+		error("RuneSpell: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	uint8 RuneGr = SpellList[SpellNr].RuneGr;
+	uint8 RuneNr = SpellList[SpellNr].RuneNr;
+	int ManaPoints = SpellList[SpellNr].Mana;
+	int SoulPoints = SpellList[SpellNr].SoulPoints;
+	int Amount = SpellList[SpellNr].Amount;
+
+	if(RuneGr == 0){
+		error("RuneSpell: Spell %d ist Runenspruch, hat aber keine Rune.\n", SpellNr);
+		throw ERROR;
+	}
+
+	CheckSpellbook(Actor, SpellNr);
+	CheckAccount(Actor, SpellNr);
+	CheckLevel(Actor, SpellNr);
+	CheckRing(Actor, SpellNr);
+	if(Actor->EarliestSpellTime > ServerMilliseconds){
+		throw EXHAUSTED;
+	}
+
+	bool RuneCreated = false;
+	ObjectType BlankType = GetSpecialObject(RUNE_BLANK);
+
+	Object RightHand = GetBodyObject(Actor->ID, 5); // RIGHTHAND
+	if(RightHand.exists() && RightHand.getObjectType() == BlankType){
+		CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+		ObjectType RuneType = GetNewObjectType(RuneGr, RuneNr);
+		Change(RightHand, RuneType, Amount);
+		RuneCreated = true;
+	}
+
+	Object LeftHand = GetBodyObject(Actor->ID, 6); // LEFTHAND
+	if(LeftHand.exists() && LeftHand.getObjectType() == BlankType){
+		// TODO(fusion): Ughh... I'm not sure why we're trying to cast the spell
+		// twice but we need to make so errors from the second cast are only
+		// relevant if there wasn't a first cast.
+		try{
+			CheckMana(Actor, ManaPoints, SoulPoints, 1000);
+			ObjectType RuneType = GetNewObjectType(RuneGr, RuneNr);
+			Change(LeftHand, RuneType, Amount);
+			RuneCreated = true;
+		}catch(...){
+			if(!RuneCreated){
+				throw;
+			}
+		}
+	}
+
+	if(!RuneCreated){
+		throw MAGICITEM;
+	}
+
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_RED);
+}
+
+static int TypeOfSpell(const char *Text){
+	// NOTE(fusion): We're checking `Text` against the first 5 spell syllables
+	// which are "al", "ad", "ex", "ut", "om". They determine the type of the
+	// spell. See `CheckForSpell`.
+	int SpellType = 0;
+	if(Text != NULL){
+		for(int SyllableNr = 1;
+				SyllableNr < 6;
+				SyllableNr += 1){
+			if(stricmp(Text, SpellSyllable[SyllableNr], 2) == 0){
+				SpellType = SyllableNr;
+				break;
+			}
+		}
+	}
+	return SpellType;
+}
+
+static int FindSpell(const uint8 *Syllable){
+	int BestMatch = 0;
+	int MinParams = 100;
+	for(int SpellNr = 0;
+			SpellNr < NARRAY(SpellList);
+			SpellNr += 1){
+		int Params = 0;
+		TSpellList *Spell = &SpellList[SpellNr];
+		for(int i = 0;
+				i < NARRAY(Spell->Syllable);
+				i += 1){
+			// NOTE(fusion): SpellSyllable[6] is "para" which refers to a spell
+			// parameter.
+			if(Spell->Syllable[i] == 6){
+				if(Syllable[i] == 0)
+					break;
+				Params += 1;
+			}else if(Spell->Syllable[i] != Syllable[i]){
+				break;
+			}
+
+			if(Spell->Syllable[i] == 0){
+				if(Params < MinParams){
+					MinParams = Params;
+					BestMatch = SpellNr;
+				}
+				break;
+			}
+		}
+	}
+
+	return BestMatch;
+}
+
+static int FindSpell(Object Obj){
+	if(!Obj.exists()){
+		error("FindSpell: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(RUNE)){
+		error("FindSpell: Übergebenes Objekt ist nicht magisch.\n");
+		return 0;
+	}
+
+	int Result = 0;
+	for(int SpellNr = 0;
+			SpellNr < NARRAY(SpellList);
+			SpellNr += 1){
+		TSpellList *Spell = &SpellList[SpellNr];
+		ObjectType RuneType = GetNewObjectType(Spell->RuneGr, Spell->RuneNr);
+		if(ObjType == RuneType){
+			Result = SpellNr;
+			break;
+		}
+	}
+	return Result;
+}
+
+static void GetSpellString(int SpellNr, char *Text){
+	Text[0] = 0;
+
+	if(SpellNr < 1 || SpellNr >= NARRAY(SpellList)){
+		error("GetSpellString: Ungültige Zauberspruchnummer %d.\n", SpellNr);
+		return;
+	}
+
+	TSpellList *Spell = &SpellList[SpellNr];
+	for(int i = 0; i < NARRAY(Spell->Syllable); i += 1){
+		const char *Syllable = SpellSyllable[Spell->Syllable[i]];
+		if(Syllable[0] == 0){
+			break;
+		}
+
+		// TODO(fusion): Review. I think we don't add a space between the first
+		// and second syllable and it's probably correct.
+		if(i >= 2){
+			strcat(Text, " ");
+		}
+
+		strcat(Text, Syllable);
+	}
+}
+
+void GetMagicItemDescription(Object Obj, char *SpellString, int *MagicLevel){
+	SpellString[0] = 0;
+	*MagicLevel = 0;
+
+	if(!Obj.exists()){
+		error("GetMagicItemDescription: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(RUNE)){
+		error("GetMagicItemDescription: Übergebenes Objekt ist nicht magisch.\n");
+		return;
+	}
+
+	int SpellNr = FindSpell(Obj);
+	if(SpellNr == 0){
+		error("GetMagicItemDescription: Objekt %d hat keinen Zauberspruch.\n", ObjType.TypeID);
+		return;
+	}
+
+	GetSpellString(SpellNr, SpellString);
+	*MagicLevel = (int)SpellList[SpellNr].RuneLevel;
+}
+
+void GetSpellbook(uint32 CharacterID, char *Buffer){
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("GetSpellbook: Spieler existiert nicht.\n");
+		return;
+	}
+
+	if(Buffer == NULL){
+		error("GetSpellbook: Übergebener Puffer existiert nicht.\n");
+		return;
+	}
+
+	// TODO(fusion): We're iterating over all spells for each level. This is bad
+	// because we could have a list of spell numbers sorted by level and achieve
+	// the same thing. We also had a hard coded max level but since we're already
+	// iterating so many times over the spell list, what's another one?
+	//	 Also, the overuse of `strcat` doesn't help.
+
+	int MaxLevel = 1;
+	for(int SpellNr = 0;
+			SpellNr < NARRAY(SpellList);
+			SpellNr += 1){
+		int Level = (int)SpellList[SpellNr].Level;
+		if(Level > MaxLevel){
+			Level = MaxLevel;
+		}
+	}
+
+	char Help[256];
+	for(int Level = 1; Level <= MaxLevel; Level += 1){
+		bool First = true;
+		for(int SpellNr = 0;
+				SpellNr < NARRAY(SpellList);
+				SpellNr += 1){
+			TSpellList *Spell = &SpellList[SpellNr];
+			if((int)Spell->Level != Level || !Player->SpellKnown(SpellNr)){
+				continue;
+			}
+
+			if(First){
+				sprintf(Help, "Spells for Level %d\n", Level);
+				strcat(Buffer, Help);
+				First = false;
+			}
+
+			GetSpellString(SpellNr, Help);
+			if(Help[0] == 0){
+				error("GetSpellbook: Zauberspruch %d hat keine Zauberformel.\n", SpellNr);
+				continue;
+			}
+
+			strcat(Buffer, "  ");
+			strcat(Buffer, Help);
+			if(Spell->Comment != NULL && Spell->Comment[0] != 0){
+				strcat(Buffer, " - ");
+				strcat(Buffer, Spell->Comment);
+				if(SpellNr == 9 || SpellNr == 12){
+					strcpy(Help, ": var");
+				}else if(SpellNr == 80){
+					strcpy(Help, ": 4*Level");
+				}else{
+					sprintf(Help, ": %d", Spell->Mana);
+				}
+				strcat(Buffer, Help);
+			}
+			strcat(Buffer, "\n");
+		}
+
+		if(!First){
+			strcat(Buffer, "\n");
+		}
+	}
+}
+
+int GetSpellLevel(int SpellNr){
+	if(SpellNr < 1 || SpellNr >= NARRAY(SpellList)){
+		error("GetSpellLevel: Ungültige Spruchnummer %d.\n", SpellNr);
+		return 1;
+	}
+
+	return (int)SpellList[SpellNr].Level;
+}
+
+int CheckForSpell(uint32 CreatureID, const char *Text){
+	// IMPORTANT(fusion): The first syllable also determines the type of the spell
+	// which is why we can quickly rule out a spell cast if it is unknown.
+	//	It is also handled separately in the parsing loop below to allow for the
+	// second syllable to be glued together (or not).
+	int SpellType = TypeOfSpell(Text);
+	if(SpellType == 0){
+		return 0;
+	}
+
+	// TODO(fusion): Keeping syllables in text form doesn't make sense. `SpellStr`
+	// should ideally only contain parameters.
+
+	// TODO(fusion): Did we really need to use `stringstream` here? It allocates
+	// an internal `std::string` from the input string which is just wasteful,
+	// specially for the minimal processing we're doing here.
+
+	int SyllableCount = 1;
+	uint8 Syllable[10] = { (uint8)SpellType };
+	char SpellStr[10][512] = {};
+	strcpy(SpellStr[0], SpellSyllable[SpellType]);
+
+	std::istringstream IS(Text);
+	IS.get();
+	IS.get();
+	while(!IS.eof()){
+		while(isSpace(IS.peek())){
+			IS.get();
+		}
+
+		int Index = SyllableCount;
+		if(IS.peek() == '"'){
+			IS.get();
+			IS.get(SpellStr[Index], sizeof(SpellStr[0]), '"');
+			IS.get();
+		}else{
+			IS.get(SpellStr[Index], sizeof(SpellStr[0]), ' ');
+		}
+
+		// TODO(fusion): This could be a problem if there is a "" parameter?
+		if(SpellStr[Index][0] == 0){
+			break;
+		}
+
+		for(int SyllableNr = 0;
+				SyllableNr < NARRAY(SpellSyllable);
+				SyllableNr += 1){
+			if(stricmp(SpellStr[Index], SpellSyllable[SyllableNr]) == 0){
+				Syllable[Index] = (uint8)SyllableNr;
+				break;
+			}
+		}
+
+		// NOTE(fusion): SpellSyllable[6] is "para" which refers to a spell
+		// parameter. This is setting up `Syllable` to be used by `FindSpell`.
+		if(Syllable[Index] == 0){
+			Syllable[Index] = 6;
+		}
+
+		SyllableCount += 1;
+	}
+
+	int SpellNr = FindSpell(Syllable);
+	if(SpellNr != 0){
+		try{
+			switch(SpellType){
+				case 1: CharacterRightSpell(CreatureID, SpellNr, SpellStr); break;
+				case 2: RuneSpell(CreatureID, SpellNr); break;
+				case 3: CastSpell(CreatureID, SpellNr, SpellStr); break;
+				case 4: CastSpell(CreatureID, SpellNr, SpellStr); break;
+				case 5: AccountRightSpell(CreatureID, SpellNr, SpellStr); break;
+				default:{
+					error("CheckForSpell: Spruchklasse %d existiert nicht.\n", SpellType);
+					break;
+				}
+			}
+		}catch(RESULT r){
+			// TODO(fusion): `SpellFailed` is inlined in here but I think it's
+			// cleaner to keep it this way.
+			TCreature *Actor = GetCreature(CreatureID);
+			if(Actor == NULL){
+				error("SpellFailed: Kreatur existiert nicht.\n");
+			}else{
+				if(r != ERROR){
+					GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
+				}
+
+				if(Actor->Type == PLAYER){
+					SendResult(Actor->Connection, r);
+				}
+			}
+
+			return -SpellType;
+		}
+	}
+
+	return SpellType;
+}
+
+static void DeleteRune(Object Obj){
+	if(!Obj.exists()){
+		error("DeleteRune: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): Should probably check if object is a rune?
+	uint32 Charges = Obj.getAttribute(CHARGES);
+	if(Charges > 1){
+		Change(Obj, CHARGES, Charges - 1);
+	}else{
+		Delete(Obj, -1);
+	}
+}
+
+void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
+	TPlayer *Actor = GetPlayer(CreatureID);
+	if(Actor == NULL){
+		error("UseMagicItem: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(!Obj.exists()){
+		error("UseMagicItem: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(!Dest.exists()){
+		error("UseMagicItem: Übergebenes Ziel existiert nicht (Objekt %d).\n",
+				Obj.getObjectType().TypeID);
+		throw ERROR;
+	}
+
+	if(CheckRight(Actor->ID, NO_RUNES)){
+		throw NOTUSABLE;
+	}
+
+	int SpellNr = FindSpell(Obj);
+	if(SpellNr == 0){
+		error("UseMagicItem: Für Objekt %d existiert kein Spruch.\n",
+				Obj.getObjectType().TypeID);
+		throw ERROR;
+	}
+
+
+	// NOTE(fusion): This target picking logic is probably to avoid picking
+	// obviously wrong candidates when there are multiple creatures on a single
+	// field.
+	TCreature *Target = NULL;
+	bool Aggressive = IsAggressiveSpell(SpellNr);
+	{
+		if(Dest.getObjectType().isCreatureContainer()){
+			Target = GetCreature(Dest);
+		}
+
+		Object Other = GetFirstContainerObject(Dest.getContainer());
+		while(Other != NONE){
+			if(Other.getObjectType().isCreatureContainer()){
+				uint32 OtherID = Other.getCreatureID();
+				if(Target == NULL
+						|| (Aggressive && OtherID != Actor->ID)
+						|| (!Aggressive && OtherID == Actor->ID)){
+					Target = GetCreature(OtherID);
+					Dest = Other;
+				}
+			}
+			Other = Other.getNextObject();
+		}
+	}
+
+	// NOTE(fusion): Rune check.
+	CheckRuneLevel(Actor, SpellNr);
+
+	if(Actor->EarliestSpellTime > ServerMilliseconds){
+		throw EXHAUSTED;
+	}
+
+	if(Aggressive){
+		int DestX, DestY, DestZ;
+		GetObjectCoordinates(Dest, &DestX, &DestY, &DestZ);
+		if(!CheckRight(Actor->ID, ATTACK_EVERYWHERE)
+				&& (IsProtectionZone(Actor->posx, Actor->posy, Actor->posz)
+					|| IsProtectionZone(DestX, DestY, DestZ))){
+			throw PROTECTIONZONE;
+		}
+
+		if(Dest.getContainer().getObjectType().isMapContainer()){
+			throw NOROOM;
+		}
+	}
+
+	try{
+		switch(SpellNr){
+			case 4:{
+				if(Target == NULL){
+					throw NOCREATURE;
+				}
+
+				int Amount = ComputeDamage(Actor, SpellNr, 70, 30);
+				Heal(Target, -1, 0, Amount); // -1 ?
+				break;
+			}
+
+			case 5:{
+				if(Target == NULL){
+					throw NOCREATURE;
+				}
+
+				int Amount = ComputeDamage(Actor, SpellNr, 250, 30);
+				Heal(Target, -1, 0, Amount); // -1 ?
+				break;
+			}
+
+			case 7:{
+				int Damage = ComputeDamage(Actor, SpellNr, 15, 5);
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BURST,
+						ANIMATION_FIRE, DAMAGE_ENERGY);
+				break;
+			}
+
+			case 8:{
+				int Damage = ComputeDamage(Actor, SpellNr, 30, 10);
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BURST,
+						ANIMATION_FIRE, DAMAGE_ENERGY);
+				break;
+			}
+
+			case 12:{
+				if(Target == NULL){
+					throw NOCREATURE;
+				}
+
+				Convince(Actor, Target);
+				break;
+			}
+
+			case 14:{
+				ObjectIllusion(Actor, 0, 0, Dest, 200);
+				break;
+			}
+
+			case 15:{
+				int Damage = ComputeDamage(Actor, SpellNr, 20, 5);
+				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE,
+						3, DAMAGE_FIRE, ANIMATION_FIRE);
+				break;
+			}
+
+			case 16:{
+				int Damage = ComputeDamage(Actor, SpellNr, 50, 15);
+				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE,
+						4, DAMAGE_FIRE, ANIMATION_FIRE);
+				break;
+			}
+
+			case 17:{
+				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_FIRE, 3);
+				break;
+			}
+
+			case 18:{
+				int Damage = ComputeDamage(Actor, SpellNr, 60, 40);
+				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_EXPLOSION,
+						1, DAMAGE_PHYSICAL, ANIMATION_FIRE);
+				break;
+			}
+
+			case 21:{
+				int Damage = ComputeDamage(Actor, SpellNr, 150, 20);
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_DEATH,
+						ANIMATION_DEATH, DAMAGE_PHYSICAL);
+				break;
+			}
+
+			case 25:{
+				CreateField(Actor, Dest, 0, 0, FIELD_TYPE_FIRE);
+				break;
+			}
+
+			case 26:{
+				CreateField(Actor, Dest, 0, 0, FIELD_TYPE_POISON);
+				break;
+			}
+
+			case 27:{
+				CreateField(Actor, Dest, 0, 0, FIELD_TYPE_ENERGY);
+				break;
+			}
+
+			case 28:{
+				CreateFieldWall(Actor, Dest, 0, 0, FIELD_TYPE_FIRE, 2);
+				break;
+			}
+
+			case 30:{
+				DeleteField(Actor, Dest, 0, 0);
+				break;
+			}
+
+			case 31:{
+				if(Target == NULL){
+					throw NOCREATURE;
+				}
+
+				NegatePoison(Actor, Target, 0, 0);
+				break;
+			}
+
+			case 32:{
+				CreateFieldWall(Actor, Dest, 0, 0, FIELD_TYPE_POISON, 2);
+				break;
+			}
+
+			case 33:{
+				CreateFieldWall(Actor, Dest, 0, 0, FIELD_TYPE_ENERGY, 3);
+				break;
+			}
+
+			case 50:{
+				int Damage = ComputeDamage(Actor, SpellNr, 120, 20);
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_HIT,
+						ANIMATION_FIRE, DAMAGE_FIRE_PERIODIC);
+				break;
+			}
+
+			case 54:{
+				if(Target == NULL){
+					throw NOCREATURE;
+				}
+
+				if(Actor->GetEffectiveProfession() != PROFESSION_DRUID){
+					throw NOTUSABLE;
+				}
+
+				int ManaPoints = SpellList[SpellNr].Mana;
+				int SoulPoints = SpellList[SpellNr].SoulPoints;
+				MagicGoStrength(Actor, Target, ManaPoints, SoulPoints, -101, 1);
+				break;
+			}
+
+			case 55:{
+				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_ENERGY, 3);
+				break;
+			}
+
+			case 77:{
+				int Damage = ComputeDamage(Actor, SpellNr, 70, 20);
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_POISON_HIT,
+						ANIMATION_ENERGY, DAMAGE_POISON_PERIODIC);
+				break;
+			}
+
+			case 78:{
+				CleanupField(Actor, Dest, 0, 0);
+				break;
+			}
+
+			case 83:{
+				RaiseDead(Actor, Dest, 0, 0);
+				break;
+			}
+
+			case 86:{
+				CreateField(Actor, Dest, 0, 0, FIELD_TYPE_MAGICWALL);
+				break;
+			}
+
+			case 91:{
+				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_POISON, 3);
+				break;
+			}
+
+			default:{
+				error("UseMagicItem: Spell %d noch nicht implementiert.\n", SpellNr);
+				throw ERROR;
+			}
+		}
+	}catch(RESULT r){
+		// TODO(fusion): Same as with `CheckForSpell` except that `Actor` is
+		// already in scope.
+		if(r != ERROR){
+			GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
+		}
+		SendResult(Actor->Connection, r);
+		return;
+	}
+
+	DeleteRune(Obj);
+
+	if(Aggressive){
+		Actor->BlockLogout(60, false);
+	}
+}
+
+void DrinkPotion(uint32 CreatureID, Object Obj){
+	TPlayer *Player = GetPlayer(CreatureID);
+	if(Player == NULL){
+		error("DrinkPotion: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(!Obj.exists()){
+		error("DrinkPotion: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(LIQUIDCONTAINER)){
+		error("DrinkPotion: Übergebenes Objekt ist kein Flüssigkeitscontainer.\n");
+		throw ERROR;
+	}
+
+	int LiquidType = (int)Obj.getAttribute(CONTAINERLIQUIDTYPE);
+	if(LiquidType == LIQUID_MANA){
+		int Amount = ComputeDamage(NULL, 0, 100, 50);
+		RefreshMana(Player, 0, 0, Amount);
+	}else if(LiquidType == LIQUID_LIFE){
+		int Amount = ComputeDamage(NULL, 0, 50, 25);
+		Heal(Player, 0, 0, Amount);
+	}else{
+		error("DrinkPotion: Objekt enthält keinen Zaubertrank.\n");
+		throw ERROR;
+	}
+
+	Change(Obj, CONTAINERLIQUIDTYPE, LIQUID_NONE);
 }
 
 // Magic Init Functions

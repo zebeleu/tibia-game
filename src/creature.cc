@@ -165,9 +165,9 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 							ObjectType WearOutType = ObjType.getAttribute(WEAROUTTARGET);
 							Change(Obj, WearOutType, 0);
 						}
-					}catch(RESULT err){
+					}catch(RESULT r){
 						error("TCreature::Damage: Exception %d beim Abnutzen von Objekt %d.\n",
-								err, ObjType.TypeID);
+								r, ObjType.TypeID);
 					}
 				}
 			}else if(ObjType.getFlag(PROTECTION) && !ObjType.getFlag(CLOTHES)){

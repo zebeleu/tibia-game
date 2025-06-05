@@ -22,15 +22,12 @@ extern void Change(Object Obj, ObjectType NewType, uint32 Value);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 			uint32 Offender, const char *Remark, bool Unjustified);
 extern bool CheckRight(uint32 CreatureID, RIGHT Right);
-extern void CircleShapeSpell(TCreature *Actor, int DestX, int DestY, int DestZ,
-				int Range, int Animation, int Radius, TImpact *Impact, int Effect);
 extern void CleanHouseField(int x, int y, int z);
-extern int ComputeDamage(TCreature *Creature, int SpellNr, int Damage, int Variation);
 extern void ConvinceMonster(TCreature *Master, TCreature *Slave);
 extern void ChallengeMonster(TCreature *Challenger, TCreature *Monster);
 extern int CountInventoryObjects(uint32 CreatureID, ObjectType Type, uint32 Value);
+extern Object Create(Object Con, ObjectType Type, uint32 Value);
 extern Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value);
-extern void CreateField(int x, int y, int z, int FieldType, uint32 Owner, bool Peaceful);
 extern void CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master, bool ShowEffect);
 extern void CreatePlayerList(bool Online);
 extern void CreatePool(Object Con, ObjectType Type, uint32 Value);
@@ -92,6 +89,7 @@ extern void SendMessage(TConnection *Connection, int Mode, const char *Text, ...
 extern void SendPlayerData(TConnection *Connection);
 extern void SendPlayerSkills(TConnection *Connection);
 extern void SendPlayerState(TConnection *Connection, uint8 State);
+extern void SendResult(TConnection *Connection, RESULT r);
 extern void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);

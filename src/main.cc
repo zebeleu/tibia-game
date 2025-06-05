@@ -541,8 +541,8 @@ int main(int argc, char **argv){
 	// once we identify all throw statements and how to roughly handle them.
 	try{
 		LaunchGame();
-	}catch(RESULT result){
-		error("main: Nicht abgefangene Exception %d.\n", result);
+	}catch(RESULT r){
+		error("main: Nicht abgefangene Exception %d.\n", r);
 	}catch(const char *str){
 		error("main: Nicht abgefangene Exception \"%s\".\n", str);
 	}catch(const std::exception &e){

@@ -715,14 +715,13 @@ void TCombat::WandAttack(TCreature *Target){
 	int AttackStrength = WandType.getAttribute(WANDATTACKSTRENGTH);
 	int AttackVariation = (int)WandType.getAttribute(WANDATTACKVARIATION);
 
-	// NOTE(fusion): Oof...
 	try{
 		CheckMana(Master, ManaConsumption, 0, 0);
-	}catch(RESULT err){
-		if(err == NOTENOUGHMANA){
+	}catch(RESULT r){
+		if(r == NOTENOUGHMANA){
 			throw OUTOFAMMO;
 		}else{
-			throw err;
+			throw r;
 		}
 	}
 
@@ -836,7 +835,7 @@ void TCombat::DistanceAttack(TCreature *Target){
 		int Damage = ComputeDamage(Master, 0, EffectStrength, EffectStrength);
 		TDamageImpact Impact(Master, DAMAGE_PHYSICAL, Damage, false);
 		CircleShapeSpell(Master, DropX, DropY, DropZ, -1,
-				ANIMATION_NONE, 2, &Impact, EFFECT_BURST_ARROW);
+				ANIMATION_NONE, 2, &Impact, EFFECT_FIRE);
 	}
 
 	try{
@@ -845,10 +844,10 @@ void TCombat::DistanceAttack(TCreature *Target){
 		}else{
 			Move(0, this->Ammo, DropCon, 1, false, NONE);
 		}
-	}catch(RESULT err){
-		if(err != DESTROYED){
+	}catch(RESULT r){
+		if(r != DESTROYED){
 			error("TCombat::RangeAttack: Konnte Ammo nicht verschieben/löschen"
-					" (Exception %d, [%d,%d,%d].\n", err, DropX, DropY, DropZ);
+					" (Exception %d, [%d,%d,%d].\n", r, DropX, DropY, DropZ);
 		}
 	}
 
