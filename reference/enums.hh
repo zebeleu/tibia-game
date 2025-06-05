@@ -1,14 +1,4 @@
 
-enum STATE: int {
-    SLEEPING=0,
-    IDLE=1,
-    UNDERATTACK=2,
-    TALKING=3,
-    LEAVING=4,
-    ATTACKING=5,
-    PANIC=6
-};
-
 enum ActionType: int {
     ACTION_CREATEONMAP=0,
     ACTION_CREATE=1,

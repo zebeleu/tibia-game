@@ -484,6 +484,16 @@ enum SpellImpactType: int {
 	IMPACT_SUMMON		= 7,
 };
 
+enum STATE: int {
+	SLEEPING		= 0,
+	IDLE			= 1,
+	UNDERATTACK		= 2,
+	TALKING			= 3,
+	LEAVING			= 4,
+	ATTACKING		= 5,
+	PANIC			= 6,
+};
+
 enum TALK_MODE: int {
 	TALK_SAY						= 1,
 	TALK_WHISPER					= 2,

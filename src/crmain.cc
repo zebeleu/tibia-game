@@ -462,7 +462,7 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 	return Damage;
 }
 
-// Creature
+// Creature Management
 // =============================================================================
 bool IsCreaturePlayer(uint32 CreatureID){
 	return CreatureID < 0x40000000;

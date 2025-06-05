@@ -4,11 +4,12 @@
 #include "common.hh"
 #include "connection.hh"
 #include "containers.hh"
+#include "enums.hh"
 #include "map.hh"
 
 struct TCreature;
 
-// TRaceData
+// Creature Data
 // =============================================================================
 struct TOutfit{
 	int OutfitID;
@@ -51,6 +52,8 @@ struct TSpellData {
 struct TRaceData {
 	TRaceData(void);
 
+	// DATA
+	// =================
 	char Name[30];
 	char Article[3];
 	TOutfit Outfit;
@@ -88,6 +91,66 @@ struct TRaceData {
 	vector<TItemData> Item;
 	int Spells;
 	vector<TSpellData> Spell;
+};
+
+struct TPlayerData {
+	uint32 CharacterID;
+	pid_t Locked;
+	int Sticky;
+	bool Dirty;
+	int Race;
+	TOutfit OriginalOutfit;
+	TOutfit CurrentOutfit;
+	time_t LastLoginTime;
+	time_t LastLogoutTime;
+	int startx;
+	int starty;
+	int startz;
+	int posx;
+	int posy;
+	int posz;
+	int Profession;
+	int PlayerkillerEnd;
+	int Actual[25];
+	int Maximum[25];
+	int Minimum[25];
+	int DeltaAct[25];
+	int MagicDeltaAct[25];
+	int Cycle[25];
+	int MaxCycle[25];
+	int Count[25];
+	int MaxCount[25];
+	int AddLevel[25];
+	int Experience[25];
+	int FactorPercent[25];
+	int NextLevel[25];
+	int Delta[25];
+	uint8 SpellList[256];
+	int QuestValues[500];
+	int MurderTimestamps[20];
+	uint8 *Inventory;
+	int InventorySize;
+	uint8 *Depot[9];
+	int DepotSize[9];
+	uint32 AccountID;
+	int Sex;
+	char Name[30];
+	uint8 Rights[12];
+	char Guild[31];
+	char Rank[31];
+	char Title[31];
+	int Buddies;
+	uint32 Buddy[100];
+	char BuddyName[100][30];
+	uint32 EarliestYellRound;
+	uint32 EarliestTradeChannelRound;
+	uint32 EarliestSpellTime;
+	uint32 EarliestMultiuseTime;
+	uint32 TalkBufferFullTime;
+	uint32 MutingEndRound;
+	uint32 Addressees[20];
+	uint32 AddresseesTimes[20];
+	int NumberOfMutings;
 };
 
 // TSkillBase 
@@ -317,7 +380,6 @@ struct TCombat{
 
 // TCreature
 // =============================================================================
-
 struct TToDoEntry {
 	ToDoType Code;
 	union{
@@ -446,85 +508,91 @@ struct TCreature: TSkillBase {
 
 // TNonPlayer
 // =============================================================================
+struct TNonplayer: TCreature {
+	//TNonplayer(void);
+
+	// DATA
+	// =================
+	//TCreature super_TCreature;	// IMPLICIT
+	STATE State;
+};
 
 // TNPC
 // =============================================================================
+// TODO(fusion): Most of these are probably contained in `crnonpl.cc` because
+// `TNPC` has a pointer to `TBehaviourDatabase`.
+struct TNode {
+	int Type;
+	int Data;
+	TNode *Left;
+	TNode *Right;
+};
+
+struct TCondition {
+	int Type;
+	uint32 Text;
+	TNode *Expression;
+	int Property;
+	int Number;
+};
+
+struct TAction {
+	int Type;
+	uint32 Text;
+	int Number;
+	TNode *Expression;
+	TNode *Expression2;
+	TNode *Expression3;
+};
+
+struct TBehaviour {
+	vector<TCondition> Condition;
+	vector<TAction> Action;
+	int Conditions;
+	int Actions;
+};
+
+struct TBehaviourDatabase {
+	vector<TBehaviour> Behaviour;
+	int Behaviours;
+};
+
+struct TNPC {
+	//TNPC(void);
+
+	// DATA
+	// =================
+	//TNonplayer super_TNonplayer; 	// IMPLICIT
+	uint32 Interlocutor;
+	int Topic;
+	int Price;
+	int Amount;
+	int TypeID;
+	uint32 Data;
+	uint32 LastTalk;
+	vector<uint32> QueuedPlayers;
+	vector<uint32> QueuedAddresses;
+	int QueueLength;
+	TBehaviourDatabase *Behaviour;
+};
 
 // TMonster
 // =============================================================================
-#if 0
 struct TMonster: TNonplayer {
+	//TMonster(void);
 
 	// DATA
-    int Home;
-    uint32 Master;
-    uint32 Target;
+	//TNonplayer super_TNonplayer;	// IMPLICIT
+	int Home;
+	uint32 Master;
+	uint32 Target;
 };
-#endif
 
 // TPlayer
 // =============================================================================
-struct TPlayerData {
-	uint32 CharacterID;
-	pid_t Locked;
-	int Sticky;
-	bool Dirty;
-	int Race;
-	TOutfit OriginalOutfit;
-	TOutfit CurrentOutfit;
-	time_t LastLoginTime;
-	time_t LastLogoutTime;
-	int startx;
-	int starty;
-	int startz;
-	int posx;
-	int posy;
-	int posz;
-	int Profession;
-	int PlayerkillerEnd;
-	int Actual[25];
-	int Maximum[25];
-	int Minimum[25];
-	int DeltaAct[25];
-	int MagicDeltaAct[25];
-	int Cycle[25];
-	int MaxCycle[25];
-	int Count[25];
-	int MaxCount[25];
-	int AddLevel[25];
-	int Experience[25];
-	int FactorPercent[25];
-	int NextLevel[25];
-	int Delta[25];
-	uint8 SpellList[256];
-	int QuestValues[500];
-	int MurderTimestamps[20];
-	uint8 *Inventory;
-	int InventorySize;
-	uint8 *Depot[9];
-	int DepotSize[9];
-	uint32 AccountID;
-	int Sex;
-	char Name[30];
-	uint8 Rights[12];
-	char Guild[31];
-	char Rank[31];
-	char Title[31];
-	int Buddies;
-	uint32 Buddy[100];
-	char BuddyName[100][30];
-	uint32 EarliestYellRound;
-	uint32 EarliestTradeChannelRound;
-	uint32 EarliestSpellTime;
-	uint32 EarliestMultiuseTime;
-	uint32 TalkBufferFullTime;
-	uint32 MutingEndRound;
-	uint32 Addressees[20];
-	uint32 AddresseesTimes[20];
-	int NumberOfMutings;
-};
-
 struct TPlayer: TCreature {
+	//TPlayer(void);
+
 	uint8 GetRealProfession(void);
 	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
@@ -592,7 +660,6 @@ struct TPlayer: TCreature {
 
 // Creature API
 // =============================================================================
-
 #define MAX_RACES 512
 
 // crmain.cc

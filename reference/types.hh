@@ -56,13 +56,6 @@ struct TPlayerIndexLeafNode {
     struct TPlayerIndexEntry Entry[10];
 };
 
-struct TNode {
-    int Type;
-    int Data;
-    struct TNode *Left;
-    struct TNode *Right;
-};
-
 struct THouseGuest {
     char Name[60];
 };
@@ -117,11 +110,6 @@ struct TAttackWave {
     struct vector<TItemData> ExtraItem;
 };
 
-struct TNonplayer {
-    struct TCreature super_TCreature; // INHERITANCE?
-    enum STATE State;
-};
-
 struct TReportedStatement {
     ulong StatementID;
     ulong TimeStamp;
@@ -165,13 +153,7 @@ struct TMonsterhome {
     int Timer;
 };
 
-struct TCondition {
-    int Type;
-    ulong Text;
-    struct TNode *Expression;
-    int Property;
-    int Number;
-};
+
 
 struct TChannel {
     ulong Moderator;
@@ -212,22 +194,6 @@ struct TMoveUseCondition {
     enum ModifierType Modifier;
     enum ConditionType Condition;
     int Parameters[5];
-};
-
-struct TAction {
-    int Type;
-    ulong Text;
-    int Number;
-    struct TNode *Expression;
-    struct TNode *Expression2;
-    struct TNode *Expression3;
-};
-
-struct TBehaviour {
-    struct vector<TCondition> Condition;
-    struct vector<TAction> Action;
-    int Conditions;
-    int Actions;
 };
 
 struct THouseArea {
@@ -364,26 +330,6 @@ struct TReaderThreadReply {
     int SectorZ;
     uchar *Data;
     int Size;
-};
-
-struct TNPC {
-    struct TNonplayer super_TNonplayer;
-    ulong Interlocutor;
-    int Topic;
-    int Price;
-    int Amount;
-    int TypeID;
-    ulong Data;
-    ulong LastTalk;
-    struct vector<long_unsigned_int> QueuedPlayers;
-    struct vector<long_unsigned_int> QueuedAddresses;
-    int QueueLength;
-    struct TBehaviourDatabase *Behaviour;
-};
-
-struct TBehaviourDatabase {
-    struct vector<TBehaviour> Behaviour;
-    int Behaviours;
 };
 
 struct TQueryManagerConnection {
