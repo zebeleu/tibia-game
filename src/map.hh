@@ -97,6 +97,21 @@ struct TCronEntry {
 	int Next;
 };
 
+// NOTE(fusion): Map config values.
+extern int SectorXMin;
+extern int SectorXMax;
+extern int SectorYMin;
+extern int SectorYMax;
+extern int SectorZMin;
+extern int SectorZMax;
+extern int RefreshedCylinders;
+extern int NewbieStartPositionX;
+extern int NewbieStartPositionY;
+extern int NewbieStartPositionZ;
+extern int VeteranStartPositionX;
+extern int VeteranStartPositionY;
+extern int VeteranStartPositionZ;
+
 // NOTE(fusion): Cron management functions. Most for internal use.
 Object CronCheck(void);
 void CronExpire(Object Obj, int Delay);

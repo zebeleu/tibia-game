@@ -137,10 +137,10 @@ struct priority_queue{
 		delete Entry;
 	}
 
-	void insert(K Key, T *Data){
+	void insert(K Key, T Data){
 		this->Entries += 1;
 		int CurrentIndex = this->Entries;
-		*this->Entry->at(CurrentIndex) = {Key, *Data};
+		*this->Entry->at(CurrentIndex) = {Key, Data};
 		while(CurrentIndex > 1){
 			int ParentIndex = CurrentIndex / 2;
 			priority_queue_entry<K, T> *Current = this->Entry->at(CurrentIndex);

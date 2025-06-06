@@ -307,11 +307,11 @@ int TCombat::GetArmorStrength(void){
 int TCombat::GetDistance(void){
 	int Distance = 0;
 	if(this->Close != NONE || this->Fist){
-		Distance = 1;
+		Distance = 1; // DISTANCE_CLOSE ?
 	}else if(this->Throw != NONE){
-		Distance = 2;
+		Distance = 2; // DISTANCE_THROW ?
 	}else if(this->Missile != NONE || this->Wand != NONE){
-		Distance = 3;
+		Distance = 3; // DISTANCE_RANGE ?
 	}
 	return Distance;
 }

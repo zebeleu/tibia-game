@@ -372,8 +372,7 @@ TSummonImpact::TSummonImpact(TCreature *Actor, int Race, int Maximum){
 		error("TSummonImpact::TSummonImpact: Actor ist NULL.\n");
 	}
 
-	// TODO(fusion): I think there might be a `IsRaceValid` function that was inlined.
-	if(Race < 0 || Race >= NARRAY(RaceData)){
+	if(!IsRaceValid(Race)){
 		error("TSummonImpact::TSummonImpact: Ungültige Rassennummer %d.\n", Race);
 	}
 
@@ -387,7 +386,7 @@ void TSummonImpact::handleField(int x, int y, int z){
 	int Race = this->Race;
 	int Maximum = this->Maximum;
 	if(Actor != NULL
-			&& Race >= 0 && Race < NARRAY(RaceData)
+			&& IsRaceValid(Race)
 			&& Actor->SummonedCreatures < Maximum){
 		int x, y, z;
 		if(SearchSummonField(&x, &y, &z, 2)){
@@ -1870,7 +1869,7 @@ void SummonCreature(TCreature *Actor, int ManaPoints, int Race, bool God){
 		throw ERROR;
 	}
 
-	if(Race < 1 || Race >= NARRAY(RaceData)){
+	if(!IsRaceValid(Race)){
 		error("SummonCreature: Ungültige Rassennummer %d übergeben.\n", Race);
 		throw ERROR;
 	}

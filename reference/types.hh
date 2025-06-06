@@ -1,14 +1,8 @@
 
 struct TXTEASymmetricKey {
     int (**_vptr.TXTEASymmetricKey)(...); // VTABLE?
-    uint8 m_SymmetricKey[16];
+    uchar m_SymmetricKey[16];
 };
-
-
-// NOTE(fusion): Some minimal processing up until here. Then I realized the file would be huge.
-//==================================================================================================
-//==================================================================================================
-//==================================================================================================
 
 struct TDatabasePoolConnection {
     TDatabaseConnectionPool *DatabaseConnectionPool;
@@ -131,16 +125,6 @@ struct TDelayedMail {
     int PacketSize;
 };
 
-struct TShortwayPoint {
-    int x;
-    int y;
-    int Waypoints;
-    int Waylength;
-    int Heuristic;
-    struct TShortwayPoint *Predecessor;
-    struct TShortwayPoint *NextToExpand;
-};
-
 struct TMonsterhome {
     int Race;
     int x;
@@ -152,8 +136,6 @@ struct TMonsterhome {
     int RegenerationTime;
     int Timer;
 };
-
-
 
 struct TChannel {
     ulong Moderator;
@@ -393,16 +375,4 @@ struct TRSAPrivateKey {
     struct vlong m_U;
     struct vlong m_DP;
     struct vlong m_DQ;
-};
-
-struct TShortway {
-    struct matrix<TShortwayPoint> *Map;
-    struct TShortwayPoint *FirstToExpand;
-    struct TCreature *cr;
-    int VisibleX;
-    int VisibleY;
-    int StartX;
-    int StartY;
-    int StartZ;
-    int MinWaypoints;
 };

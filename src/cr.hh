@@ -421,7 +421,7 @@ struct TToDoEntry {
 		} Turn;
 
 		struct{
-			uint32 Text; // POINTER? Probably a reference from `AddDynamicString`?
+			uint32 Text;
 			int Mode;
 			uint32 Addressee;
 			bool CheckSpamming;
@@ -434,12 +434,45 @@ struct TToDoEntry {
 };
 
 struct TCreature: TSkillBase {
+	// crmain.cc
 	TCreature(void);
-	void Attack(void);
-	int Damage(TCreature *Attacker, int Damage, int DamageType);
+	void SetID(uint32 CharacterID);
+	void DelID(void);
+	void SetInCrList(void);
+	void DelInCrList(void);
 	void StartLogout(bool Force, bool StopFight);
+	int LogoutPossible(void);
 	void BlockLogout(int Delay, bool BlockProtectionZone);
-	void ToDoGo(int DestX, int DestY, int DestZ, bool Dest, int MaxSteps);
+	int GetHealth(void);
+	int GetSpeed(void);
+	int Damage(TCreature *Attacker, int Damage, int DamageType);
+
+	// cract.cc
+	bool SetOnMap(void);
+	bool DelOnMap(void);
+	void Attack(void);
+	void Execute(void);
+	uint32 CalculateDelay(void);
+	bool ToDoClear(void);
+	void ToDoAdd(TToDoEntry TD);
+	void ToDoStop(void);
+	void ToDoStart(void);
+	void ToDoYield(void);
+	void ToDoWait(int Delay);
+	void ToDoGo(int DestX, int DestY, int DestZ, bool MustReach, int MaxSteps);
+	void ToDoRotate(int Direction);
+	void ToDoMove(int ObjX, int ObjY, int ObjZ, ObjectType Type, uint8 RNum,
+				int DestX, int DestY, int DestZ, uint8 Count);
+	void ToDoMove(Object Obj, int DestX, int DestY, int DestZ, uint8 Count);
+	void ToDoTrade(int ObjX, int ObjY, int ObjZ, ObjectType Type, uint8 RNum,
+				uint32 TradePartner);
+	void ToDoUse(uint8 Count, int ObjX1, int ObjY1, int ObjZ1, ObjectType Type1, uint8 RNum1,
+				uint8 Dummy, int ObjX2, int ObjY2, int ObjZ2, ObjectType Type2, uint8 RNum2);
+	void ToDoUse(uint8 Count, Object Obj1, Object Obj2);
+	void ToDoTurn(int ObjX, int ObjY, int ObjZ, ObjectType Type, uint8 RNum);
+	void ToDoAttack(void);
+	void ToDoTalk(int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
+	void ToDoChangeState(int NewState);
 
 	// VIRTUAL FUNCTIONS
 	// =================
@@ -613,6 +646,9 @@ struct TPlayer: TCreature {
 
 	void CheckState(void);
 
+	void ClearPlayerkillingMarks(void);
+	void SaveInventory(void);
+
 	// VIRTUAL FUNCTIONS
 	// =================
 	// TODO
@@ -658,19 +694,42 @@ struct TPlayer: TCreature {
 	uint32 AddresseesTimes[20];
 };
 
-// Creature API
+// crmain.cc
 // =============================================================================
 #define MAX_RACES 512
-
-// crmain.cc
 extern TRaceData RaceData[MAX_RACES];
 extern int KilledCreatures[MAX_RACES];
 extern int KilledPlayers[MAX_RACES];
+extern priority_queue<uint32, uint32> ToDoQueue;
 
-// TODO(fusion): These probably belong elsewhere but we should come back to
-// this when we're wrapping up creature files.
 bool IsCreaturePlayer(uint32 CreatureID);
+TCreature *GetCreature(uint32 CreatureID);
+TCreature *GetCreature(Object Obj);
+void InsertChainCreature(TCreature *Creature, int CoordX, int CoordY);
+void DeleteChainCreature(TCreature *Creature);
+void MoveChainCreature(TCreature *Creature, int CoordX, int CoordY);
+void ProcessCreatures(void);
+void ProcessSkills(void);
+void MoveCreatures(int Delay);
+
 void AddKillStatistics(int AttackerRace, int DefenderRace);
+
+bool IsRaceValid(int Race);
 int GetRaceByName(const char *RaceName);
+
+// crnonpl.cc
+// =============================================================================
+void InitNonplayer();
+void ExitNonplayer();
+
+// crplayer.cc
+// =============================================================================
+void InitPlayer(void);
+void ExitPlayer(void);
+
+// crskill.cc
+// =============================================================================
+void InitCrskill(void);
+void ExitCrskill(void);
 
 #endif //TIBIA_CREATURE_HH_

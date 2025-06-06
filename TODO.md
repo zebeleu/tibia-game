@@ -1,8 +1,12 @@
 ## TODO NEXT
-- merge creature headers into a single one CR.HH
-	- this should help preventing dependency cycles and centralize creature data
-		structures and globals in a single place
-- CRMAIN.CC, CRPLAYER.CC, CRNONPL.CC, CRACT.CC
+- CRACT.CC
+- CRMAIN.CC
+	- TCreature::CreatureMoveStimulus
+	- FINDCREATURES
+	- KILL STATS
+	- RACE
+	- RAIDS
+- CRPLAYER.CC, CRNONPL.CC
 - HOUSES.CC
 - INFO.CC
 - OPERATE.CC

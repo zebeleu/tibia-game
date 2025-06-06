@@ -8,21 +8,21 @@
 
 #include <dirent.h>
 
-static int OBCount;
-static int SectorXMin;
-static int SectorXMax;
-static int SectorYMin;
-static int SectorYMax;
-static int SectorZMin;
-static int SectorZMax;
-static int RefreshedCylinders;
-static int NewbieStartPositionX;
-static int NewbieStartPositionY;
-static int NewbieStartPositionZ;
-static int VeteranStartPositionX;
-static int VeteranStartPositionY;
-static int VeteranStartPositionZ;
+int SectorXMin;
+int SectorXMax;
+int SectorYMin;
+int SectorYMax;
+int SectorZMin;
+int SectorZMax;
+int RefreshedCylinders;
+int NewbieStartPositionX;
+int NewbieStartPositionY;
+int NewbieStartPositionZ;
+int VeteranStartPositionX;
+int VeteranStartPositionY;
+int VeteranStartPositionZ;
 
+static int OBCount;
 static matrix3d<TSector*> *Sector;
 static TObjectBlock **ObjectBlock;
 static TObject *FirstFreeObject;

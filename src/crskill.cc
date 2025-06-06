@@ -1159,7 +1159,7 @@ bool TSkillBase::NewSkill(uint16 SkillNo, TCreature *Creature){
 }
 
 bool TSkillBase::SetSkills(int Race){
-	if(Race < 0 || Race >= NARRAY(RaceData)){
+	if(!IsRaceValid(Race)){
 		error("TSkillBase::SetSkills: Ungültige Rassennummer %d.\n", Race);
 		return false;
 	}
@@ -1249,4 +1249,14 @@ void TSkillBase::DelTimer(uint16 SkNr){
 			}
 		}
 	}
+}
+
+// Initialization
+//==============================================================================
+void InitCrskill(void){
+	// no-op
+}
+
+void ExitCrskill(void){
+	// no-op
 }
