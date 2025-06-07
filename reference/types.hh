@@ -284,19 +284,6 @@ struct TMoveUseDatabase {
     int NumberOfRules;
 };
 
-struct TFindCreatures {
-    int startx;
-    int starty;
-    int endx;
-    int endy;
-    int blockx;
-    int blocky;
-    ulong ActID;
-    ulong SkipID;
-    int Mask;
-    bool finished;
-};
-
 struct TReaderThreadOrder {
     enum TReaderThreadOrderType OrderType;
     int SectorX;

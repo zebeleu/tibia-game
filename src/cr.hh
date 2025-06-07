@@ -378,6 +378,29 @@ struct TCombat{
 	int LearningPoints;
 };
 
+// TFindCreatures
+// =============================================================================
+struct TFindCreatures {
+	TFindCreatures(int RadiusX, int RadiusY, int CenterX, int CenterY, int Mask);
+	TFindCreatures(int RadiusX, int RadiusY, uint32 CreatureID, int Mask);
+	TFindCreatures(int RadiusX, int RadiusY, Object Obj, int Mask);
+	void initSearch(int RadiusX, int RadiusY, int CenterX, int CenterY, int Mask);
+	uint32 getNext(void);
+
+	// DATA
+	// =================
+	int startx;
+	int starty;
+	int endx;
+	int endy;
+	int blockx;
+	int blocky;
+	uint32 ActID;
+	uint32 SkipID;
+	int Mask;
+	bool finished;
+};
+
 // TCreature
 // =============================================================================
 struct TToDoEntry {
@@ -713,6 +736,9 @@ void ProcessSkills(void);
 void MoveCreatures(int Delay);
 
 void AddKillStatistics(int AttackerRace, int DefenderRace);
+void WriteKillStatistics(void);
+void InitKillStatistics(void);
+void ExitKillStatistics(void);
 
 bool IsRaceValid(int Race);
 int GetRaceByName(const char *RaceName);

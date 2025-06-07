@@ -239,6 +239,17 @@ struct matrix{
 		delete[] this->entry;
 	}
 
+	// NOTE(fusion): Same as `at` but returns NULL on out of bounds coordinates.
+	T *boundedAt(int x, int y){
+		int xoffset = x - this->xmin;
+		int yoffset = y - this->ymin;
+		if(xoffset < 0 || xoffset >= this->dx || yoffset < 0 || yoffset >= this->dy){
+			return NULL;
+		}else{
+			return &this->entry[yoffset * this->dx + xoffset];
+		}
+	}
+
 	T *at(int x, int y){
 		int xoffset = x - this->xmin;
 		int yoffset = y - this->ymin;

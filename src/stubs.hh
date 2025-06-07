@@ -52,6 +52,7 @@ extern void GraphicalEffect(Object Obj, int Type);
 extern int IdentifyPlayer(const char *Name, bool ExactMatch, bool IgnoreGamemasters, TPlayer **Player);
 extern void InitLog(const char *ProtocolName);
 extern void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest);
+extern void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames, int *KilledPlayers, int *KilledCreatures);
 extern bool LagDetected(void);
 extern void LoadMonsterRaid(const char *FileName, int Start,
 		bool *Type, int *Date, int *Interval, int *Duration);
@@ -97,6 +98,5 @@ extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
 extern void TextualEffect(Object Obj, int Color, const char *Text, ...) ATTR_PRINTF(3, 4);
 extern bool ThrowPossible(int FromX, int FromY, int FromZ,
 						int ToX, int ToY, int ToZ, int Power);
-extern void WriteKillStatistics(void);
 
 #endif //TIBIA_STUBS_HH_

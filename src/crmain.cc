@@ -18,6 +18,99 @@ static TCreature *HashList[1000];
 static matrix<uint32> *FirstChainCreature;
 static vector<TCreature*> CreatureList(0, 10000, 1000);
 
+// TFindCreatures
+// =============================================================================
+TFindCreatures::TFindCreatures(int RadiusX, int RadiusY, int CenterX, int CenterY, int Mask){
+	this->initSearch(RadiusX, RadiusY, CenterX, CenterY, Mask);
+}
+
+TFindCreatures::TFindCreatures(int RadiusX, int RadiusY, uint32 CreatureID, int Mask){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("TFindCreatures::TFindCreatures: Kreatur existiert nicht.\n");
+		this->finished = true;
+		return;
+	}
+
+	this->initSearch(RadiusX, RadiusY, Creature->posx, Creature->posy, Mask);
+	this->SkipID = Creature->ID;
+}
+
+TFindCreatures::TFindCreatures(int RadiusX, int RadiusY, Object Obj, int Mask){
+	if(!Obj.exists()){
+		error("TFindCreatures::TFindCreatures: Übergebenes Objekt existiert nicht.\n");
+		this->finished = true;
+		return;
+	}
+
+	int ObjX, ObjY, ObjZ;
+	GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+	this->initSearch(RadiusX, RadiusY, ObjX, ObjY, Mask);
+}
+
+void TFindCreatures::initSearch(int RadiusX, int RadiusY, int CenterX, int CenterY, int Mask){
+	this->startx = CenterX - RadiusX;
+	this->starty = CenterY - RadiusY;
+	this->endx = CenterX + RadiusX;
+	this->endy = CenterY + RadiusY;
+	// NOTE(fusion): See `TFindCreatures::getNext` for an explanation on the -1.
+	this->blockx = (this->startx / 16) - 1;
+	this->blocky = (this->starty / 16);
+	this->ActID = 0;
+	this->SkipID = 0;
+	this->Mask = Mask;
+	this->finished = false;
+}
+
+uint32 TFindCreatures::getNext(void){
+	if(this->finished){
+		return 0;
+	}
+
+	int StartBlockX = this->startx / 16;
+	int EndBlockX = this->endx / 16;
+	int EndBlockY = this->endy / 16;
+	while(true){
+		while(this->ActID == 0){
+			this->blockx += 1;
+			if(this->blockx > EndBlockX){
+				this->blockx = StartBlockX;
+				this->blocky += 1;
+				if(this->blocky > EndBlockY){
+					this->finished = true;
+					return 0;
+				}
+			}
+
+			uint32 *FirstID = FirstChainCreature->boundedAt(this->blockx, this->blocky);
+			if(FirstID != NULL){
+				this->ActID = *FirstID;
+			}else{
+				this->ActID = 0;
+			}
+		}
+
+		TCreature *Creature = GetCreature(this->ActID);
+		if(Creature == NULL){
+			error("TFindCreatures::getNext: Kreatur existiert nicht.\n");
+			this->ActID = 0;
+			continue;
+		}
+
+		this->ActID = Creature->NextChainCreature;
+		if(Creature->ID == this->SkipID
+				|| Creature->posx < this->startx || Creature->posx > this->endx
+				|| Creature->posy < this->starty || Creature->posy > this->endy
+				|| (Creature->Type == PLAYER  && (this->Mask & 0x01) == 0)
+				|| (Creature->Type == NPC     && (this->Mask & 0x02) == 0)
+				|| (Creature->Type == MONSTER && (this->Mask & 0x04) == 0)){
+			continue;
+		}
+
+		return Creature->ID;
+	}
+}
+
 // TCreature
 // =============================================================================
 TCreature::TCreature(void) :
@@ -793,7 +886,7 @@ void TCreature::CreatureMoveStimulus(uint32 CreatureID, int Type){
 	}
 
 	// TODO(fusion): Find out what `Type` is here.
-	if(Type != 2 // STIMULUS_TYPE??
+	if(Type != 2 // STIMULUS_TYPE_??
 			|| !this->LockToDo
 			|| this->ActToDo >= this->NrToDo
 			|| this->ToDoList.at(this->ActToDo)->Code != TDAttack){
@@ -1022,8 +1115,6 @@ void MoveCreatures(int Delay){
 
 // Kill Statistics
 // =============================================================================
-void InitKillStatistics(void);//TODO
-void ExitKillStatistics(void);//TODO
 void AddKillStatistics(int AttackerRace, int DefenderRace){
 	// NOTE(fusion): I think the race name can be "human" only for players,
 	// which means we're probably tracking how many creatures are killed by
@@ -1038,6 +1129,54 @@ void AddKillStatistics(int AttackerRace, int DefenderRace){
 	if(strcmp(RaceData[DefenderRace].Name, "human") == 0){
 		KilledPlayers[AttackerRace] += 1;
 	}
+}
+
+void WriteKillStatistics(void){
+	// TODO(fusion): Using the same names with local and global variables is
+	// trash. I'd personally have all globals with a `g_` prefix but I'm trying
+	// to not change the original code too much.
+
+	// TODO(fusion): The way we manage race names here is a disaster but could
+	// make sense if there is a constant `MAX_RACE_NAME` somewhere. I've also
+	// seen the length of 30 often used with name strings so it could also be
+	// a general constant `MAX_NAME`.
+
+	int NumberOfRaces = 0;
+	char *RaceNames = new char[MAX_RACES * 30];
+	int *KilledPlayers = new int[MAX_RACES];
+	int *KilledCreatures = new int[MAX_RACES];
+	for(int Race = 0; Race < MAX_RACES; Race += 1){
+		if(::KilledCreatures[Race] == 0 && ::KilledPlayers[Race] == 0){
+			continue;
+		}
+
+		char *Name = &RaceNames[NumberOfRaces * 30];
+		if(Race == 0){
+			strcpy(Name, "(fire/poison/energy)");
+		}else{
+			sprintf(Name, "%s %s", RaceData[Race].Article, RaceData[Race].Name);
+			// TODO(fusion): The original function had a call to `Plural` and
+			// `Capitals` but didn't seem to put the results back into `Name`.
+		}
+
+		KilledPlayers[NumberOfRaces] = ::KilledPlayers[Race];
+		KilledCreatures[NumberOfRaces] = ::KilledCreatures[Race];
+		NumberOfRaces += 1;
+	}
+
+	KillStatisticsOrder(NumberOfRaces, RaceNames, KilledPlayers, KilledCreatures);
+	InitKillStatistics();
+}
+
+void InitKillStatistics(void){
+	for(int i = 0; i < MAX_RACES; i += 1){
+		KilledCreatures[i] = 0;
+		KilledPlayers[i] = 0;
+	}
+}
+
+void ExitKillStatistics(void){
+	WriteKillStatistics();
 }
 
 // Race
