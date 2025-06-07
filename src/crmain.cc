@@ -1239,7 +1239,461 @@ int GetRaceByName(const char *RaceName){
 	return Result;
 }
 
-void LoadRaces(void); //TODO
+const char *GetRaceName(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceName: Ungültige Rassen-Nummer %d.\n", Race);
+		return NULL;
+	}
+
+	return RaceData[Race].Name;
+}
+
+TOutfit GetRaceOutfit(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceOutfit: Ungültige Rassen-Nummer %d.\n", Race);
+		return RaceData[1].Outfit;
+	}
+
+	return RaceData[Race].Outfit;
+}
+
+bool GetRaceNoSummon(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceNoSummon: Ungültige Rassen-Nummer %d.\n", Race);
+		return true;
+	}
+
+	return RaceData[Race].NoSummon;
+}
+
+bool GetRaceNoConvince(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceNoConvince: Ungültige Rassen-Nummer %d.\n", Race);
+		return true;
+	}
+
+	return RaceData[Race].NoConvince;
+}
+
+bool GetRaceNoIllusion(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceNoIllusion: Ungültige Rassen-Nummer %d.\n", Race);
+		return true;
+	}
+
+	return RaceData[Race].NoIllusion;
+}
+
+bool GetRaceNoParalyze(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceNoParalyze: Ungültige Rassen-Nummer %d.\n", Race);
+		return true;
+	}
+
+	return RaceData[Race].NoParalyze;
+}
+
+int GetRaceSummonCost(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceSummonCost: Ungültige Rassen-Nummer %d.\n", Race);
+		return 0;
+	}
+
+	return RaceData[Race].SummonCost;
+}
+
+int GetRacePoison(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRacePoison: Ungültige Rassen-Nummer %d.\n", Race);
+		return 0;
+	}
+
+	return RaceData[Race].Poison;
+}
+
+bool GetRaceUnpushable(int Race){
+	if(!IsRaceValid(Race)){
+		error("GetRaceUnpushable: Ungültige Rassen-Nummer %d.\n", Race);
+		return true;
+	}
+
+	return RaceData[Race].Unpushable;
+}
+
+// TODO(fusion): Probably move this somewhere else?
+TOutfit ReadOutfit(TReadScriptFile *Script){
+	TOutfit Outfit = {};
+	Script->readSymbol('(');
+	Outfit.OutfitID = Script->readNumber();
+	Script->readSymbol(',');
+	if(Outfit.OutfitID == 0){
+		Outfit.ObjectType = (uint16)Script->readNumber();
+	}else{
+		memcpy(Outfit.Colors, Script->readBytesequence(), sizeof(Outfit.Colors));
+	}
+	Script->readSymbol(')');
+}
+
+// TODO(fusion): Probably move this somewhere else?
+void WriteOutfit(TReadScriptFile *Script, TOutfit Outfit){
+	Script->writeText("(");
+	Script->writeNumber(Outfit.OutfitID);
+	Script->writeText(",");
+	if(Outfit.OutfitID == 0){
+		Script->writeNumber((int)Outfit.ObjectType);
+	}else{
+		Script->writeBytesequence(Outfit.Colors, sizeof(Outfit.Colors));
+	}
+	Script->writeText(")");
+}
+
+void LoadRace(const char *FileName){
+	TReadScriptFile Script;
+
+	Script.open(FileName);
+
+	// NOTE(fusion): It seems we expect `RaceNumber` to be the first attribute
+	// declared in a race file.
+	if(strcmp(Script.readIdentifier(), "racenumber") != 0){
+		Script.error("race number expected");
+	}
+
+	Script.readSymbol('=');
+
+	int RaceNumber = Script.readNumber();
+	if(!IsRaceValid(Race)){
+		Script.error("illegal race number");
+	}
+
+	TRaceData *Race = &RaceData[RaceNumber];
+	if(Race->Name[0] != 0){
+		Script.error("race already defined");
+	}
+
+	Race->Outfit = TOutfit{};
+	Race->Outfit.OutfitID = RaceNumber;
+
+	while(true){
+		Script.nextToken();
+		if(Script.Token == ENDOFFILE){
+			Script.close();
+			break;
+		}
+
+		char Identifier[MAX_IDENT_LENGTH];
+		strcpy(Identifier, Script.getIdentifier());
+		Script.readSymbol('=');
+
+		if(strcmp(Identifier, "name") == 0){
+			strcpy(Race->Name, Script.readString());
+		}else if(strcmp(Identifier, "article") == 0){
+			strcpy(Race->Article, Script.readString());
+		}else if(strcmp(Identifier, "outfit") == 0){
+			Race->Outfit = ReadOutfit(Script);
+		}else if(strcmp(Identifier, "corpse") == 0){
+			int CorpseTypeID = Script.readNumber();
+			Race->MaleCorpse = CorpseTypeID;
+			Race->FemaleCorpse = CorpseTypeID;
+		}else if(strcmp(Identifier, "corpses") == 0){
+			Race->MaleCorpse = Script.readNumber();
+			Script.readSymbol(',');
+			Race->FemaleCorpse = Script.readNumber();
+		}else if(strcmp(Identifier, "blood") == 0){
+			const char *Blood = Script.readIdentifier();
+			if(strcmp(Blood, "blood") == 0){
+				Race->Blood = BT_BLOOD;
+			}else if(strcmp(Blood, "slime") == 0){
+				Race->Blood = BT_SLIME;
+			}else if(strcmp(Blood, "bones") == 0){
+				Race->Blood = BT_BONES;
+			}else if(strcmp(Blood, "fire") == 0){
+				Race->Blood = BT_FIRE;
+			}else if(strcmp(Blood, "energy") == 0){
+				Race->Blood = BT_ENERGY;
+			}else{
+				Script.error("unknown blood type");
+			}
+		}else if(strcmp(Identifier, "experience") == 0){
+			Race->ExperiencePoints = Script.readNumber();
+		}else if(strcmp(Identifier, "summoncost") == 0){
+			Race->SummonCost = Script.readNumber();
+		}else if(strcmp(Identifier, "fleethreshold") == 0){
+			Race->FleeThreshold = Script.readNumber();
+		}else if(strcmp(Identifier, "attack") == 0){
+			Race->Attack = Script.readNumber();
+		}else if(strcmp(Identifier, "defend") == 0){
+			Race->Defend = Script.readNumber();
+		}else if(strcmp(Identifier, "armor") == 0){
+			Race->Armor = Script.readNumber();
+		}else if(strcmp(Identifier, "poison") == 0){
+			Race->Poison = Script.readNumber();
+		}else if(strcmp(Identifier, "losetarget") == 0){
+			Race->LoseTarget = Script.readNumber();
+		}else if(strcmp(Identifier, "strategy") == 0){
+			Script.readSymbol('(');
+			Race->Strategy[0] = Script.readNumber();
+			Script.readSymbol(',');
+			Race->Strategy[1] = Script.readNumber();
+			Script.readSymbol(',');
+			Race->Strategy[2] = Script.readNumber();
+			Script.readSymbol(',');
+			Race->Strategy[3] = Script.readNumber();
+			Script.readSymbol(')');
+		}else if(strcmp(Identifier, "flags") == 0){
+			Script.readSymbol('{');
+			do{
+				const char *Flag = Script.getIdentifier();
+				if(strcmp(Flag, "kickboxes") == 0){
+					Race->KickBoxes = true;
+				}else if(strcmp(Flag, "kickcreatures") == 0){
+					Race->KickCreatures = true;
+				}else if(strcmp(Flag, "seeinvisible") == 0){
+					Race->SeeInvisible = true;
+				}else if(strcmp(Flag, "unpushable") == 0){
+					Race->Unpushable = true;
+				}else if(strcmp(Flag, "distancefighting") == 0){
+					Race->DistanceFighting = true;
+				}else if(strcmp(Flag, "nosummon") == 0){
+					Race->NoSummon = true;
+				}else if(strcmp(Flag, "noconvince") == 0){
+					Race->NoConvince = true;
+				}else if(strcmp(Flag, "noillusion") == 0){
+					Race->NoIllusion = true;
+				}else if(strcmp(Flag, "noburning") == 0){
+					Race->NoBurning = true;
+				}else if(strcmp(Flag, "nopoison") == 0){
+					Race->NoPoison = true;
+				}else if(strcmp(Flag, "noenergy") == 0){
+					Race->NoEnergy = true;
+				}else if(strcmp(Flag, "nohit") == 0){
+					Race->NoHit = true;
+				}else if(strcmp(Flag, "nolifedrain") == 0){
+					Race->NoLifeDrain = true;
+				}else if(strcmp(Flag, "noparalyze") == 0){
+					Race->NoParalyze = true;
+				}else{
+					Script.error("unknown flag");
+				}
+			}while(Script.readSpecial() != '}');
+		}else if(strcmp(Identifier, "skills") == 0){
+			Script.readSymbol('{');
+			do{
+				Script.readSymbol('(');
+				int SkillNr = GetSkillByName(Script.readIdentifier());
+				if(SkillNr == -1){
+					Script.error("unknown skill name");
+				}
+
+				// NOTE(fusion): Skills are indexed from 1.
+				Race->Skills += 1;
+				TSkillData *SkillData = Race->Skill.at(Race->Skills);
+				SkillData->Nr = SkillNr;
+				Script.readSymbol(',');
+				SkillData->Actual = Script.readNumber();
+				Script.readSymbol(',');
+				SkillData->Minimum = Script.readNumber();
+				Script.readSymbol(',');
+				SkillData->Maximum = Script.readNumber();
+				Script.readSymbol(',');
+				SkillData->NextLevel = Script.readNumber();
+				Script.readSymbol(',');
+				SkillData->FactorPercent = Script.readNumber();
+				Script.readSymbol(',');
+				SkillData->AddLevel = Script.readNumber();
+				Script.readSymbol(')');
+			}while(Script.readSpecial() != '}');
+		}else if(strcmp(Identifier, "talk") == 0){
+			Script.readSymbol('{');
+			do{
+				// NOTE(fusion): Talks are indexed from 1.
+				Race->Talks += 1;
+				*Race->Talk.at(Race->Talks) = AddDynamicString(Script.readString());
+			}while(Script.readSpecial() != '}');
+		}else if(strcmp(Identifier, "inventory") == 0){
+			Script.readSymbol('{');
+			do{
+				Script.readSymbol('(');
+				// NOTE(fusion): Items are indexed from 1.
+				Race->Items += 1;
+				TItemData *ItemData = Race->Item.at(Race->Items);
+				ItemData->Type = Script.readNumber();
+				Script.readSymbol(',');
+				ItemData->Maximum = Script.readNumber();
+				Script.readSymbol(',');
+				ItemData->Probability = Script.readNumber();
+				Script.readSymbol(')');
+			}while(Script.readSpecial() != '}');
+		}else if(strcmp(Identifier, "spells") == 0){
+			Script.readSymbol('{');
+			do{
+				Race->Spells += 1;
+				TSpellData *SpellData = Race->Spell.at(Race->Spells);
+
+				// NOTE(fusion): Spell shape.
+				{
+					const char *SpellShape = Script.readIdentifier();
+					if(strcmp(SpellShape, "actor") == 0){
+						SpellData->Shape = SHAPE_ACTOR;
+						Script.readSymbol('(');
+						SpellData->ShapeParam1 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellShape, "victim") == 0){
+						SpellData->Shape = SHAPE_VICTIM;
+						Script.readSymbol('(');
+						SpellData->ShapeParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam3 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellShape, "origin") == 0){
+						SpellData->Shape = SHAPE_ORIGIN;
+						Script.readSymbol('(');
+						SpellData->ShapeParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam2 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellShape, "destination") == 0){
+						SpellData->Shape = SHAPE_DESTINATION;
+						Script.readSymbol('(');
+						SpellData->ShapeParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam3 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam4 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellShape, "angle") == 0){
+						SpellData->Shape = SHAPE_ANGLE;
+						Script.readSymbol('(');
+						SpellData->ShapeParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ShapeParam3 = Script.readNumber();
+						Script.readSymbol(')');
+					}else{
+						Script.error("unknown spell shape");
+					}
+				}
+
+				Script.readSymbol('I');
+
+				// NOTE(fusion): Spell impact.
+				{
+					const char *SpellImpact = Script.readIdentifier();
+					if(strcmp(SpellImpact, "damage") == 0){
+						SpellData->Impact = IMPACT_DAMAGE;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam3 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "field") == 0){
+						SpellData->Impact = IMPACT_FIELD;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "healing") == 0){
+						SpellData->Impact = IMPACT_HEALING;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam2 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "speed") == 0){
+						SpellData->Impact = IMPACT_SPEED;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam3 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "drunken") == 0){
+						SpellData->Impact = IMPACT_DRUNKEN;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam3 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "strength") == 0){
+						SpellData->Impact = IMPACT_STRENGTH;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam2 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam3 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam4 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "outfit") == 0){
+						SpellData->Impact = IMPACT_OUTFIT;
+						Script.readSymbol('(');
+						TOutfit Outfit = ReadOutfit(Script);
+						SpellData->ImpactParam1 = Outfit.OutfitID;
+						SpellData->ImpactParam2 = (int)Outfit.PackedData;
+						Script.readSymbol(',');
+						SpellData->ImpactParam3 = Script.readNumber();
+						Script.readSymbol(')');
+					}else if(strcmp(SpellImpact, "summon") == 0){
+						SpellData->Impact = IMPACT_SUMMON;
+						Script.readSymbol('(');
+						SpellData->ImpactParam1 = Script.readNumber();
+						Script.readSymbol(',');
+						SpellData->ImpactParam2 = Script.readNumber();
+						Script.readSymbol(')');
+					}else{
+						Script.error("unknown spell impact");
+					}
+				}
+
+				Script.readSymbol(':');
+
+				// NOTE(fusion): Spell delay.
+				{
+					SpellData->Delay = Script.readNumber();
+					if(SpellData->Delay == 0){
+						Script.error("zero spell delay");
+					}
+				}
+			}while(Script.readSpecial() != '}');
+		}else{
+			Script.error("unknown race field");
+		}
+	}
+}
+
+void LoadRaces(void){
+	// TODO(fusion): It is possible to leak `MonsterDir` if `LoadRace` throws on
+	// errors (which it does). This is usually not a problem because failing here
+	// means we're cascading back to `InitAll` which will report the error and
+	// exit, but it is something to keep in mind for any functions that uses
+	// exceptions with non-RAII resources.
+
+	DIR *MonsterDir = opendir(MONSTERPATH);
+	if(MonsterDir == NULL){
+		error("LoadRaces: Unterverzeichnis %s nicht gefunden\n", MONSTERPATH);
+		throw "Cannot load races";
+	}
+
+	char FilePath[4096];
+	while(dirent *DirEntry = readdir(MonsterDir)){
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt != NULL && strcmp(FileExt, ".mon") == 0){
+			snprintf(FilePath, sizeof(FilePath), "%s/%s", MONSTERPATH, DirEntry->d_name);
+			LoadRace(FilePath);
+		}
+	}
+
+	closedir(MonsterDir);
+}
 
 // Monster Raid
 // =============================================================================

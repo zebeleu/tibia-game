@@ -415,14 +415,14 @@ enum Skill: int {
 	SKILL_HITPOINTS			= 2,
 	SKILL_MANA				= 3,
 	SKILL_GO_STRENGTH		= 4,	// speed?
-	SKILL_CARRY_WEIGHT		= 5,	// capacity?
+	SKILL_CARRY_STRENGTH	= 5,	// capacity?
 	SKILL_SHIELDING			= 6,
 	SKILL_DISTANCE			= 7,
 	SKILL_SWORD				= 8,
 	SKILL_CLUB				= 9,
 	SKILL_AXE				= 10,
 	SKILL_FIST				= 11,
-	// 12?
+	SKILL_MAGIC_DEFENSE		= 12,
 	SKILL_FISHING			= 13,
 	SKILL_FED				= 14,
 	SKILL_LIGHT				= 15,

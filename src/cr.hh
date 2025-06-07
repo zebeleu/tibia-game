@@ -16,6 +16,7 @@ struct TOutfit{
 	union{
 		uint16 ObjectType;
 		uint8 Colors[4];
+		uint32 PackedData;
 	};
 };
 
@@ -742,6 +743,22 @@ void ExitKillStatistics(void);
 
 bool IsRaceValid(int Race);
 int GetRaceByName(const char *RaceName);
+const char *GetRaceName(int Race);
+TOutfit GetRaceOutfit(int Race);
+bool GetRaceNoSummon(int Race);
+bool GetRaceNoConvince(int Race);
+bool GetRaceNoIllusion(int Race);
+bool GetRaceNoParalyze(int Race);
+int GetRaceSummonCost(int Race);
+int GetRacePoison(int Race);
+bool GetRaceUnpushable(int Race);
+
+TOutfit ReadOutfit(TReadScriptFile *Script);
+void WriteOutfit(TReadScriptFile *Script, TOutfit Outfit);
+
+// crskill.cc
+// =============================================================================
+int GetSkillByName(const char *Name);
 
 // crnonpl.cc
 // =============================================================================

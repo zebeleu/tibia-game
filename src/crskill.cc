@@ -345,10 +345,10 @@ bool TSkillLevel::Jump(int Range){
 		return false;
 	}
 
-	this->Master->Skills[SKILL_HITPOINTS   ]->Advance(Range);
-	this->Master->Skills[SKILL_MANA        ]->Advance(Range);
-	this->Master->Skills[SKILL_GO_STRENGTH ]->Advance(Range);
-	this->Master->Skills[SKILL_CARRY_WEIGHT]->Advance(Range);
+	this->Master->Skills[SKILL_HITPOINTS     ]->Advance(Range);
+	this->Master->Skills[SKILL_MANA          ]->Advance(Range);
+	this->Master->Skills[SKILL_GO_STRENGTH   ]->Advance(Range);
+	this->Master->Skills[SKILL_CARRY_STRENGTH]->Advance(Range);
 
 	AnnounceChangedCreature(this->Master->ID, 4);
 	this->Master->Combat.CheckCombatValues();
@@ -1142,7 +1142,7 @@ bool TSkillBase::NewSkill(uint16 SkillNo, TCreature *Creature){
 		case SKILL_HITPOINTS:		Skill = new TSkillHitpoints(SkillNo, Creature); break;
 		case SKILL_MANA:			Skill = new TSkillMana(SkillNo, Creature); break;
 		case SKILL_GO_STRENGTH:		Skill = new TSkillGoStrength(SkillNo, Creature); break;
-		case SKILL_CARRY_WEIGHT:	Skill = new TSkillCarryStrength(SkillNo, Creature); break;
+		case SKILL_CARRY_STRENGTH:	Skill = new TSkillCarryStrength(SkillNo, Creature); break;
 		case SKILL_FED:				Skill = new TSkillFed(SkillNo, Creature); break;
 		case SKILL_LIGHT:			Skill = new TSkillLight(SkillNo, Creature); break;
 		case SKILL_ILLUSION:		Skill = new TSkillIllusion(SkillNo, Creature); break;
@@ -1164,10 +1164,8 @@ bool TSkillBase::SetSkills(int Race){
 		return false;
 	}
 
-	// TODO(fusion): This is referencing some global table with probably all
-	// types of creatures.
-	int NumSkills = RaceData[Race].Skills;
-	for(int i = 0; i < NumSkills; i += 1){
+	// NOTE(fusion): Skills are indexed from 1.
+	for(int i = 1; i <= RaceData[Race].Skills; i += 1){
 		TSkillData *SkillData = RaceData[Race].Skill.at(i);
 
 		// BUG(fusion): We don't check if `Skill` is valid? Could be NULL. We
@@ -1249,6 +1247,60 @@ void TSkillBase::DelTimer(uint16 SkNr){
 			}
 		}
 	}
+}
+
+// Helpers
+//==============================================================================
+int GetSkillByName(const char *Name){
+	int Result = -1;
+	if(strcmp(Name, "level") == 0){
+		Result = SKILL_LEVEL;
+	}else if(strcmp(Name, "magiclevel") == 0){
+		Result = SKILL_MAGIC_LEVEL;
+	}else if(strcmp(Name, "hitpoints") == 0){
+		Result = SKILL_HITPOINTS;
+	}else if(strcmp(Name, "mana") == 0){
+		Result = SKILL_MANA;
+	}else if(strcmp(Name, "gostrength") == 0){
+		Result = SKILL_GO_STRENGTH;
+	}else if(strcmp(Name, "carrystrength") == 0){
+		Result = SKILL_CARRY_STRENGTH;
+	}else if(strcmp(Name, "shielding") == 0){
+		Result = SKILL_SHIELDING;
+	}else if(strcmp(Name, "distancefighting") == 0){
+		Result = SKILL_DISTANCE;
+	}else if(strcmp(Name, "swordfighting") == 0){
+		Result = SKILL_SWORD;
+	}else if(strcmp(Name, "clubfighting") == 0){
+		Result = SKILL_CLUB;
+	}else if(strcmp(Name, "axefighting") == 0){
+		Result = SKILL_AXE;
+	}else if(strcmp(Name, "fistfighting") == 0){
+		Result = SKILL_FIST;
+	}else if(strcmp(Name, "magicdefense") == 0){
+		Result = SKILL_MAGIC_DEFENSE;
+	}else if(strcmp(Name, "fishing") == 0){
+		Result = SKILL_FISHING;
+	}else if(strcmp(Name, "eating") == 0){
+		Result = SKILL_FED;
+	}else if(strcmp(Name, "shining") == 0){
+		Result = SKILL_LIGHT;
+	}else if(strcmp(Name, "illusion") == 0){
+		Result = SKILL_ILLUSION;
+	}else if(strcmp(Name, "poison") == 0){
+		Result = SKILL_POISON;
+	}else if(strcmp(Name, "burning") == 0){
+		Result = SKILL_BURNING;
+	}else if(strcmp(Name, "energy") == 0){
+		Result = SKILL_ENERGY;
+	}else if(strcmp(Name, "drunken") == 0){
+		Result = SKILL_DRUNK;
+	}else if(strcmp(Name, "manashield") == 0){
+		Result = SKILL_MANASHIELD;
+	}else if(strcmp(Name, "soulpoints") == 0){
+		Result = SKILL_SOUL;
+	}
+	return Result;
 }
 
 // Initialization

@@ -576,8 +576,7 @@ static void LoadObjects(void){
 					}
 				}
 			}else{
-				// TODO(fusion):
-				// error("Invalid object type field \"%s\"", Identifier);
+				Script.error("Unknown object type field");
 			}
 		}
 	}
