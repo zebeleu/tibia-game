@@ -89,21 +89,6 @@ struct TWaitinglistEntry {
     bool Sleeping;
 };
 
-struct TAttackWave {
-    int x;
-    int y;
-    int z;
-    int Spread;
-    int Race;
-    int MinCount;
-    int MaxCount;
-    int Radius;
-    int Lifetime;
-    ulong Message;
-    int ExtraItems;
-    struct vector<TItemData> ExtraItem;
-};
-
 struct TReportedStatement {
     ulong StatementID;
     ulong TimeStamp;

@@ -576,7 +576,7 @@ static void LoadObjects(void){
 					}
 				}
 			}else{
-				Script.error("Unknown object type field");
+				Script.error("Unknown object type property");
 			}
 		}
 	}

@@ -5,18 +5,20 @@
 
 #include "stubs.hh"
 
-TRaceData RaceData[MAX_RACES];
-int KilledCreatures[MAX_RACES];
-int KilledPlayers[MAX_RACES];
+#include <dirent.h>
+#include <time.h>
 
+TRaceData RaceData[MAX_RACES];
 priority_queue<uint32, uint32> ToDoQueue(5000, 1000);
-//priority_queue<uint32, TAttackWave*> AttackWaveQueue(100, 100);
 
 static uint32 NextCreatureID;
 static int FirstFreeCreature;
 static TCreature *HashList[1000];
 static matrix<uint32> *FirstChainCreature;
 static vector<TCreature*> CreatureList(0, 10000, 1000);
+static priority_queue<uint32, TAttackWave*> AttackWaveQueue(100, 100);
+static int KilledCreatures[MAX_RACES];
+static int KilledPlayers[MAX_RACES];
 
 // TFindCreatures
 // =============================================================================
@@ -1332,10 +1334,11 @@ TOutfit ReadOutfit(TReadScriptFile *Script){
 		memcpy(Outfit.Colors, Script->readBytesequence(), sizeof(Outfit.Colors));
 	}
 	Script->readSymbol(')');
+	return Outfit;
 }
 
 // TODO(fusion): Probably move this somewhere else?
-void WriteOutfit(TReadScriptFile *Script, TOutfit Outfit){
+void WriteOutfit(TWriteScriptFile *Script, TOutfit Outfit){
 	Script->writeText("(");
 	Script->writeNumber(Outfit.OutfitID);
 	Script->writeText(",");
@@ -1361,7 +1364,7 @@ void LoadRace(const char *FileName){
 	Script.readSymbol('=');
 
 	int RaceNumber = Script.readNumber();
-	if(!IsRaceValid(Race)){
+	if(!IsRaceValid(RaceNumber)){
 		Script.error("illegal race number");
 	}
 
@@ -1389,7 +1392,7 @@ void LoadRace(const char *FileName){
 		}else if(strcmp(Identifier, "article") == 0){
 			strcpy(Race->Article, Script.readString());
 		}else if(strcmp(Identifier, "outfit") == 0){
-			Race->Outfit = ReadOutfit(Script);
+			Race->Outfit = ReadOutfit(&Script);
 		}else if(strcmp(Identifier, "corpse") == 0){
 			int CorpseTypeID = Script.readNumber();
 			Race->MaleCorpse = CorpseTypeID;
@@ -1512,10 +1515,10 @@ void LoadRace(const char *FileName){
 		}else if(strcmp(Identifier, "inventory") == 0){
 			Script.readSymbol('{');
 			do{
-				Script.readSymbol('(');
 				// NOTE(fusion): Items are indexed from 1.
 				Race->Items += 1;
 				TItemData *ItemData = Race->Item.at(Race->Items);
+				Script.readSymbol('(');
 				ItemData->Type = Script.readNumber();
 				Script.readSymbol(',');
 				ItemData->Maximum = Script.readNumber();
@@ -1526,6 +1529,7 @@ void LoadRace(const char *FileName){
 		}else if(strcmp(Identifier, "spells") == 0){
 			Script.readSymbol('{');
 			do{
+				// NOTE(fusion): Spells are indexed from 1.
 				Race->Spells += 1;
 				TSpellData *SpellData = Race->Spell.at(Race->Spells);
 
@@ -1636,7 +1640,7 @@ void LoadRace(const char *FileName){
 					}else if(strcmp(SpellImpact, "outfit") == 0){
 						SpellData->Impact = IMPACT_OUTFIT;
 						Script.readSymbol('(');
-						TOutfit Outfit = ReadOutfit(Script);
+						TOutfit Outfit = ReadOutfit(&Script);
 						SpellData->ImpactParam1 = Outfit.OutfitID;
 						SpellData->ImpactParam2 = (int)Outfit.PackedData;
 						Script.readSymbol(',');
@@ -1665,7 +1669,7 @@ void LoadRace(const char *FileName){
 				}
 			}while(Script.readSpecial() != '}');
 		}else{
-			Script.error("unknown race field");
+			Script.error("unknown race property");
 		}
 	}
 }
@@ -1697,7 +1701,401 @@ void LoadRaces(void){
 
 // Monster Raid
 // =============================================================================
-void LoadMonsterRaids(void); //TODO
+TAttackWave::TAttackWave(void) :
+		ExtraItem(1, 5, 5)
+{
+	this->x = 0;
+	this->y = 0;
+	this->z = 0;
+	this->Spread = 0;
+	this->Race = -1;
+	this->MinCount = 0;
+	this->MaxCount = 0;
+	this->Radius = INT_MAX;
+	this->Lifetime = 0;
+	this->Message = 0;
+	this->ExtraItems = 0;
+}
+
+TAttackWave::~TAttackWave(void){
+	if(this->Message != 0){
+		DeleteDynamicString(this->Message);
+	}
+}
+
+void LoadMonsterRaid(const char *FileName, int Start,
+		bool *Type, int *Date, int *Interval, int *Duration){
+	if(FileName == NULL){
+		error("LoadMonsterRaid: Dateiname ist NULL.\n");
+		throw "cannot load monster raid";
+	}
+
+	// TODO(fusion): The original function would only write to these output
+	// variables when `Start` was negative. Instead, we assign dummy variables
+	// if any of the pointers is NULL to allow for any reads and writes while
+	// loading the raid.
+	bool DummyType;
+	int DummyDate;
+	int DummyInterval;
+	int DummyDuration;
+	if(Type == NULL)		{ Type = &DummyType; }
+	if(Date == NULL)		{ Date = &DummyDate; }
+	if(Interval == NULL)	{ Interval = &DummyInterval; }
+	if(Duration == NULL)	{ Duration = &DummyDuration; }
+
+	*Type = false;
+	*Date = 0;
+	*Interval = 0;
+	*Duration = 0;
+
+	if(Start >= 0){
+		print(1, "Plane Raid %s ein für Runde %d.\n", FileName, Start);
+	}
+
+	// NOTE(fusion): We expect the first few attributes describing the raid to
+	// be in an exact order, followed by attack waves. Attack wave attributes
+	// don't need to be in any specific order but specifying `Delay` will wrap
+	// the previous wave (if any) and start a new one.
+
+	TReadScriptFile Script;
+	Script.open(FileName);
+
+	// NOTE(fusion): Optional `Description` attribute.
+	Script.nextToken();
+	if(strcmp(Script.getIdentifier(), "description") == 0){
+		Script.readSymbol('=');
+		Script.readString();
+		Script.nextToken();
+	}
+
+	if(strcmp(Script.getIdentifier(), "type") == 0){
+		// NOTE(fusion): The type can be either "BigRaid" or "SmallRaid" so it uses
+		// a boolean for `Type` to tell whether it is a big raid or not. It could be
+		// renamed to `BigRaid` or something.
+		Script.readSymbol('=');
+		*Type = (strcmp(Script.readIdentifier(), "bigraid") == 0);
+	}else{
+		Script.error("type expected");
+	}
+
+	Script.nextToken();
+	if(strcmp(Script.getIdentifier(), "date") == 0){
+		Script.readSymbol('=');
+		*Date = Script.getNumber();
+	}else if(strcmp(Script.getIdentifier(), "interval") == 0){
+		Script.readSymbol('=');
+		*Interval = Script.getNumber();
+	}else{
+		Script.error("date or interval expected");
+	}
+
+	Script.nextToken();
+	while(Script.Token != ENDOFFILE){
+		if(strcmp(Script.getIdentifier(), "delay") == 0){
+			Script.error("delay expected");
+		}
+
+		Script.readSymbol('=');
+		int Delay = Script.readNumber();
+		TAttackWave *Wave = new TAttackWave;
+		while(true){
+			Script.nextToken();
+			if(Script.Token == ENDOFFILE){
+				break;
+			}
+
+			if(strcmp(Script.getIdentifier(), "delay") == 0){
+				break;
+			}
+
+			char Identifier[MAX_IDENT_LENGTH];
+			strcpy(Identifier, Script.getIdentifier());
+			Script.readSymbol('=');
+			if(strcmp(Identifier, "location") == 0){
+				Script.readString();
+			}else if(strcmp(Identifier, "position") == 0){
+				Script.readCoordinate(&Wave->x, &Wave->y, &Wave->z);
+			}else if(strcmp(Identifier, "spread") == 0){
+				Wave->Spread = Script.readNumber();
+			}else if(strcmp(Identifier, "race") == 0){
+				Wave->Race = Script.readNumber();
+				if(!IsRaceValid(Wave->Race)){
+					Script.error("illegal race number");
+				}
+			}else if(strcmp(Identifier, "count") == 0){
+				Script.readSymbol('(');
+				Wave->MinCount = Script.readNumber();
+				Script.readSymbol(',');
+				Wave->MaxCount = Script.readNumber();
+				Script.readSymbol(')');
+
+				if(Wave->MaxCount < Wave->MinCount){
+					Script.error("mincount greater than maxcount");
+				}
+
+				if(Wave->MinCount < 0 || Wave->MaxCount < 1){
+					Script.error("illegal number of monsters");
+				}
+			}else if(strcmp(Identifier, "radius") == 0){
+				Wave->Radius = Script.readNumber();
+			}else if(strcmp(Identifier, "lifetime") == 0){
+				Wave->Lifetime = Script.readNumber();
+			}else if(strcmp(Identifier, "message") == 0){
+				Wave->Message = AddDynamicString(Script.readString());
+			}else if(strcmp(Identifier, "inventory") == 0){
+				Script.readSymbol('{');
+				do{
+					// NOTE(fusion): Items are indexed from 1.
+					Wave->ExtraItems += 1;
+					TItemData *ItemData = Wave->ExtraItem.at(Wave->ExtraItems);
+					Script.readSymbol('(');
+					ItemData->Type = Script.readNumber();
+					Script.readSymbol(',');
+					ItemData->Maximum = Script.readNumber();
+					Script.readSymbol(',');
+					ItemData->Probability = Script.readNumber();
+					Script.readSymbol(')');
+				}while(Script.readSpecial() != '}');
+			}else{
+				Script.error("unknown attack wave property");
+			}
+		}
+
+		if(Wave->x == 0){
+			Script.error("position expected");
+		}
+
+		if(Wave->Race == -1){
+			Script.error("race expected");
+		}
+
+		if(Wave->MaxCount == 0){
+			Script.error("count expected");
+		}
+
+		int WaveEnd = Delay + (Wave->Lifetime != 0 ? Wave->Lifetime : 3600);
+		if(*Duration < WaveEnd){
+			*Duration = WaveEnd;
+		}
+
+		if(Start >= 0){
+			AttackWaveQueue.insert(Start + Delay, Wave);
+		}else{
+			delete Wave;
+		}
+	}
+
+	Script.close();
+}
+
+void LoadMonsterRaids(void){
+	DIR *MonsterDir = opendir(MONSTERPATH);
+	if(MonsterDir == NULL){
+		error("LoadMonsterRaids: Unterverzeichnis %s nicht gefunden.\n", MONSTERPATH);
+		throw "Cannot load monster raids";
+	}
+
+	// TODO(fusion): The `Date` attribute used by raid files is a unix timestamp
+	// which is usually what `time(NULL)` returns. This should work fine until
+	// 2038 when the timestamp value exceeds the capacity of a 32-bit signed
+	// integer.
+	int Now = (int)std::min<time_t>(time(NULL), INT_MAX);
+
+	int Hour, Minute;
+	GetRealTime(&Hour, &Minute);
+
+	int SecondsToReboot = (RebootTime - (Hour * 60 + Minute)) * 60;
+	if(SecondsToReboot < 0){
+		SecondsToReboot += 86400;
+	}
+
+	char BigRaidName[4096];
+	int BigRaidDuration = 0;
+	int BigRaidTieBreaker = -1;
+
+	char FileName[4096];
+	while(dirent *DirEntry = readdir(MonsterDir)){
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt != NULL && strcmp(FileExt, ".evt") == 0){
+			snprintf(FileName, sizeof(FileName), "%s/%s", MONSTERPATH, DirEntry->d_name);
+
+			bool BigRaid;
+			int Date, Interval, Duration;
+			LoadMonsterRaid(FileName, -1, &BigRaid, &Date, &Interval, &Duration);
+			print(1, "Raid %s: Date %d, Interval %d, Duration %d\n",
+					FileName, Date, Interval, Duration);
+
+			if(Date > 0){
+				if(Now <= Date && Date <= (Now + SecondsToReboot)){
+					int Start = RoundNr + (Date - Now);
+					LoadMonsterRaid(FileName, Start, NULL, NULL, NULL, NULL);
+					if(BigRaid){
+						BigRaidName[0] = 0;
+						BigRaidDuration = 0;
+						BigRaidTieBreaker = 100;
+					}
+				}
+			}else if(Duration <= SecondsToReboot){
+				// NOTE(fusion): `Interval` specifies an average raid interval
+				// in seconds. With this function being called at startup, usually
+				// after a reboot, we can expect `SecondsToReboot` to be close to
+				// a day very regularly. Meaning we can approximate the condition
+				// below to `random(1, AverageIntervalDays) == 1` which hopefully
+				// makes more sense.
+				if(random(0, Interval - 1) < SecondsToReboot){
+					if(!BigRaid){
+						int Start = RoundNr + random(0, SecondsToReboot - Duration);
+						LoadMonsterRaid(FileName, Start, NULL, NULL, NULL, NULL);
+					}else{
+						int TieBreaker = random(0, 99);
+						if(TieBreaker > BigRaidTieBreaker){
+							strcpy(BigRaidName, FileName);
+							BigRaidDuration = Duration;
+							BigRaidTieBreaker = TieBreaker;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	closedir(MonsterDir);
+
+	if(BigRaidName[0] != 0){
+		int Start = RoundNr + random(0, SecondsToReboot - BigRaidDuration);
+		LoadMonsterRaid(BigRaidName, Start, NULL, NULL, NULL, NULL);
+	}
+}
+
+void ProcessMonsterRaids(void){
+	while(AttackWaveQueue.Entries > 0){
+		auto Entry = *AttackWaveQueue.Entry->at(1);
+		uint32 ExecutionRound = Entry.Key;
+		TAttackWave *Wave = Entry.Data;
+		if(ExecutionRound > RoundNr){
+			break;
+		}
+
+		AttackWaveQueue.deleteMin();
+		print(2, "Angriff von Monstern der Rasse %d.\n", Wave->Race);
+		if(Wave->Message != 0){
+			BroadcastMessage(TALK_EVENT_MESSAGE, "%s", GetDynamicString(Wave->Message));
+		}
+
+		int NumSpawned = 0;
+		TCreature *Spawned[64] = {};
+
+		// NOTE(fusion): The original function would use `alloca` to allocate the
+		// buffer for spawned creatures. Inspecting some raid files, the maximum
+		// count I could find was 40. I don't think it is realistic for this number
+		// to get much higher, mostly because you can always split a large wave
+		// into multiple smaller ones, and because going crazy with alloca could
+		// cause the stack to blow up.
+		int Count = random(Wave->MinCount, Wave->MaxCount);
+		if(Count > NARRAY(Spawned)){
+			Count = NARRAY(Spawned);
+		}
+
+		for(int i = 0; i < Count; i += 1){
+			int SpawnX = Wave->x + random(-Wave->Spread, Wave->Spread);
+			int SpawnY = Wave->y + random(-Wave->Spread, Wave->Spread);
+			int SpawnZ = Wave->z;
+			if(!SearchFreeField(&SpawnX, &SpawnY, &SpawnZ, 1, 0, false)
+					|| IsProtectionZone(SpawnX, SpawnY, SpawnZ)){
+				continue;
+			}
+
+			TCreature *Creature = CreateMonster(Wave->Race, SpawnX, SpawnY, SpawnZ, 0, 0, true);
+			if(Creature != NULL){
+				Creature->Radius = Wave->Radius;
+				if(Wave->Lifetime != 0){
+					Creature->LifeEndRound = RoundNr + Wave->Lifetime;
+				}
+
+				Spawned[NumSpawned] = Creature;
+				NumSpawned += 1;
+			}
+		}
+
+		if(NumSpawned > 0){
+			int ExtraItems = Wave->ExtraItems;
+			for(int i = 1; i <= ExtraItems; i += 1){
+				TItemData *ItemData = Wave->ExtraItem.at(i);
+				if(random(0, 999) > ItemData->Probability){
+					continue;
+				}
+
+				TCreature *Creature = Spawned[random(0, NumSpawned - 1)];
+				Object Bag = GetBodyObject(Creature->ID, 3); // BAG ?
+				if(Bag == NONE){
+					try{
+						Bag = Create(GetBodyContainer(Creature->ID, 3),
+								GetSpecialObject(INVENTORY_CONTAINER),
+								0);
+					}catch(RESULT r){
+						error("ProcessMonsterRaids: Exception %d bei Rasse %d"
+								" beim Erstellen des Rucksacks.\n", r, Wave->Race);
+						continue;
+					}
+				}
+
+				ObjectType ItemType = ItemData->Type;
+				int Amount = random(1, ItemData->Maximum);
+				int Repeat = 1;
+				if(!ItemType.getFlag(CUMULATIVE)){
+					Repeat = Amount;
+					Amount = 0;
+				}
+
+				print(2, "Verteile %d Objekte vom Typ %d.\n", Amount, ItemType.TypeID);
+				for(int j = 0; j < Repeat; j += 1){
+					// TODO(fusion): What's the difference between using `Create`
+					// and `CreateAtCreature` here? Maybe it checks carry strength,
+					// but then why? Don't they have some check to make sure items
+					// are not dropped onto the map? This is very confusing and
+					// using exception handlers all over the place doesn't help
+					// either.
+					Object Item = NONE;
+					try{
+						// TODO(fusion): Possibly an inlined function to check for
+						// weapons or equipment?
+						if(ItemType.getFlag(WEAPON)
+								|| ItemType.getFlag(SHIELD)
+								|| ItemType.getFlag(BOW)
+								|| ItemType.getFlag(THROW)
+								|| ItemType.getFlag(WAND)
+								|| ItemType.getFlag(WEAROUT)
+								|| ItemType.getFlag(EXPIRE)
+								|| ItemType.getFlag(EXPIRESTOP)){
+							Item = Create(Bag, ItemType, 0);
+						}else{
+							Item = CreateAtCreature(Creature->ID, ItemType, Amount);
+						}
+					}catch(RESULT r){
+						error("ProcessMonsterRaids: Exception %d bei Rasse %d, ggf."
+							" CarryStrength erhöhen.\n", r, Wave->Race);
+						break;
+					}
+
+					if(Item.getContainer().getObjectType().isMapContainer()){
+						error("ProcessMonsterRaids: Objekt fällt auf die Karte."
+								" CarryStrength für Rasse %d erhöhen.\n", Wave->Race);
+						Delete(Item, -1);
+						// TODO(fusion): Should probably stop this inner loop here.
+					}
+				}
+
+				// NOTE(fusion): `Bag` could be empty if we failed to add any
+				// items to it in the loop above.
+				if(GetFirstContainerObject(Bag) == NONE){
+					Delete(Bag, -1);
+				}
+			}
+		}
+
+		delete Wave;
+	}
+}
 
 // Initialization
 // =============================================================================

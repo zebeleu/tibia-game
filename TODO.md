@@ -1,11 +1,5 @@
 ## TODO NEXT
 - CRACT.CC
-- CRMAIN.CC
-	- TCreature::CreatureMoveStimulus
-	- FINDCREATURES
-	- KILL STATS
-	- RACE
-	- RAIDS
 - CRPLAYER.CC, CRNONPL.CC
 - HOUSES.CC
 - INFO.CC

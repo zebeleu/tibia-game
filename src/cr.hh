@@ -154,6 +154,28 @@ struct TPlayerData {
 	int NumberOfMutings;
 };
 
+// TAttackWave
+// =============================================================================
+struct TAttackWave {
+	TAttackWave(void);
+	~TAttackWave(void);
+
+	// DATA
+	// =================
+	int x;
+	int y;
+	int z;
+	int Spread;
+	int Race;
+	int MinCount;
+	int MaxCount;
+	int Radius;
+	int Lifetime;
+	uint32 Message;
+	int ExtraItems;
+	vector<TItemData> ExtraItem;
+};
+
 // TSkillBase 
 // =============================================================================
 struct TSkill{
@@ -722,8 +744,6 @@ struct TPlayer: TCreature {
 // =============================================================================
 #define MAX_RACES 512
 extern TRaceData RaceData[MAX_RACES];
-extern int KilledCreatures[MAX_RACES];
-extern int KilledPlayers[MAX_RACES];
 extern priority_queue<uint32, uint32> ToDoQueue;
 
 bool IsCreaturePlayer(uint32 CreatureID);
@@ -752,9 +772,15 @@ bool GetRaceNoParalyze(int Race);
 int GetRaceSummonCost(int Race);
 int GetRacePoison(int Race);
 bool GetRaceUnpushable(int Race);
-
 TOutfit ReadOutfit(TReadScriptFile *Script);
 void WriteOutfit(TReadScriptFile *Script, TOutfit Outfit);
+void LoadRace(const char *FileName);
+void LoadRaces(void);
+
+void LoadMonsterRaid(const char *FileName, int Start,
+		bool *Type, int *Date, int *Interval, int *Duration);
+void LoadMonsterRaids(void);
+void ProcessMonsterRaids(void);
 
 // crskill.cc
 // =============================================================================

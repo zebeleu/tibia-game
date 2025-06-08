@@ -3,11 +3,21 @@
 
 #include "common.hh"
 
+// NOTE(fusion): All containers are automatically managed by their constructors
+// and destructors, meaning raw copies could result in memory corruption through
+// double frees, use after frees, etc... To avoid that, we need to make them all
+// non copyable.
+#define NONCOPYABLE(Type)						\
+	Type(const Type &Other) = delete;			\
+	void operator=(const Type &Other) = delete;
+
 // NOTE(fusion): What the actual fuck. This is an ever growing dynamic array
 // with each access through `operator()` growing it to make sure the requested
 // index is valid, even for negative indices.
 template<typename T>
 struct vector{
+	NONCOPYABLE(vector)
+
 	vector(int min, int max, int block){
 		int space = (max - min) + 1;
 		if(space < 1){
@@ -128,6 +138,8 @@ struct priority_queue_entry{
 
 template<typename K, typename T>
 struct priority_queue{
+	NONCOPYABLE(priority_queue)
+
 	priority_queue(int capacity, int increment){
 		Entry = new vector<priority_queue_entry<K, T>>(1, capacity, increment);
 		Entries = 0;
@@ -205,6 +217,8 @@ struct priority_queue{
 
 template<typename T>
 struct matrix{
+	NONCOPYABLE(matrix)
+
 	matrix(int xmin, int xmax, int ymin, int ymax){
 		int dx = (xmax - xmin) + 1;
 		int dy = (ymax - ymin) + 1;
@@ -273,6 +287,8 @@ struct matrix{
 
 template<typename T>
 struct matrix3d{
+	NONCOPYABLE(matrix3d)
+
 	matrix3d(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
 		int dx = (xmax - xmin) + 1;
 		int dy = (ymax - ymin) + 1;
@@ -351,6 +367,8 @@ struct listnode{
 
 template<typename T>
 struct list{
+	NONCOPYABLE(list)
+
 	list(void){
 		firstNode = NULL;
 		lastNode = NULL;
@@ -409,6 +427,8 @@ struct list{
 
 template<typename T>
 struct fifo{
+	NONCOPYABLE(fifo)
+
 	fifo(int InitialSize){
 		ASSERT(InitialSize > 0);
 		this->Entry = new T[InitialSize];
@@ -490,6 +510,8 @@ struct storeunit{
 // It is also known as a slab allocator.
 template<typename T, usize N>
 struct store{
+	NONCOPYABLE(store)
+
 	store(void){
 		this->Units = new list<storeunit<T, N>>;
 		this->firstFreeItem = NULL;
