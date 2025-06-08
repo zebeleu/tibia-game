@@ -499,6 +499,10 @@ struct TCreature: TSkillBase {
 	void Go(int DestX, int DestY, int DestZ);
 	void Rotate(int Direction);
 	void Rotate(TCreature *Target);
+	void Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count);
+	void Trade(Object Obj, uint32 TradePartner);
+	void Use(Object Obj1, Object Obj2, uint8 Dummy);
+	void Turn(Object Obj);
 	void Attack(void);
 	void Execute(void);
 	uint32 CalculateDelay(void);

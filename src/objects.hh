@@ -8,7 +8,7 @@ enum : int{
 	TYPEID_MAP_CONTAINER		= 0,
 	TYPEID_HEAD_CONTAINER		= 1,
 	TYPEID_NECK_CONTAINER		= 2,
-	TYPEID_BACKPACK_CONTAINER	= 3,
+	TYPEID_BAG_CONTAINER		= 3,
 	TYPEID_TORSO_CONTAINER		= 4,
 	TYPEID_RIGHTHAND_CONTAINER	= 5,
 	TYPEID_LEFTHAND_CONTAINER	= 6,
@@ -29,14 +29,14 @@ struct ObjectType {
 	const char *getName(int Count);
 	const char *getDescription(void);
 
-	bool isMapContainer(void) const {
+	bool isMapContainer(void){
 		return this->TypeID == TYPEID_MAP_CONTAINER;
 	}
 
-	bool isBodyContainer(void) const {
+	bool isBodyContainer(void){
 		return this->TypeID == TYPEID_HEAD_CONTAINER
 			|| this->TypeID == TYPEID_NECK_CONTAINER
-			|| this->TypeID == TYPEID_BACKPACK_CONTAINER
+			|| this->TypeID == TYPEID_BAG_CONTAINER
 			|| this->TypeID == TYPEID_TORSO_CONTAINER
 			|| this->TypeID == TYPEID_RIGHTHAND_CONTAINER
 			|| this->TypeID == TYPEID_LEFTHAND_CONTAINER
@@ -46,8 +46,20 @@ struct ObjectType {
 			|| this->TypeID == TYPEID_AMMO_CONTAINER;
 	}
 
-	bool isCreatureContainer(void) const {
+	bool isCreatureContainer(void){
 		return this->TypeID == TYPEID_CREATURE_CONTAINER;
+	}
+
+	bool isTwoHanded(void){
+		return this->getFlag(CLOTHES)
+			&& this->getAttribute(BODYPOSITION) == 0;
+	}
+
+	bool isWeapon(void){
+		return this->getFlag(WEAPON)
+			|| this->getFlag(BOW)
+			|| this->getFlag(THROW)
+			|| this->getFlag(WAND);
 	}
 
 	bool operator==(const ObjectType &Other) const {

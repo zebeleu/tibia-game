@@ -2409,7 +2409,9 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 							// it on pvp enforced worlds.
 							// TODO(fusion): This is probably an inlined function.
 							if(WorldType == PVP_ENFORCED){
-								for(int Position = 1; Position <= 10; Position += 1){
+								for(int Position = INVENTORY_FIRST;
+										Position <= INVENTORY_LAST;
+										Position += 1){
 									Object Item = GetBodyObject(Victim->ID, Position);
 									if(Item == NONE){
 										continue;
@@ -2516,8 +2518,8 @@ void ChangeData(TCreature *Actor, const char *Param){
 		return;
 	}
 
-	Object RightHand = GetBodyObject(Actor->ID, 5); // RIGHTHAND ?
-	Object LeftHand = GetBodyObject(Actor->ID, 6);	// LEFTHAND ?
+	Object RightHand = GetBodyObject(Actor->ID, INVENTORY_RIGHTHAND);
+	Object LeftHand = GetBodyObject(Actor->ID, INVENTORY_LEFTHAND);
 	if(RightHand != NONE && LeftHand != NONE){
 		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE, "First drop one object.");
 		return;
@@ -2578,9 +2580,9 @@ void EnchantObject(TCreature *Actor, int ManaPoints, int SoulPoints, ObjectType 
 		throw ERROR;
 	}
 
-	Object Obj = GetBodyObject(Actor->ID, 5); // RIGHTHAND ?
+	Object Obj = GetBodyObject(Actor->ID, INVENTORY_RIGHTHAND);
 	if(Obj == NONE || Obj.getObjectType() != OldType){
-		Obj = GetBodyObject(Actor->ID, 6); // LEFTHAND ?
+		Obj = GetBodyObject(Actor->ID, INVENTORY_LEFTHAND);
 		if(Obj == NONE || Obj.getObjectType() != OldType){
 			throw MAGICITEM;
 		}
@@ -3670,7 +3672,7 @@ static void RuneSpell(uint32 CreatureID, int SpellNr){
 	bool RuneCreated = false;
 	ObjectType BlankType = GetSpecialObject(RUNE_BLANK);
 
-	Object RightHand = GetBodyObject(Actor->ID, 5); // RIGHTHAND
+	Object RightHand = GetBodyObject(Actor->ID, INVENTORY_RIGHTHAND);
 	if(RightHand.exists() && RightHand.getObjectType() == BlankType){
 		CheckMana(Actor, ManaPoints, SoulPoints, 1000);
 		ObjectType RuneType = GetNewObjectType(RuneGr, RuneNr);
@@ -3678,7 +3680,7 @@ static void RuneSpell(uint32 CreatureID, int SpellNr){
 		RuneCreated = true;
 	}
 
-	Object LeftHand = GetBodyObject(Actor->ID, 6); // LEFTHAND
+	Object LeftHand = GetBodyObject(Actor->ID, INVENTORY_LEFTHAND);
 	if(LeftHand.exists() && LeftHand.getObjectType() == BlankType){
 		// TODO(fusion): Ughh... I'm not sure why we're trying to cast the spell
 		// twice but we need to make so errors from the second cast are only

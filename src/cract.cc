@@ -1,4 +1,5 @@
 #include "cr.hh"
+#include "operate.hh"
 
 #include "stubs.hh"
 
@@ -387,7 +388,7 @@ void TCreature::Go(int DestX, int DestY, int DestZ){
 	}
 
 	Object Dest = GetMapContainer(DestX, DestY, DestZ);
-	Move(this->ID, this->CrObject, Dest, -1, false, NONE);
+	::Move(this->ID, this->CrObject, Dest, -1, false, NONE);
 }
 
 void TCreature::Rotate(int Direction){
@@ -413,6 +414,185 @@ void TCreature::Rotate(TCreature *Target){
 	}
 
 	this->Rotate(Direction);
+}
+
+void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
+	// NOTE(fusion): What a disaster.
+
+	if(!Obj.exists()){
+		throw NOTACCESSIBLE;
+	}
+
+	if(Obj == this->CrObject){
+		this->Go(DestX, DestY, DestZ);
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isCreatureContainer()){
+		this->Combat.DelayAttack(2000);
+	}
+
+	int MoveCount = (int)Count;
+	if(ObjType.getFlag(CUMULATIVE)){
+		int ObjAmount = (int)Obj.getAttribute(AMOUNT);
+		if(MoveCount > ObjAmount){
+			MoveCount = ObjAmount;
+		}
+	}
+
+	if(DestX == 0xFFFF){ // SPECIAL_COORDINATE ?
+		// NOTE(fusion): Any inventory slot.
+		if(DestY == 0){
+			// NOTE(fusion): `CheckInventoryDestination` will throw if it's not
+			// possible to place the object on the chosen container. We want to
+			// find a slot that doesn't make it throw while giving priority to
+			// non hand or ammo slots.
+			for(int Position = INVENTORY_FIRST;
+					Position <= INVENTORY_LAST;
+					Position += 1){
+				try{
+					Object Con = GetBodyContainer(this->ID, Position);
+					CheckInventoryDestination(Obj, Con, false);
+				}catch(...){
+					continue;
+				}
+
+				DestY = Position;
+				if(Position != INVENTORY_RIGHTHAND
+						&& Position != INVENTORY_LEFTHAND
+						&& Position != INVENTORY_AMMO){
+					break;
+				}
+			}
+
+			// NOTE(fusion): No appropriate inventory slot was found so we now
+			// fallback to inventory containers. For whatever reason we don't
+			// give priority to the bag slot.
+			if(DestY == 0){
+				for(int Position = INVENTORY_FIRST;
+						Position <= INVENTORY_LAST;
+						Position += 1){
+					Object Con = GetBodyObject(this->ID, Position);
+					if(Con != NONE && Con.getObjectType().getFlag(CONTAINER)){
+						try{
+							CheckContainerDestination(Obj, Con);
+						}catch(RESULT r){
+							continue;
+						}
+
+						DestY = Position;
+					}
+				}
+			}
+
+			if(DestY == 0){
+				throw NOROOM;
+			}
+		}
+
+		Object DestCon = NONE;
+		Object DestObj = NONE;
+		if(DestY >= INVENTORY_FIRST && DestY <= INVENTORY_LAST){
+			DestCon = GetBodyContainer(this->ID, DestY);
+			DestObj = GetBodyObject(this->ID, DestY);
+		}else if(DestY >= 64 && DestY < 80){
+			DestCon = GetBodyContainer(this->ID, DestY);
+			if(DestZ < 254){
+				// TODO(fusion): The last argument to `GetObject` is the object
+				// type we expect to find and it seems that the type id of a map
+				// container (which is 0) can be used as a wildcard for any object
+				// it finds.
+				DestObj = GetObject(this->ID, DestX, DestY, DestZ, DestZ, 0);
+			}else if(DestZ == 254){
+				if(DestCon == NONE){
+					throw NOTACCESSIBLE;
+				}
+				DestCon = DestCon.getContainer();
+			}
+		}else{
+			error("TCreature::Move: Ungültiger Containercode %d.\n", DestY);
+			throw ERROR;
+		}
+
+		if(DestObj != NONE){
+			ObjectType DestObjType = DestObj.getObjectType();
+			if(DestObjType.getFlag(CONTAINER)){
+				DestCon = DestObj;
+				DestObj = NONE;
+			}else if(DestObjType.getFlag(CUMULATIVE) && DestObjType == ObjType){
+				int DestAmount = (int)DestObj.getAttribute(AMOUNT);
+				int MergeCount = MoveCount;
+				if((DestAmount + MergeCount) > 100){
+					MergeCount = 100 - DestAmount;
+				}
+
+				if(MergeCount > 0){
+					try{
+						::Merge(this->ID, Obj, DestObj, MergeCount, NONE);
+						MoveCount -= MergeCount;
+						if(MoveCount <= 0){
+							return;
+						}
+					}catch(RESULT r){
+						if(r == TOOHEAVY){
+							throw;
+						}
+					}
+				}
+
+				DestObj = NONE;
+			}
+		}
+
+		if(DestCon == NONE){
+			throw OUTOFRANGE;
+		}
+
+		try{
+			// TODO(fusion): Find out what is this last parameter to `Move`.
+			::Move(this->ID, Obj, DestCon, MoveCount, false, DestObj);
+		}catch(RESULT r){
+			// NOTE(fusion): Attempt to exchange inventory items.
+			if(DestY < 64 && DestObj != NONE
+					&& (r == NOROOM
+						|| r == HANDSNOTFREE
+						|| r == HANDBLOCKED
+						|| r == ONEWEAPONONLY)){
+				Object ObjCon = Obj.getContainer();
+				::Move(this->ID, DestObj, ObjCon, -1, false, NONE);
+				::Move(this->ID, Obj, DestCon, MoveCount, false, NONE);
+			}else{
+				throw;
+			}
+		}
+	}else{
+		Object Dest = GetMapContainer(DestX, DestY, DestZ);
+		if(!Dest.exists()){
+			throw ERROR;
+		}
+
+		if(ObjType.getFlag(HANG)
+				&& (CoordinateFlag(DestX, DestY, DestZ, HOOKSOUTH)
+					|| CoordinateFlag(DestY, DestY, DestZ, HOOKEAST))
+				&& !ObjectInRange(this->ID, Dest, 1)){
+			if(this->ToDoClear() && this->Type == PLAYER){
+				SendSnapback(this->Connection);
+			}
+
+			// NOTE(fusion): Pick up object if it's not in our inventory.
+			if(GetObjectCreatureID(Obj) != this->ID){
+				this->ToDoMove(Obj, 0xFFFF, 0, 0, 1);
+			}
+
+			// NOTE(fusion): Walk to destination then try again.
+			this->ToDoGo(DestX, DestY, DestZ, false, INT_MAX);
+			this->ToDoMove(Obj, DestX, DestY, DestZ, 1);
+			this->ToDoStart();
+		}else{
+			::Move(this->ID, Obj, Dest, MoveCount, false, NONE);
+		}
+	}
 }
 
 void TCreature::Attack(void){
@@ -460,7 +640,7 @@ void TCreature::Execute(void){
 				}
 
 				case TDMove:{
-					this->Move(TD.Move.Obj, TD.Move.x, TD.Move.y, TD.Move.z, TD.Move.Count);
+					this->Move(TD.Move.Obj, TD.Move.x, TD.Move.y, TD.Move.z, (uint8)TD.Move.Count);
 					break;
 				}
 

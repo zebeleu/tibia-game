@@ -221,6 +221,29 @@ enum INSTANCEATTRIBUTE: int {
 	REMAININGUSES				= 17,
 };
 
+// NOTE(fusion): Not in debug symbols.
+enum InventorySlot: int {
+	INVENTORY_ANY		= 0,
+	INVENTORY_HEAD		= 1,
+	INVENTORY_NECK		= 2,
+	INVENTORY_BAG		= 3,
+	INVENTORY_TORSO		= 4,
+	INVENTORY_RIGHTHAND	= 5,
+	INVENTORY_LEFTHAND	= 6,
+	INVENTORY_LEGS		= 7,
+	INVENTORY_FEET		= 8,
+	INVENTORY_FINGER	= 9,
+	INVENTORY_AMMO		= 10,
+
+	// NOTE(fusion): For iterating over inventory slots.
+	INVENTORY_FIRST = INVENTORY_HEAD,
+	INVENTORY_LAST = INVENTORY_AMMO,
+
+	// NOTE(fusion): For iterating over hand slots.
+	INVENTORY_HAND_FIRST = INVENTORY_RIGHTHAND,
+	INVENTORY_HAND_LAST = INVENTORY_LEFTHAND,
+};
+
 enum KNOWNCREATURESTATE: int {
 	KNOWNCREATURE_FREE		= 0,
 	KNOWNCREATURE_UPTODATE	= 1,
@@ -435,16 +458,20 @@ enum Skill: int {
 	SKILL_SOUL				= 22,
 };
 
+// IMPORTANT(fusion): All `DEFAULT_*` values here were renamed from `INVENTORY_*`
+// to avoid collisions with `InventorySlot`. I could also have chosen other prefix
+// for inventory slots but I feel we'd be wasting them here where their meaning
+// were also not clear.
 enum SPECIALMEANING: int {
 	MONEY_ONE							= 1,
 	MONEY_HUNDRED						= 2,
 	MONEY_TENTHOUSAND					= 3,
-	INVENTORY_RIGHTHAND					= 10,
-	INVENTORY_LEFTHAND					= 11,
-	INVENTORY_BODY_MALE					= 12,
-	INVENTORY_BODY_FEMALE				= 13,
-	INVENTORY_CONTAINER					= 14,
-	INVENTORY_FOOD						= 15,
+	DEFAULT_RIGHTHAND					= 10,
+	DEFAULT_LEFTHAND					= 11,
+	DEFAULT_BODY_MALE					= 12,
+	DEFAULT_BODY_FEMALE					= 13,
+	DEFAULT_CONTAINER					= 14,
+	DEFAULT_FOOD						= 15,
 	DEPOT_LOCKER						= 20,
 	DEPOT_CHEST							= 21,
 	PARCEL_NEW							= 22,

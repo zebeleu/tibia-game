@@ -48,10 +48,10 @@ void TCombat::GetWeapon(void){
 		return;
 	}
 
-	// TODO(fusion): We're iterating over left and right hand slots. Make
-	// it clearer perhaps.
-	for(int Hand = 5; Hand <= 6; Hand += 1){
-		Object Obj = GetBodyObject(Master->ID, Hand);
+	for(int Position = INVENTORY_HAND_FIRST;
+			Position <= INVENTORY_HAND_LAST;
+			Position += 1){
+		Object Obj = GetBodyObject(Master->ID, Position);
 		if(Obj == NONE){
 			continue;
 		}
@@ -111,7 +111,7 @@ void TCombat::GetAmmo(void){
 	}
 
 	// TODO(fusion): Check if `Master` is NULL?
-	Object Ammo = GetBodyObject(this->Master->ID, 10);
+	Object Ammo = GetBodyObject(this->Master->ID, INVENTORY_AMMO);
 	this->Ammo = NONE;
 	if(Ammo != NONE){
 		ObjectType AmmoType = Ammo.getObjectType();
@@ -283,10 +283,11 @@ int TCombat::GetDefendDamage(void){
 }
 
 int TCombat::GetArmorStrength(void){
-	// TODO(fusion): We're iterating over inventory slots. Make it clearer?
 	int Armor = 0;
 	TCreature *Master = this->Master;
-	for(int Position = 1; Position <= 10; Position += 1){
+	for(int Position = INVENTORY_FIRST;
+			Position <= INVENTORY_LAST;
+			Position += 1){
 		Object Obj = GetBodyObject(Master->ID, Position);
 		if(Obj.exists()){
 			ObjectType ObjType = Obj.getObjectType();

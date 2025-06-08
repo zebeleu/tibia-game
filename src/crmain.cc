@@ -226,7 +226,9 @@ TCreature::~TCreature(void){
 			}
 
 			if(this->LoseInventory != 0){ // LOSE_INVENTORY_NONE ?
-				for(int Position = 1; Position <= 10; Position += 1){
+				for(int Position = INVENTORY_FIRST;
+						Position <= INVENTORY_LAST;
+						Position += 1){
 					Object Item = GetBodyObject(this->ID, Position);
 					if(Item == NONE){
 						continue;
@@ -238,7 +240,7 @@ TCreature::~TCreature(void){
 						continue;
 					}
 
-					Move(0, Item, Corpse, -1, false, NONE);
+					::Move(0, Item, Corpse, -1, false, NONE);
 				}
 			}
 
@@ -487,10 +489,8 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 			Damage = 0;
 		}
 
-		// NOTE(fusion): We're iterating over the victim's inventory to apply
-		// damage reductions, while the damage is greater than zero.
-		for(int Position = 1;
-				Position <= 10 && Damage > 0;
+		for(int Position = INVENTORY_FIRST;
+				Position <= INVENTORY_LAST && Damage > 0;
 				Position += 1){
 			Object Obj = GetBodyObject(this->ID, Position);
 			if(Obj == NONE){
@@ -739,7 +739,9 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 
 	if(Damage == HitPoints){
 		if(this->Type == PLAYER){
-			for(int Position = 1; Position <= 10; Position += 1){
+			for(int Position = INVENTORY_FIRST;
+					Position <= INVENTORY_LAST;
+					Position += 1){
 				Object Obj = GetBodyObject(this->ID, Position);
 				if(Obj == NONE){
 					continue;
@@ -2026,11 +2028,11 @@ void ProcessMonsterRaids(void){
 				}
 
 				TCreature *Creature = Spawned[random(0, NumSpawned - 1)];
-				Object Bag = GetBodyObject(Creature->ID, 3); // BAG ?
+				Object Bag = GetBodyObject(Creature->ID, INVENTORY_BAG);
 				if(Bag == NONE){
 					try{
-						Bag = Create(GetBodyContainer(Creature->ID, 3),
-								GetSpecialObject(INVENTORY_CONTAINER),
+						Bag = Create(GetBodyContainer(Creature->ID, INVENTORY_BAG),
+								GetSpecialObject(DEFAULT_CONTAINER),
 								0);
 					}catch(RESULT r){
 						error("ProcessMonsterRaids: Exception %d bei Rasse %d"
