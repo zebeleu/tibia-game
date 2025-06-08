@@ -279,9 +279,9 @@ void TDrunkenImpact::handleCreature(TCreature *Victim){
 
 	int Power = this->Power;
 	int Duration = this->Duration;
-	TSkill *Drunk = Victim->Skills[SKILL_DRUNK];
-	if(Drunk->TimerValue() <= Power){
-		Victim->SetTimer(SKILL_DRUNK, Power, Duration, Duration, -1);
+	TSkill *Drunken = Victim->Skills[SKILL_DRUNKEN];
+	if(Drunken->TimerValue() <= Power){
+		Victim->SetTimer(SKILL_DRUNKEN, Power, Duration, Duration, -1);
 	}
 }
 

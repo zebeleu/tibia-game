@@ -45,12 +45,15 @@ void TPlayer::CheckState(void){
 			State |= 0x04;
 		}
 
-		// TODO(fusion): Not sure about this one.
-		if(this->Skills[SKILL_DRUNK]->TimerValue() > 0 && this->Skills[SKILL_DRUNK]->Get() == 0){
+		// TODO(fusion): I think the result from `Get()` here tells whether the
+		// player has some drunk suppression item equipped?
+		if(this->Skills[SKILL_DRUNKEN]->TimerValue() > 0
+				&& this->Skills[SKILL_DRUNKEN]->Get() == 0){
 			State |= 0x08;
 		}
 
-		if(this->Skills[SKILL_MANASHIELD]->TimerValue() > 0 || this->Skills[SKILL_MANASHIELD]->Get() > 0){
+		if(this->Skills[SKILL_MANASHIELD]->TimerValue() > 0
+				|| this->Skills[SKILL_MANASHIELD]->Get() > 0){
 			State |= 0x10;
 		}
 

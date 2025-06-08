@@ -430,7 +430,7 @@ enum Skill: int {
 	SKILL_POISON			= 17,
 	SKILL_BURNING			= 18,
 	SKILL_ENERGY			= 19,
-	SKILL_DRUNK				= 20,
+	SKILL_DRUNKEN			= 20,
 	SKILL_MANASHIELD		= 21,
 	SKILL_SOUL				= 22,
 };

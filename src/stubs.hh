@@ -16,6 +16,7 @@ typedef void TSendMailsFunction(TPlayerData *PlayerData);
 
 extern void AbortWriter(void);
 extern void AnnounceChangedCreature(uint32 CreatureID, int Type);
+extern void AnnounceChangedObject(Object Obj, int Type);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void Change(Object Obj, ObjectType NewType, uint32 Value);
 extern void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
@@ -37,6 +38,7 @@ extern Object GetBodyObject(uint32 CreatureID, int Position);
 extern Object GetBodyContainer(uint32 CreatureID, int Position);
 extern void GetExitPosition(uint16 HouseID, int *x, int *y, int *z);
 extern TConnection *GetFirstConnection(void);
+extern int GetHeight(int x, int y, int z);
 extern TConnection *GetNextConnection(void);
 extern const char *GetName(Object Obj);
 extern Object GetObject(uint32 CreatureID, int x, int y, int z, int RNum, ObjectType Type);
@@ -88,6 +90,7 @@ extern void SendSnapback(TConnection *Connection);
 extern void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
+extern void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
 extern void TextualEffect(Object Obj, int Color, const char *Text, ...) ATTR_PRINTF(3, 4);
 extern bool ThrowPossible(int FromX, int FromY, int FromZ,
 						int ToX, int ToY, int ToZ, int Power);

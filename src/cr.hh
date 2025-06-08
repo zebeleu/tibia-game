@@ -496,6 +496,9 @@ struct TCreature: TSkillBase {
 	// cract.cc
 	bool SetOnMap(void);
 	bool DelOnMap(void);
+	void Go(int DestX, int DestY, int DestZ);
+	void Rotate(int Direction);
+	void Rotate(TCreature *Target);
 	void Attack(void);
 	void Execute(void);
 	uint32 CalculateDelay(void);

@@ -326,11 +326,216 @@ bool TCreature::DelOnMap(void){
 	return Result;
 }
 
+void TCreature::Go(int DestX, int DestY, int DestZ){
+	// NOTE(fusion): This is the execution function for `ToDoGo` which computes
+	// the path step by step. If the destination is outside the range of a single
+	// step, then it is an error.
+	int OrigX = this->posx;
+	int OrigY = this->posy;
+	int OrigZ = this->posz;
+	int Distance = std::max<int>(std::abs(OrigX - DestX), std::abs(OrigY - DestY));
+	if(Distance > 1 || OrigZ != DestZ){
+		throw NOTACCESSIBLE;
+	}
+
+	// TODO(fusion): See note in `TPlayer::CheckState`.
+	int DrunkLevel = this->Skills[SKILL_DRUNKEN]->TimerValue();
+	if(DrunkLevel > 0 && this->Skills[SKILL_DRUNKEN]->Get() == 0){
+		int StaggerChance = std::max<int>(7 - DrunkLevel, 1);
+		if(rand() % StaggerChance == 0){
+			DestX = OrigX;
+			DestY = OrigY;
+			switch(rand() % 4){
+				case DIRECTION_NORTH:	DestY -= 1; break;
+				case DIRECTION_EAST:	DestX += 1; break;
+				case DIRECTION_SOUTH:	DestY += 1; break;
+				case DIRECTION_WEST:	DestX -= 1; break;
+			}
+
+			if(this->ToDoClear() && this->Type == PLAYER){
+				SendSnapback(this->Connection);
+			}
+
+			int TalkMode = (this->Type == MONSTER) ? TALK_ANIMAL_LOW : TALK_SAY;
+			this->ToDoTalk(TalkMode, NULL, "Hicks!", false);
+			this->ToDoStart();
+		}
+	}
+
+	if(!this->MovePossible(DestX, DestY, DestZ, true, false)){
+		bool Diagonal = (OrigX != DestX && OrigY != DestY);
+		if(this->Type == PLAYER && !Diagonal){
+			// TODO(fusion): These are quite similar to `MagicClimbing`. Perhaps
+			// there is an inlined function here that checks whether climbing is
+			// possible.
+			if(DestZ > 0 && GetHeight(OrigX, OrigY, OrigZ) >= 24
+					&& !CoordinateFlag(OrigX, OrigY, OrigZ - 1, BANK)
+					&& !CoordinateFlag(OrigX, OrigY, OrigZ - 1, UNPASS)
+					&& this->MovePossible(DestX, DestY, DestZ - 1, true, true)){
+				DestZ -= 1;
+			}else if(DestZ < 15 && GetHeight(DestX, DestY, DestZ + 1) >= 24
+					&& !CoordinateFlag(DestX, DestY, DestZ, BANK)
+					&& !CoordinateFlag(DestX, DestY, DestZ, UNPASS)
+					&& this->MovePossible(DestX, DestY, DestZ + 1, true, true)){
+				DestZ += 1;
+			}
+		}
+
+		if(this->posz == DestZ){
+			throw MOVENOTPOSSIBLE;
+		}
+	}
+
+	Object Dest = GetMapContainer(DestX, DestY, DestZ);
+	Move(this->ID, this->CrObject, Dest, -1, false, NONE);
+}
+
+void TCreature::Rotate(int Direction){
+	this->Direction = Direction;
+	AnnounceChangedObject(this->CrObject, 2); // OBJECT_CHANGED ?
+}
+
+void TCreature::Rotate(TCreature *Target){
+	if(Target == NULL){
+		error("TCreature::Rotate: Target ist NULL.\n");
+		return;
+	}
+
+	int Direction = this->Direction;
+	int OffsetX = Target->posx - this->posx;
+	int OffsetY = Target->posy - this->posy;
+	int DistanceX = std::abs(OffsetX);
+	int DistanceY = std::abs(OffsetY);
+	if(DistanceY > DistanceX){
+		Direction = (OffsetY < 0) ? DIRECTION_NORTH : DIRECTION_SOUTH;
+	}else{
+		Direction = (OffsetX < 0) ? DIRECTION_WEST : DIRECTION_EAST;
+	}
+
+	this->Rotate(Direction);
+}
+
 void TCreature::Attack(void){
 	this->Combat.Attack();
 }
 
-//void TCreature::Execute(void);
+void TCreature::Execute(void){
+	while(true){
+		if(!this->LockToDo || this->IsDead || this->NextWakeup > ServerMilliseconds){
+			break;
+		}
+
+		if(this->NrToDo <= this->ActToDo){
+			this->ToDoClear();
+			this->IdleStimulus();
+			break;
+		}
+
+		uint32 Delay = this->CalculateDelay();
+		if(Delay > 0){
+			if(this->Stop){
+				this->ToDoClear();
+				if(this->Type == PLAYER){
+					SendSnapback(this->Connection);
+				}
+			}else{
+				this->NextWakeup = ServerMilliseconds + Delay;
+				ToDoQueue.insert(this->NextWakeup, this->ID);
+			}
+			break;
+		}
+
+		TToDoEntry TD = *this->ToDoList.at(this->ActToDo);
+		this->ActToDo += 1;
+		try{
+			switch(TD.Code){
+				case TDGo:{
+					this->Go(TD.Go.x, TD.Go.y, TD.Go.z);
+					break;
+				}
+
+				case TDRotate:{
+					this->Rotate(TD.Rotate.Direction);
+					break;
+				}
+
+				case TDMove:{
+					this->Move(TD.Move.Obj, TD.Move.x, TD.Move.y, TD.Move.z, TD.Move.Count);
+					break;
+				}
+
+				case TDTrade:{
+					this->Trade(TD.Trade.Obj, TD.Trade.Partner);
+					break;
+				}
+
+				case TDUse:{
+					this->Use(TD.Use.Obj1, TD.Use.Obj2, TD.Use.Dummy);
+					break;
+				}
+
+				case TDTurn:{
+					this->Turn(TD.Turn.Obj);
+					break;
+				}
+
+				case TDAttack:{
+					this->Attack();
+					break;
+				}
+
+				case TDTalk:{
+					const char *Text = GetDynamicString(TD.Talk.Text);
+					if(Text != NULL){
+						const char *Addressee = GetDynamicString(TD.Talk.Addressee);
+						Talk(this->ID, TD.Talk.Mode, Addressee, Text, TD.Talk.CheckSpamming);
+					}else{
+						error("TCreature::Execute: Text ist NULL bei %s.\n", this->Name);
+					}
+					break;
+				}
+
+				case TDChangeState:{
+					if(this->Type == NPC){
+						ChangeNPCState(this, TD.ChangeState.NewState, true);
+					}
+					break;
+				}
+
+				default:{
+					break;
+				}
+			}
+		}catch(RESULT r){
+			bool SnapbackNecessary = (this->ToDoClear() || this->Stop);
+			if(r == EXHAUSTED){
+				this->ToDoWait(1000);
+				this->ToDoStart();
+			}else{
+				this->ToDoYield();
+			}
+
+			if(this->Type == PLAYER){
+				SendResult(this->Connection, r);
+				if(SnapbackNecessary
+						&& r != MOVENOTPOSSIBLE
+						&& r != NOTINVITED
+						&& r != ENTERPROTECTIONZONE){
+					SendSnapback(this->Connection);
+				}
+			}
+			break;
+		}
+
+		if(this->Stop){
+			this->ToDoClear();
+			if(this->Type == PLAYER){
+				SendSnapback(this->Connection);
+			}
+			break;
+		}
+	}
+}
 
 uint32 TCreature::CalculateDelay(void){
 	uint32 Delay = 0;

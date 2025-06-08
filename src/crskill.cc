@@ -1294,7 +1294,7 @@ int GetSkillByName(const char *Name){
 	}else if(strcmp(Name, "energy") == 0){
 		Result = SKILL_ENERGY;
 	}else if(strcmp(Name, "drunken") == 0){
-		Result = SKILL_DRUNK;
+		Result = SKILL_DRUNKEN;
 	}else if(strcmp(Name, "manashield") == 0){
 		Result = SKILL_MANASHIELD;
 	}else if(strcmp(Name, "soulpoints") == 0){
