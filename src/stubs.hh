@@ -27,6 +27,7 @@ extern void CleanHouseField(int x, int y, int z);
 extern void ConvinceMonster(TCreature *Master, TCreature *Slave);
 extern void ChallengeMonster(TCreature *Challenger, TCreature *Monster);
 extern int CountInventoryObjects(uint32 CreatureID, ObjectType Type, uint32 Value);
+extern int CountObjects(Object Obj);
 extern int CountObjectsInContainer(Object Con);
 extern Object Create(Object Con, ObjectType Type, uint32 Value);
 extern Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value);
@@ -63,6 +64,7 @@ extern void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMe
 extern void NetLoadCheck(void);
 extern void NetLoadSummary(void);
 extern void NotifyAllCreatures(Object Obj, int Type, Object OldCon);
+extern bool ObjectAccessible(uint32 CreatureID, Object Obj, int Range);
 extern int ObjectDistance(Object Obj1, Object Obj2);
 extern bool ObjectInRange(uint32 CreatureID, Object Obj, int Range);
 extern void ProcessCommunicationControl(void);
@@ -82,7 +84,12 @@ extern bool SearchSummonField(int *x, int *y, int *z, int Distance);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);
 extern void SendClearTarget(TConnection *Connection);
+extern void SendCloseContainer(TConnection *Connection, int ContainerNr);
+extern void SendCloseTrade(TConnection *Connection);
 extern void SendEditList(TConnection *Connection, uint8 ListType, uint32 ID, const char *Text);
+extern void SendFullScreen(TConnection *Connection);
+extern void SendFloors(TConnection *Connection, bool Up);
+extern void SendRow(TConnection *Connection, int Direction);
 extern void SendMails(TPlayerData *PlayerData);
 extern void SendMarkCreature(TConnection *Connection, uint32 CreatureID, int Color);
 extern void SendMessage(TConnection *Connection, int Mode, const char *Text, ...) ATTR_PRINTF(3, 4);
@@ -91,6 +98,7 @@ extern void SendPlayerSkills(TConnection *Connection);
 extern void SendPlayerState(TConnection *Connection, uint8 State);
 extern void SendResult(TConnection *Connection, RESULT r);
 extern void SendSnapback(TConnection *Connection);
+extern void SendTradeOffer(TConnection *Connection, const char *Name, bool OwnOffer, Object Obj);
 extern void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
@@ -98,5 +106,7 @@ extern void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char 
 extern void TextualEffect(Object Obj, int Color, const char *Text, ...) ATTR_PRINTF(3, 4);
 extern bool ThrowPossible(int FromX, int FromY, int FromZ,
 						int ToX, int ToY, int ToZ, int Power);
+extern void Turn(uint32 CreatureID, Object Obj);
+extern void Use(uint32 CreatureID, Object Obj1, Object Object2, uint8 Info);
 
 #endif //TIBIA_STUBS_HH_

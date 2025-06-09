@@ -3690,7 +3690,7 @@ static void RuneSpell(uint32 CreatureID, int SpellNr){
 			ObjectType RuneType = GetNewObjectType(RuneGr, RuneNr);
 			Change(LeftHand, RuneType, Amount);
 			RuneCreated = true;
-		}catch(...){
+		}catch(RESULT r){
 			if(!RuneCreated){
 				throw;
 			}

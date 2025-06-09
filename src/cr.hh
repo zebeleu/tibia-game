@@ -526,6 +526,11 @@ struct TCreature: TSkillBase {
 	void ToDoAttack(void);
 	void ToDoTalk(int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
 	void ToDoChangeState(int NewState);
+	void NotifyGo(void);
+	void NotifyTurn(Object DestCon);
+	void NotifyCreate(void);
+	void NotifyDelete(void);
+	void NotifyChangeInventory(void);
 
 	// VIRTUAL FUNCTIONS
 	// =================
@@ -679,6 +684,7 @@ struct TMonster: TNonplayer {
 struct TPlayer: TCreature {
 	//TPlayer(void);
 
+	// TODO(fusion): Eventually sort these out when we implement player functions.
 	uint8 GetRealProfession(void);
 	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
@@ -701,6 +707,9 @@ struct TPlayer: TCreature {
 
 	void ClearPlayerkillingMarks(void);
 	void SaveInventory(void);
+	Object GetOpenContainer(int ContainerNr);
+	void SetOpenContainer(int ContainerNr, Object Con);
+	void RejectTrade(void);
 
 	// VIRTUAL FUNCTIONS
 	// =================

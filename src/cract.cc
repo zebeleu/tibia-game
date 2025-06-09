@@ -1,4 +1,5 @@
 #include "cr.hh"
+#include "config.hh"
 #include "operate.hh"
 
 #include "stubs.hh"
@@ -364,8 +365,8 @@ void TCreature::Go(int DestX, int DestY, int DestZ){
 	}
 
 	if(!this->MovePossible(DestX, DestY, DestZ, true, false)){
-		bool Diagonal = (OrigX != DestX && OrigY != DestY);
-		if(this->Type == PLAYER && !Diagonal){
+		bool DiagonalMove = (OrigX != DestX && OrigY != DestY);
+		if(this->Type == PLAYER && !DiagonalMove){
 			// TODO(fusion): These are quite similar to `MagicClimbing`. Perhaps
 			// there is an inlined function here that checks whether climbing is
 			// possible.
@@ -454,7 +455,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 				try{
 					Object Con = GetBodyContainer(this->ID, Position);
 					CheckInventoryDestination(Obj, Con, false);
-				}catch(...){
+				}catch(RESULT r){
 					continue;
 				}
 
@@ -585,7 +586,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 				this->ToDoMove(Obj, 0xFFFF, 0, 0, 1);
 			}
 
-			// NOTE(fusion): Walk to destination then try again.
+			// NOTE(fusion): Walk to destination and try again.
 			this->ToDoGo(DestX, DestY, DestZ, false, INT_MAX);
 			this->ToDoMove(Obj, DestX, DestY, DestZ, 1);
 			this->ToDoStart();
@@ -593,6 +594,132 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 			::Move(this->ID, Obj, Dest, MoveCount, false, NONE);
 		}
 	}
+}
+
+void TCreature::Trade(Object Obj, uint32 PartnerID){
+	if(this->Type != PLAYER){
+		error("TCreature::Trade: Nur Spieler können handeln.\n");
+		throw ERROR;
+	}
+
+	if(!Obj.exists() || !ObjectAccessible(this->ID, Obj, 1)){
+		throw NOTACCESSIBLE;
+	}
+
+	if(this->ID == PartnerID){
+		throw CROSSREFERENCE;
+	}
+
+	TPlayer *Partner = GetPlayer(PartnerID);
+	if(Partner == NULL || Partner->Type != PLAYER){
+		throw PLAYERNOTONLINE;
+	}
+
+	if(((TPlayer*)this)->TradeObject != NONE){
+		throw ALREADYTRADING;
+	}
+
+	if(CountObjects(Obj) > 100){
+		throw TOOMANYOBJECTS;
+	}
+
+	if(ObjectDistance(this->CrObject, Partner->CrObject) > 2){
+		throw OUTOFRANGE;
+	}
+
+	if(!ThrowPossible(this->posx, this->posy, this->posz,
+			Partner->posx, Partner->posy, Partner->posz, 0)){
+		throw CANNOTTHROW;
+	}
+
+	if(Partner->TradeObject != NONE && Partner->TradePartner != this->ID){
+		throw PARTNERTRADING;
+	}
+
+	// NOTE(fusion): Check if one object is contained by the other.
+	if(Partner->TradeObject != NONE){
+		Object Help = Partner->TradeObject;
+		while(Help != NONE && !Help.getObjectType().isMapContainer()){
+			if(Help == Obj){
+				throw NOTACCESSIBLE;
+			}
+			Help = Help.getContainer();
+		}
+
+		Help = Obj;
+		while(Help != NONE && !Help.getObjectType().isMapContainer()){
+			if(Help == Partner->TradeObject){
+				throw NOTACCESSIBLE;
+			}
+			Help = Help.getContainer();
+		}
+	}
+
+	((TPlayer*)this)->TradeObject = Obj;
+	((TPlayer*)this)->TradePartner = PartnerID;
+	((TPlayer*)this)->TradeAccepted = false;
+
+	if(Partner->TradeObject != NONE){
+		SendTradeOffer(Partner->Connection, this->Name, false, Obj);
+		SendTradeOffer(this->Connection, this->Name, true, Obj);
+		SendTradeOffer(this->Connection, Partner->Name, false, Partner->TradeObject);
+	}else{
+		SendMessage(Partner->Connection, TALK_INFO_MESSAGE,
+				"%s wants to trade with you.", this->Name);
+		SendTradeOffer(this->Connection, this->Name, true, Obj);
+	}
+}
+
+void TCreature::Use(Object Obj1, Object Obj2, uint8 Dummy){
+	if(!Obj1.exists()){
+		throw DESTROYED;
+	}
+
+	if(Obj2 != NONE){
+		if(!Obj2.exists()){
+			throw DESTROYED;
+		}
+
+		bool DistUse = Obj1.getObjectType().getFlag(DISTUSE);
+		if(!DistUse && !ObjectInRange(this->ID, Obj2, 1)){
+			int ObjX2, ObjY2, ObjZ2;
+			GetObjectCoordinates(Obj2, &ObjX2, &ObjY2, &ObjZ2);
+
+			if(this->ToDoClear() && this->Type == PLAYER){
+				SendSnapback(this->Connection);
+			}
+
+			// NOTE(fusion): Pick up object 1 if it's not in our inventory.
+			if(GetObjectCreatureID(Obj1) != this->ID){
+				this->ToDoMove(Obj1, 0xFFFF, 0, 0, 1);
+			}
+
+			// NOTE(fusion): Walk to object 2 and try again.
+			this->ToDoGo(ObjX2, ObjY2, ObjZ2, false, INT_MAX);
+			// TODO(fusion): Missing `Dummy` here? Probably not because this
+			// could only be triggered if object 2 exists and Dummy is only
+			// used when opening containers.
+			this->ToDoUse(2, Obj1, Obj2);
+			this->ToDoStart();
+			return;
+		}
+
+		if(DistUse && !ObjectInRange(this->ID, Obj2, 7)){
+			throw OUTOFRANGE;
+		}
+
+		this->EarliestMultiuseTime = ServerMilliseconds + 1000;
+	}
+
+	::Use(this->ID, Obj1, Obj2, Dummy);
+}
+
+void TCreature::Turn(Object Obj){
+	if(!Obj.exists()){
+		throw DESTROYED;
+	}
+
+	::Turn(this->ID, Obj);
 }
 
 void TCreature::Attack(void){
@@ -1191,4 +1318,270 @@ void TCreature::ToDoChangeState(int NewState){
 	TD.Code = TDChangeState;
 	TD.ChangeState.NewState = NewState;
 	this->ToDoAdd(TD);
+}
+
+void TCreature::NotifyGo(void){
+	// IMPORTANT(fusion): This and the function that does move `this->CrObject`
+	// should be the only ones where the output of `GetObjectCoordinates` will
+	// differ from `this->posx`, `this->posy`, and `this->posz`.
+
+	int DestX, DestY, DestZ;
+	GetObjectCoordinates(this->CrObject, &DestX, &DestY, &DestZ);
+	MoveChainCreature(this, DestX, DestY);
+
+	int OrigX = this->posx;
+	int OrigY = this->posy;
+	int OrigZ = this->posz;
+	bool DiagonalMove = (DestX != OrigX && DestY != OrigY && DestZ == OrigZ);
+
+	// IMPORTANT(fusion): `SendFloors` and `SendRow` will use the current creature
+	// position to know where to pull fields from, so we need to keep them updated
+	// as we go.
+	if(this->Type == PLAYER && this->Connection != NULL){
+		int DistanceX = std::abs(DestX - OrigX);
+		int DistanceY = std::abs(DestY - OrigY);
+		int DistanceZ = std::abs(DestZ - OrigZ);
+		if(DistanceX <= 1 && DistanceY <= 1 && DistanceZ <= 1){
+			while(this->posz < DestZ){
+				this->posx -= 1;
+				this->posy -= 1;
+				this->posz += 1;
+				SendFloors(this->Connection, false);
+			}
+
+			while(this->posz > DestZ){
+				this->posx += 1;
+				this->posy += 1;
+				this->posz -= 1;
+				SendFloors(this->Connection, true);
+			}
+
+			while(this->posx < DestX){
+				this->posx += 1;
+				SendRow(this->Connection, DIRECTION_EAST);
+			}
+
+			while(this->posx > DestX){
+				this->posx -= 1;
+				SendRow(this->Connection, DIRECTION_WEST);
+			}
+
+			while(this->posy < DestY){
+				this->posy += 1;
+				SendRow(this->Connection, DIRECTION_SOUTH);
+			}
+
+			while(this->posy > DestY){
+				this->posy -= 1;
+				SendRow(this->Connection, DIRECTION_NORTH);
+			}
+		}else{
+			this->posx = DestX;
+			this->posy = DestY;
+			this->posz = DestZ;
+			SendFullScreen(this->Connection);
+		}
+	}else{
+		this->posx = DestX;
+		this->posy = DestY;
+		this->posz = DestZ;
+	}
+
+	if(this->Type == PLAYER){
+		// NOTE(fusion): Check open containers.
+		for(int ContainerNr = 0;
+				ContainerNr < NARRAY(TPlayer::OpenContainer);
+				ContainerNr += 1){
+			Object Con = ((TPlayer*)this)->GetOpenContainer(ContainerNr);
+			if(Con == NONE){
+				continue;
+			}
+
+			if(!Con.exists()){
+				error("TCreature::NotifyGo: OpenContainer existiert nicht. (%s, [%d,%d,%d]->[%d,%d,%d])\n",
+						this->Name, OrigX, OrigY, OrigZ, DestX, DestY, DestZ);
+				continue;
+			}
+
+			if(!ObjectAccessible(this->ID, Con, 1)){
+				((TPlayer*)this)->SetOpenContainer(ContainerNr, NONE);
+				SendCloseContainer(this->Connection, ContainerNr);
+			}
+		}
+
+		// NOTE(fusion): Check trade.
+		Object TradeObject = ((TPlayer*)this)->TradeObject;
+		if(TradeObject != NONE){
+			TPlayer *Partner = GetPlayer(((TPlayer*)this)->TradePartner);
+			if(!TradeObject.exists()){
+				error("TCreature::NotifyGo: Handelsobjekt existiert nicht mehr.\n");
+				error("# Händler %s an [%d,%d,%d]\n", this->Name, DestX, DestY, DestZ);
+				if(Partner != NULL){
+					error("# Partner %s an [%d,%d,%d]\n", Partner->Name,
+							Partner->posx, Partner->posy, Partner->posz);
+				}
+			}
+
+			if(Partner == NULL || !ObjectAccessible(this->ID, TradeObject, 1)
+					|| ObjectDistance(this->CrObject, Partner->CrObject) > 2
+					|| !ThrowPossible(this->posx, this->posy, this->posz,
+							Partner->posx, Partner->posy, Partner->posz, 0)){
+				SendCloseTrade(this->Connection);
+				SendMessage(this->Connection, TALK_FAILURE_MESSAGE, "Trade cancelled.");
+				((TPlayer*)this)->RejectTrade();
+			}
+		}
+	}
+
+	// TODO(fusion): This is probably an inlined function to get the first object
+	// with some specific flag on a field.
+	int Waypoints;
+	Object Bank = GetFirstObject(DestX, DestY, DestZ);
+	while(Bank != NONE){
+		ObjectType BankType = Bank.getObjectType();
+		if(BankType.getFlag(BANK)){
+			Waypoints = BankType.getAttribute(WAYPOINTS);
+			break;
+		}
+		Bank = Bank.getNextObject();
+	}
+
+	if(Bank != NONE){
+		// NOTE(fusion): Diagonal movement has three times the delay of a regular one.
+		if(DiagonalMove){
+			Waypoints *= 3;
+		}
+
+		// NOTE(fusion): Compute the step interval and quantize it to be a multiple
+		// of `Beat`, rounding up.
+		int Delay = (Waypoints * 1000) / this->GetSpeed();
+		int BeatCount = (Delay + Beat - 1) / Beat;
+		this->EarliestWalkTime = ServerMilliseconds + BeatCount * Beat;
+	}else{
+		error("TCreature::NotifyGo: Auf Feld [%d,%d,%d] befindet sich kein Bank.\n",
+				DestX, DestY, DestZ);
+	}
+}
+
+void TCreature::NotifyTurn(Object DestCon){
+	int DestX, DestY, DestZ;
+	GetObjectCoordinates(DestCon, &DestX, &DestY, &DestZ);
+
+	// NOTE(fusion): This is somewhat similar to `TCreature::Rotate`.
+	int OffsetX = DestX - this->posx;
+	int OffsetY = DestY - this->posy;
+	if(OffsetX > 0){
+		this->Direction = DIRECTION_EAST;
+	}else if(OffsetX < 0){
+		this->Direction = DIRECTION_WEST;
+	}else if(OffsetY < 0){
+		this->Direction = DIRECTION_NORTH;
+	}else if(OffsetY > 0){
+		this->Direction = DIRECTION_SOUTH;
+	}
+}
+
+void TCreature::NotifyCreate(void){
+    InsertChainCreature(this, 0, 0);
+}
+
+void TCreature::NotifyDelete(void){
+	if(this->Type == PLAYER){
+		if(this->Connection != NULL){
+			this->Connection->Logout(30, true);
+			this->LoggingOut = true;
+		}
+
+		((TPlayer*)this)->RejectTrade();
+	}
+
+	DeleteChainCreature(this);
+}
+
+void TCreature::NotifyChangeInventory(void){
+	if(this->CrObject == NONE){
+		return;
+	}
+
+	if(!this->CrObject.exists()){
+		error("TCreature::NotifyChangeInventory: Kreatur-Objekt existiert nicht.\n");
+		error("# Kreatur: %s, Position: %d/%d/%d.\n",
+				this->Name, this->posx, this->posy, this->posz);
+		return;
+	}
+
+	this->Combat.CheckCombatValues();
+	if(this->Type == PLAYER){
+		int NewDelta[NARRAY(this->Skills)];
+		for(int Position = INVENTORY_FIRST;
+				Position <= INVENTORY_LAST;
+				Position += 1){
+			Object Obj = GetBodyObject(this->ID, Position);
+			if(Obj == NONE){
+				continue;
+			}
+
+			ObjectType ObjType = Obj.getObjectType();
+			if(!ObjType.getFlag(SKILLBOOST)){
+				continue;
+			}
+
+			if(!ObjType.getFlag(CLOTHES)){
+				error("TCreature::NotifyChangeInventory: Objekt %d hat SKILLBOOST, aber nicht CLOTHES.\n",
+						ObjType.TypeID);
+				continue;
+			}
+
+			if((int)ObjType.getAttribute(BODYPOSITION) != Position){
+				continue;
+			}
+
+			int SkillNr = (int)ObjType.getAttribute(SKILLNUMBER);
+			if(SkillNr < 0 || SkillNr >= NARRAY(this->Skills)){
+				error("TCreature::NotifyChangeInventory: Objekt %d hat ungültige SKILLNUMBER %d.\n",
+						ObjType.TypeID, SkillNr);
+				continue;
+			}
+
+			// IMPORTANT(fusion): The value for the skill modification is stored
+			// as uint32 but is bitcast from a signed integer on load, meaning that
+			// that bitcasting it back should retrieve the original signed value.
+			//	See `LoadObjects`.
+			NewDelta[SkillNr] += (int)ObjType.getAttribute(SKILLMODIFICATION);
+		}
+
+		bool SkillsChanged = false;
+		for(int SkillNr = 0;
+				SkillNr < NARRAY(this->Skills);
+				SkillNr += 1){
+			TSkill *Skill = this->Skills[SkillNr];
+			if(Skill->DAct != NewDelta[SkillNr]){
+				SkillsChanged = true;
+				Skill->DAct = NewDelta[SkillNr];
+				if(SkillNr == SKILL_GO_STRENGTH){
+					AnnounceChangedCreature(this->ID, 4); // CREATURE_GO_STRENGTH_CHANGED ?
+				}else if(SkillNr == SKILL_ILLUSION){
+					if(NewDelta[SKILL_ILLUSION] > 0){
+						if(this->Outfit.OutfitID != 0 || this->Outfit.ObjectType != 0){
+							if(Skill->TimerValue() != 0){
+								this->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
+							}
+							this->Outfit.OutfitID = 0;
+							this->Outfit.ObjectType = 0;
+						}
+					}else if(Skill->TimerValue() == 0){
+						this->Outfit = this->OrgOutfit;
+					}
+					AnnounceChangedCreature(this->ID, 3); // CREATURE_OUTFIT_CHANGED ?
+				}
+			}
+		}
+
+		if(SkillsChanged){
+			SendPlayerSkills(this->Connection);
+			((TPlayer*)this)->CheckState();
+		}
+
+		SendPlayerData(this->Connection);
+	}
 }
