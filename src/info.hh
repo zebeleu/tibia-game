@@ -44,6 +44,14 @@ bool FieldPossible(int x, int y, int z, int FieldType);
 bool SearchFreeField(int *x, int *y, int *z, int Distance, uint16 HouseID, bool Jump);
 bool SearchLoginField(int *x, int *y, int *z, int Distance, bool Player);
 bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player);
+bool SearchFlightField(uint32 FugitiveID, uint32 PursuerID, int *x, int *y, int *z);
+bool SearchSummonField(int *x, int *y, int *z, int Distance);
+bool ThrowPossible(int OrigX, int OrigY, int OrigZ,
+			int DestX, int DestY, int DestZ, int Power);
+void GetCreatureLight(uint32 CreatureID, int *Brightness, int *Color);
+int GetInventoryWeight(uint32 CreatureID);
+bool CheckBanishmentRight(uint32 CharacterID, int Reason, int Action);
+const char *GetBanishmentReason(int Reason);
 void InitInfo(void);
 void ExitInfo(void);
 

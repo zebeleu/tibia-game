@@ -91,7 +91,7 @@ enum DamageType: int {
 
 // NOTE(fusion): Not in debug symbols.
 enum Direction: int {
-	DIRECTION_INVALID			= -1,
+	DIRECTION_NONE				= -1,
 	DIRECTION_NORTH				= 0,
 	DIRECTION_EAST				= 1,
 	DIRECTION_SOUTH				= 2,

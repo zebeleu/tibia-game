@@ -167,6 +167,31 @@ char *findLast(char *s, char c){
 	return Last;
 }
 
+// BitSet Utility
+// =============================================================================
+bool CheckBitIndex(int BitSetBytes, int Index){
+	return Index >= 0 && Index < (BitSetBytes * 8);
+}
+
+bool CheckBit(uint8 *BitSet, int Index){
+	int ByteIndex = (int)(Index / 8);
+	uint8 BitMask = (uint8)(1 << (Index % 8));
+	return (BitSet[ByteIndex] & BitMask) != 0;
+}
+
+void SetBit(uint8 *BitSet, int Index){
+	int ByteIndex = (int)(Index / 8);
+	uint8 BitMask = (uint8)(1 << (Index % 8));
+	BitSet[ByteIndex] |= BitMask;
+}
+
+void ClearBit(uint8 *BitSet, int Index){
+	int ByteIndex = (int)(Index / 8);
+	uint8 BitMask = (uint8)(1 << (Index % 8));
+	BitSet[ByteIndex] &= ~BitMask;
+}
+
+
 // TReadStream
 // =============================================================================
 bool TReadStream::readFlag(void){

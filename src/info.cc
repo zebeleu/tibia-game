@@ -908,7 +908,6 @@ bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player){
 	matrix<int> Map(-Distance, Distance, -Distance, Distance, INT_MAX);
 	*Map.at(0, 0) = 0;
 
-
 	int BestX = 0;
 	int BestY = 0;
 	int BestTieBreaker = -1;
@@ -1011,6 +1010,411 @@ bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player){
 		Result = true;
 	}
 
+	return Result;
+}
+
+bool SearchFlightField(uint32 FugitiveID, uint32 PursuerID, int *x, int *y, int *z){
+	TCreature *Fugitive = GetCreature(FugitiveID);
+	if(Fugitive == NULL){
+		error("SearchFlightField: Flüchtling existiert nicht.\n");
+		return false;
+	}
+
+	TCreature *Pursuer = GetCreature(PursuerID);
+	if(Pursuer == NULL){
+		error("SearchFlightField: Verfolger existiert nicht.\n");
+		return false;
+	}
+
+	if(Fugitive->posz != Pursuer->posz){
+		error("SearchFlightField: Flüchtling und Verfolger sind auf verschiedenen Ebenen.\n");
+		return false;
+	}
+
+	// NOTE(fusion): Fugitive's coordinates relative to the pursuer.
+	int FugitiveX = Fugitive->posx - Pursuer->posx;
+	int FugitiveY = Fugitive->posy - Pursuer->posy;
+
+	int Try[8] = {};
+	for(int i = 0; i < NARRAY(Try); i += 1){
+		Try[i] = DIRECTION_NONE;
+	}
+
+	if(FugitiveY <= 0){
+		Try[0] = DIRECTION_NORTH;
+	}
+
+	if(FugitiveX >= 0){
+		Try[1] = DIRECTION_EAST;
+	}
+
+	if(FugitiveY >= 0){
+		Try[2] = DIRECTION_SOUTH;
+	}
+
+	if(FugitiveX <= 0){
+		Try[3] = DIRECTION_WEST;
+	}
+
+	if(FugitiveX <= 0 && FugitiveY >= 0){
+		Try[4] = DIRECTION_SOUTHWEST;
+	}
+
+	if(FugitiveX >= 0 && FugitiveY >= 0){
+		Try[5] = DIRECTION_SOUTHEAST;
+	}
+
+	if(FugitiveX >= 0 && FugitiveY <= 0){
+		Try[6] = DIRECTION_NORTHEAST;
+	}
+
+	if(FugitiveX <= 0 && FugitiveY <= 0){
+		Try[7] = DIRECTION_NORTHWEST;
+	}
+
+	RandomShuffle(&Try[0], 4);
+	RandomShuffle(&Try[4], 4);
+	for(int i = 0; i < NARRAY(Try); i += 1){
+		if(Try[i] == DIRECTION_NONE){
+			continue;
+		}
+
+		int FieldX = Fugitive->posx;
+		int FieldY = Fugitive->posy;
+		int FieldZ = Fugitive->posz;
+		switch(Try[i]){
+			case DIRECTION_NORTH:                  FieldY -= 1; break;
+			case DIRECTION_EAST:      FieldX += 1;              break;
+			case DIRECTION_SOUTH:                  FieldY += 1; break;
+			case DIRECTION_WEST:      FieldX -= 1;              break;
+			case DIRECTION_SOUTHWEST: FieldX -= 1; FieldY += 1; break;
+			case DIRECTION_SOUTHEAST: FieldX += 1; FieldY += 1; break;
+			case DIRECTION_NORTHWEST: FieldX -= 1; FieldY -= 1; break;
+			case DIRECTION_NORTHEAST: FieldX += 1; FieldY -= 1; break;
+			default:{
+				error("SearchFlightField: Ungültige Richtung %d.\n", Try[i]);
+				return false;
+			}
+		}
+
+		if(Fugitive->MovePossible(FieldX, FieldY, FieldZ, false, false)){
+			*x = FieldX;
+			*y = FieldY;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool SearchSummonField(int *x, int *y, int *z, int Distance){
+	int BestX = 0;
+	int BestY = 0;
+	int BestTieBreaker = -1;
+	for(int OffsetY = -Distance; OffsetY <= Distance; OffsetY += 1)
+	for(int OffsetX = -Distance; OffsetX <= Distance; OffsetX += 1){
+		int TieBreaker = random(0, 99);
+		if(TieBreaker <= BestTieBreaker){
+			continue;
+		}
+
+		int FieldX = *x + OffsetX;
+		int FieldY = *y + OffsetY;
+		int FieldZ = *z;
+		if(CoordinateFlag(FieldX, FieldY, FieldZ, BANK)
+				&& !CoordinateFlag(FieldX, FieldY, FieldZ, UNPASS)
+				&& !CoordinateFlag(FieldX, FieldY, FieldZ, AVOID)
+				&& !IsProtectionZone(FieldX, FieldY, FieldZ)
+				&& !IsHouse(FieldX, FieldY, FieldZ)
+				&& ThrowPossible(*x, *y, *z, FieldX, FieldY, FieldZ, 0)){
+			BestX = FieldX;
+			BestY = FieldY;
+			BestTieBreaker = TieBreaker;
+		}
+	}
+
+	bool Result = false;
+	if(BestTieBreaker >= 0){
+		*x = BestX;
+		*y = BestY;
+		Result = true;
+	}
+
+	return Result;
+}
+
+bool ThrowPossible(int OrigX, int OrigY, int OrigZ,
+			int DestX, int DestY, int DestZ, int Power){
+	// NOTE(fusion): `MinZ` contains the highest floor we're able to throw. We'll
+	// iterate from it towards the destination floor, checking the line between the
+	// origin and destination until we find a valid throwing path (or not).
+	int MinZ = std::max<int>(OrigZ - Power, 0);
+	for(int CurZ = OrigZ - 1; CurZ >= MinZ; CurZ -= 1){
+		Object Obj = GetFirstObject(OrigX, OrigY, CurZ);
+		if(Obj != NONE && Obj.getObjectType().getFlag(BANK)){
+			MinZ = CurZ + 1;
+			break;
+		}
+	}
+
+	// NOTE(fusion): I'm using `T` as the parameter for the line between the
+	// origin and destination.
+	int MaxT = std::max<int>(
+			std::abs(DestX - OrigX),
+			std::abs(DestY - OrigX));
+
+	int StartT = 1;
+	if((DestX < OrigX && CoordinateFlag(OrigX, OrigY, OrigZ, HOOKEAST))
+	|| (DestY < OrigY && CoordinateFlag(OrigX, OrigY, OrigZ, HOOKSOUTH))){
+		StartT = 0;
+	}
+
+	while(MinZ <= DestZ){
+		int LastX = OrigX;
+		int LastY = OrigY;
+		if(DestX != OrigX || DestY != OrigY){
+			// NOTE(fusion): Get the current coordinates with linear interpolation.
+			for(int T = StartT; T <= MaxT; T += 1){
+				int CurX = (OrigX * (MaxT - T) + DestX * T) / MaxT;
+				int CurY = (OrigY * (MaxT - T) + DestY * T) / MaxT;
+				int CurZ = MinZ;
+				if(CoordinateFlag(CurX, CurY, CurZ, UNTHROW)){
+					break;
+				}
+
+				LastX = CurX;
+				LastY = CurY;
+			}
+		}
+
+		if(LastX == DestX && LastY == DestY){
+			int LastZ = MinZ;
+			for(; LastZ < DestZ; LastZ += 1){
+				Object Obj = GetFirstObject(DestX, DestY, LastZ);
+				if(Obj != NONE && Obj.getObjectType().getFlag(BANK)){
+					break;
+				}
+			}
+
+			if(LastZ == DestZ){
+				return true;
+			}
+		}
+
+		MinZ += 1;
+	}
+
+	return false;
+}
+
+void GetCreatureLight(uint32 CreatureID, int *Brightness, int *Color){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("GetCreatureLight: Kreatur existiert nicht.\n");
+		*Brightness = 0;
+		*Color = 0;
+		return;
+	}
+
+	int OutBrightness = 0;
+	if(Creature->Skills[SKILL_LIGHT] != NULL){
+		OutBrightness = Creature->Skills[SKILL_LIGHT]->TimerValue();
+	}
+
+	if(Creature->Type == PLAYER && CheckRight(CreatureID, ILLUMINATE)){
+		if(OutBrightness < 7){
+			OutBrightness = 7;
+		}
+	}
+
+	int OutRed   = 5 * OutBrightness;
+	int OutGreen = 5 * OutBrightness;
+	int OutBlue  = 5 * OutBrightness;
+	for(int Position = INVENTORY_FIRST;
+			Position <= INVENTORY_LAST;
+			Position += 1){
+		Object Obj = GetBodyObject(CreatureID, Position);
+		if(Obj == NONE){
+			continue;
+		}
+
+		ObjectType ObjType = Obj.getObjectType();
+		if(!ObjType.getFlag(LIGHT)){
+			continue;
+		}
+
+		int ObjBrightness = (int)ObjType.getAttribute(BRIGHTNESS);
+		int ObjColor      = (int)ObjType.getAttribute(LIGHTCOLOR);
+		int ObjRed        = (ObjColor / 36)     * ObjBrightness;
+		int ObjGreen      = (ObjColor % 36 / 6) * ObjBrightness;
+		int ObjBlue       = (ObjColor % 36 % 6) * ObjBrightness;
+
+		if(OutBrightness < ObjBrightness){
+			OutBrightness = ObjBrightness;
+		}
+
+		if(OutRed < ObjRed){
+			OutRed = ObjRed;
+		}
+
+		if(OutGreen < ObjGreen){
+			OutGreen = ObjGreen;
+		}
+
+		if(OutBlue < ObjBlue){
+			OutBlue = ObjBlue;
+		}
+	}
+
+	int OutColor = 0;
+	if(OutBrightness > 0){
+		OutColor = (OutRed / OutBrightness) * 36
+				+ (OutGreen / OutBrightness) * 6
+				+ (OutBlue / OutBrightness);
+	}
+
+	*Brightness = OutBrightness;
+	*Color      = OutColor;
+}
+
+int GetInventoryWeight(uint32 CreatureID){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("GetInventoryWeight: Kreatur %d existiert nicht.\n", CreatureID);
+		return 0;
+	}
+
+	Object Help = GetFirstContainerObject(Creature->CrObject);
+	return GetRowWeight(Help);
+}
+
+bool CheckRight(uint32 CharacterID, RIGHT Right){
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("CheckRight: Spieler existiert nicht; Right=%d.\n", Right);
+		return false;
+	}
+
+	if(!CheckBitIndex(NARRAY(Player->Rights), Right)){
+		error("CheckRight: Ungültige Rechtnummer %d.\n", Right);
+		return false;
+	}
+
+	return CheckBit(Player->Rights, Right);
+}
+
+bool CheckBanishmentRight(uint32 CharacterID, int Reason, int Action){
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("CheckBanishmentRight: Spieler existiert nicht.\n");
+		return false;
+	}
+
+	// NOTE(fusion): Banishment rights range from 18 to 49 and match banishment
+	// reasons exactly when subtracting 18.
+
+	if(Reason < 0 || Reason > 31){
+		error("CheckBanishmentRight: Ungültiger Banngrund %d von Spieler %d.\n",
+				Reason, CharacterID);
+		return false;
+	}
+
+	if(Action < 0 || Action > 6){
+		error("CheckBanishmentRight: Ungültige Aktion %d von Spieler %d.\n",
+				Action, CharacterID);
+		return false;
+	}
+
+	bool Result = false;
+	if(CheckRight(CharacterID, (RIGHT)(Reason + 18))){
+		bool Name = (Reason >= 0 && Reason <= 8);
+		bool Statement = (Reason >= 9 && Reason <= 27) || Reason == 29;
+		switch(Action){
+			case 0:{
+				Result = CheckRight(CharacterID, NOTATION);
+				break;
+			}
+
+			case 1:{
+				Result = Name && CheckRight(CharacterID, NAMELOCK);
+				break;
+			}
+
+			case 2:{
+				Result = !Name && CheckRight(CharacterID, BANISHMENT);
+				break;
+			}
+
+			case 3:{
+				Result = Name && CheckRight(CharacterID, NAMELOCK)
+						&& CheckRight(CharacterID, BANISHMENT);
+				break;
+			}
+
+			case 4:{
+				Result = !Name && CheckRight(CharacterID, BANISHMENT)
+						&& CheckRight(CharacterID, FINAL_WARNING);
+				break;
+			}
+
+			case 5:{
+				Result = Name && CheckRight(CharacterID, NAMELOCK)
+						&& CheckRight(CharacterID, BANISHMENT)
+						&& CheckRight(CharacterID, FINAL_WARNING);
+				break;
+			}
+
+			case 6:{
+				Result = Statement && CheckRight(CharacterID, STATEMENT_REPORT);
+				break;
+			}
+		}
+	}
+
+	return Result;
+}
+
+const char *GetBanishmentReason(int Reason){
+	const char *Result;
+	switch(Reason){
+		case 0:  Result = "NAME_INSULTING"; break;
+		case 1:  Result = "NAME_SENTENCE"; break;
+		case 2:  Result = "NAME_NONSENSICAL_LETTERS"; break;
+		case 3:  Result = "NAME_BADLY_FORMATTED"; break;
+		case 4:  Result = "NAME_NO_PERSON"; break;
+		case 5:  Result = "NAME_CELEBRITY"; break;
+		case 6:  Result = "NAME_COUNTRY"; break;
+		case 7:  Result = "NAME_FAKE_IDENTITY"; break;
+		case 8:  Result = "NAME_FAKE_POSITION"; break;
+		case 9:  Result = "STATEMENT_INSULTING"; break;
+		case 10: Result = "STATEMENT_SPAMMING"; break;
+		case 11: Result = "STATEMENT_ADVERT_OFFTOPIC"; break;
+		case 12: Result = "STATEMENT_ADVERT_MONEY"; break;
+		case 13: Result = "STATEMENT_NON_ENGLISH"; break;
+		case 14: Result = "STATEMENT_CHANNEL_OFFTOPIC"; break;
+		case 15: Result = "STATEMENT_VIOLATION_INCITING"; break;
+		case 16: Result = "CHEATING_BUG_ABUSE"; break;
+		case 17: Result = "CHEATING_GAME_WEAKNESS"; break;
+		case 18: Result = "CHEATING_MACRO_USE"; break;
+		case 19: Result = "CHEATING_MODIFIED_CLIENT"; break;
+		case 20: Result = "CHEATING_HACKING"; break;
+		case 21: Result = "CHEATING_MULTI_CLIENT"; break;
+		case 22: Result = "CHEATING_ACCOUNT_TRADING"; break;
+		case 23: Result = "CHEATING_ACCOUNT_SHARING"; break;
+		case 24: Result = "GAMEMASTER_THREATENING"; break;
+		case 25: Result = "GAMEMASTER_PRETENDING"; break;
+		case 26: Result = "GAMEMASTER_INFLUENCE"; break;
+		case 27: Result = "GAMEMASTER_FALSE_REPORTS"; break;
+		case 28: Result = "KILLING_EXCESSIVE_UNJUSTIFIED"; break;
+		case 29: Result = "DESTRUCTIVE_BEHAVIOUR"; break;
+		case 30: Result = "SPOILING_AUCTION"; break;
+		case 31: Result = "INVALID_PAYMENT"; break;
+		default:{
+			error("GetBanishmentReason: Ungültiger Verbannungsgrund %d.\n", Reason);
+			Result = "";
+			break;
+		}
+	}
 	return Result;
 }
 

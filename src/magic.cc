@@ -898,7 +898,7 @@ int GetDirection(int dx, int dy){
 		}else if(dy > 0){
 			Result = DIRECTION_SOUTH;
 		}else{
-			Result = DIRECTION_INVALID;
+			Result = DIRECTION_NONE;
 		}
 	}else{
 		// NOTE(fusion): This function uses the approximate tangent value, avoiding
@@ -1242,7 +1242,7 @@ void CreateFieldWall(TCreature *Actor, Object Target,
 			break;
 		}
 
-		case DIRECTION_INVALID:{
+		case DIRECTION_NONE:{
 			throw NOROOM;
 		}
 

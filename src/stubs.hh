@@ -64,8 +64,6 @@ extern void RefreshCylinders(void);
 extern void RefreshMap(void);
 extern void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Size);
 extern void SavePlayerDataOrder(void);
-extern bool SearchFlightField(uint32 FugitiveID, uint32 PursuerID, int *x, int *y, int *z);
-extern bool SearchSummonField(int *x, int *y, int *z, int Distance);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);
 extern void SendClearTarget(TConnection *Connection);
@@ -89,8 +87,6 @@ extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
 extern void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
 extern void TextualEffect(Object Obj, int Color, const char *Text, ...) ATTR_PRINTF(3, 4);
-extern bool ThrowPossible(int FromX, int FromY, int FromZ,
-						int ToX, int ToY, int ToZ, int Power);
 extern void Turn(uint32 CreatureID, Object Obj);
 extern void Use(uint32 CreatureID, Object Obj1, Object Object2, uint8 Info);
 

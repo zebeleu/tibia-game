@@ -254,28 +254,6 @@ static const char InstanceAttributeNames[18][30] = {
 	"RemainingUses",				// REMAININGUSES
 };
 
-//
-
-// BITSET Helpers
-// =============================================================================
-static inline bool CheckBit(uint8 *Set, int Index){
-	int ByteIndex = (int)(Index / 8);
-	uint8 BitMask = (uint8)(1 << (Index % 8));
-	return (Set[ByteIndex] & BitMask) != 0;
-}
-
-static inline void SetBit(uint8 *Set, int Index){
-	int ByteIndex = (int)(Index / 8);
-	uint8 BitMask = (uint8)(1 << (Index % 8));
-	Set[ByteIndex] |= BitMask;
-}
-
-static inline void ClearBit(uint8 *Set, int Index){
-	int ByteIndex = (int)(Index / 8);
-	uint8 BitMask = (uint8)(1 << (Index % 8));
-	Set[ByteIndex] &= ~BitMask;
-}
-
 // ObjectType
 // =============================================================================
 void ObjectType::setTypeID(int TypeID){

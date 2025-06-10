@@ -169,6 +169,11 @@ int stricmp(const char *s1, const char *s2, int Max = INT_MAX);
 char *findFirst(char *s, char c);
 char *findLast(char *s, char c);
 
+bool CheckBitIndex(int BitSetBytes, int Index);
+bool CheckBit(uint8 *BitSet, int Index);
+void SetBit(uint8 *BitSet, int Index);
+void ClearBit(uint8 *BitSet, int Index);
+
 template<typename T>
 void RandomShuffle(T *Buffer, int Size){
 	if(Buffer == NULL){
