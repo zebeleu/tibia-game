@@ -1,5 +1,6 @@
 #include "cr.hh"
 #include "config.hh"
+#include "info.hh"
 #include "operate.hh"
 
 #include "stubs.hh"
@@ -497,7 +498,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 		if(DestY >= INVENTORY_FIRST && DestY <= INVENTORY_LAST){
 			DestCon = GetBodyContainer(this->ID, DestY);
 			DestObj = GetBodyObject(this->ID, DestY);
-		}else if(DestY >= 64 && DestY < 80){
+		}else if(DestY >= CONTAINER_FIRST && DestY <= CONTAINER_LAST){
 			DestCon = GetBodyContainer(this->ID, DestY);
 			if(DestZ < 254){
 				// TODO(fusion): The last argument to `GetObject` is the object

@@ -1,5 +1,6 @@
 #include "cr.hh"
 #include "config.hh"
+#include "info.hh"
 #include "magic.hh"
 
 #include "stubs.hh"

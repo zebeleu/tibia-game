@@ -62,6 +62,14 @@ struct ObjectType {
 			|| this->getFlag(WAND);
 	}
 
+	ObjectType getDisguise(void){
+		if(this->getFlag(DISGUISE)){
+			return (int)this->getAttribute(DISGUISETARGET);
+		}else{
+			return *this;
+		}
+	}
+
 	bool operator==(const ObjectType &Other) const {
 		return this->TypeID == Other.TypeID;
 	}

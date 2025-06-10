@@ -2487,11 +2487,7 @@ void ObjectIllusion(TCreature *Actor, int ManaPoints, int SoulPoints, Object Tar
 	CheckMana(Actor, ManaPoints, SoulPoints, 1000);
 	if(Actor->Skills[SKILL_ILLUSION]->Get() == 0){
 		Actor->Outfit.OutfitID = 0;
-		if(TargetType.getFlag(DISGUISE)){
-			Actor->Outfit.ObjectType = (uint16)TargetType.getAttribute(DISGUISETARGET);
-		}else{
-			Actor->Outfit.ObjectType = (uint16)TargetType.TypeID;
-		}
+		Actor->Outfit.ObjectType = (uint16)TargetType.getDisguise().TypeID;
 		Actor->SetTimer(SKILL_ILLUSION, 1, Duration, Duration, -1);
 	}
 

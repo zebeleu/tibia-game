@@ -1,6 +1,8 @@
 #include "common.hh"
 #include "config.hh"
+#include "info.hh"
 #include "map.hh"
+#include "magic.hh"
 #include "objects.hh"
 
 #include "stubs.hh"
@@ -230,10 +232,10 @@ static void InitAll(void){
 		//InitReader();
 		InitObjects();
 		InitMap();
-		//InitInfo();
+		InitInfo();
 		//InitMoveUse();
-		//InitMagic();
-		//InitCr();
+		InitMagic();
+		InitCr();
 		//InitHouses();
 		InitTime();
 		//ApplyPatches();
@@ -248,10 +250,10 @@ static void ExitAll(void){
 
 	EndGame();
 	ExitTime();
-	//ExitCr();
-	//ExitMagic();
+	ExitCr();
+	ExitMagic();
 	//ExitMoveUse();
-	//ExitInfo();
+	ExitInfo();
 	//ExitHouses();
 	ExitMap(SaveMapOn);
 	ExitObjects();

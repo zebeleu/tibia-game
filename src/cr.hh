@@ -798,6 +798,9 @@ void LoadMonsterRaid(const char *FileName, int Start,
 void LoadMonsterRaids(void);
 void ProcessMonsterRaids(void);
 
+void InitCr(void);
+void ExitCr(void);
+
 // crskill.cc
 // =============================================================================
 int GetSkillByName(const char *Name);

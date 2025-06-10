@@ -197,5 +197,7 @@ int CheckForSpell(uint32 CreatureID, const char *Text);
 void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest);
 void DrinkPotion(uint32 CreatureID, Object Obj);
 
+void InitMagic(void);
+void ExitMagic(void);
 
 #endif //TIBIA_MAGIC_HH_

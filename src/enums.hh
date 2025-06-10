@@ -242,6 +242,10 @@ enum InventorySlot: int {
 	// NOTE(fusion): For iterating over hand slots.
 	INVENTORY_HAND_FIRST = INVENTORY_RIGHTHAND,
 	INVENTORY_HAND_LAST = INVENTORY_LEFTHAND,
+
+	// NOTE(fusion): For iterating over container slots.
+	CONTAINER_FIRST		= 64,
+	CONTAINER_LAST		= 79,
 };
 
 enum KNOWNCREATURESTATE: int {
@@ -250,17 +254,33 @@ enum KNOWNCREATURESTATE: int {
 	KNOWNCREATURE_OUTDATED	= 2
 };
 
+// NOTE(fusion): Not in debug symbols.
+enum LiquidColor: uint8 {
+	LIQUID_COLORLESS	= 0,
+	LIQUID_BLUE			= 1,
+	LIQUID_RED			= 2,
+	LIQUID_BROWN		= 3,
+	LIQUID_GREEN		= 4,
+	LIQUID_YELLOW		= 5,
+	LIQUID_WHITE		= 6,
+	LIQUID_PURPLE		= 7,
+};
+
+// NOTE(fusion): Not in debug symbols.
 enum LiquidType: int {
-	LIQUID_NONE = 0,
-	LIQUID_WATER = 1,
-	LIQUID_WINE = 2,
-	LIQUID_BEER = 3,
-	LIQUID_MUD = 4,
-	LIQUID_BLOOD = 5,
-	LIQUID_SLIME = 6,
-	LIQUID_MANA = 10,
-	LIQUID_LIFE = 11,
-	LIQUID_LEMONADE = 12,
+	LIQUID_NONE			= 0,
+	LIQUID_WATER		= 1,
+	LIQUID_WINE			= 2,
+	LIQUID_BEER			= 3,
+	LIQUID_MUD			= 4,
+	LIQUID_BLOOD		= 5,
+	LIQUID_SLIME		= 6,
+	LIQUID_OIL			= 7,
+	LIQUID_URINE		= 8,
+	LIQUID_MILK			= 9,
+	LIQUID_MANA			= 10,
+	LIQUID_LIFE			= 11,
+	LIQUID_LEMONADE		= 12,
 };
 
 // NOTE(fusion): Not in debug symbols.

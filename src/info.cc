@@ -3,6 +3,681 @@
 
 #include "stubs.hh"
 
+const char *GetLiquidName(int LiquidType){
+	const char *LiquidName;
+	switch(LiquidType) {
+		case LIQUID_NONE:		LiquidName = "nothing"; break;
+		case LIQUID_WATER:		LiquidName = "water"; break;
+		case LIQUID_WINE:		LiquidName = "wine"; break;
+		case LIQUID_BEER:		LiquidName = "beer"; break;
+		case LIQUID_MUD:		LiquidName = "mud"; break;
+		case LIQUID_BLOOD:		LiquidName = "blood"; break;
+		case LIQUID_SLIME:		LiquidName = "slime"; break;
+		case LIQUID_OIL:		LiquidName = "oil"; break;
+		case LIQUID_URINE:		LiquidName = "urine"; break;
+		case LIQUID_MILK:		LiquidName = "milk"; break;
+		case LIQUID_MANA:		LiquidName = "manafluid"; break;
+		case LIQUID_LIFE:		LiquidName = "lifefluid"; break;
+		case LIQUID_LEMONADE:	LiquidName = "lemonade"; break;
+		default:{
+			error("GetLiquidName: Ungültiger Flüssigkeitstyp %d\n", LiquidType);
+			LiquidName = "unknown";
+			break;
+		}
+	}
+	return LiquidName;
+}
+
+uint8 GetLiquidColor(int LiquidType){
+	uint8 LiquidColor;
+	switch(LiquidType){
+		case LIQUID_NONE:		LiquidColor = LIQUID_COLORLESS; break;
+		case LIQUID_WATER:		LiquidColor = LIQUID_BLUE; break;
+		case LIQUID_WINE:		LiquidColor = LIQUID_PURPLE; break;
+		case LIQUID_BEER:		LiquidColor = LIQUID_BROWN; break;
+		case LIQUID_MUD:		LiquidColor = LIQUID_BROWN; break;
+		case LIQUID_BLOOD:		LiquidColor = LIQUID_RED; break;
+		case LIQUID_SLIME:		LiquidColor = LIQUID_GREEN; break;
+		case LIQUID_OIL:		LiquidColor = LIQUID_BROWN; break;
+		case LIQUID_URINE:		LiquidColor = LIQUID_YELLOW; break;
+		case LIQUID_MILK:		LiquidColor = LIQUID_WHITE; break;
+		case LIQUID_MANA:		LiquidColor = LIQUID_PURPLE; break;
+		case LIQUID_LIFE:		LiquidColor = LIQUID_RED; break;
+		case LIQUID_LEMONADE:	LiquidColor = LIQUID_YELLOW; break;
+		default:{
+			error("GetLiquidColor: Ungültiger Flüssigkeitstyp %d\n", LiquidType);
+			LiquidColor = LIQUID_COLORLESS;
+			break;
+		}
+	}
+	return LiquidColor;
+}
+
+const char *GetName(Object Obj){
+	char ObjectName[50] = {};
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isCreatureContainer()){
+		TCreature *Creature = GetCreature(Obj);
+		if(Creature != NULL){
+			snprintf(ObjectName, sizeof(ObjectName), "%s", Creature->Name);
+		}else{
+			error("GetName: Kreatur %d existiert nicht.\n", Obj.getCreatureID());
+		}
+	}else{
+		// IMPORTANT(fusion): `ObjectType::getName` returns the same static buffer
+		// from `Plural`.
+		const char *TypeName = ObjType.getName(1);
+		if(TypeName != NULL){
+			strcpy(ObjectName, TypeName);
+		}
+
+		int LiquidType = LIQUID_NONE;
+		if(ObjType.getFlag(LIQUIDCONTAINER)){
+			LiquidType = (int)Obj.getAttribute(CONTAINERLIQUIDTYPE);
+		}else if(ObjType.getFlag(LIQUIDPOOL)){
+			LiquidType = (int)Obj.getAttribute(POOLLIQUIDTYPE);
+		}
+
+		if(LiquidType != LIQUID_NONE){
+			strcat(ObjectName, " of ");
+			strcat(ObjectName, GetLiquidName(LiquidType));
+		}
+	}
+
+	int Count = 1;
+	if(ObjType.getFlag(CUMULATIVE)){
+		Count = (int)Obj.getAttribute(AMOUNT);
+	}
+
+	// IMPORTANT(fusion): `Plural` will return a static buffer.
+	return Plural(ObjectName, Count);
+}
+
+const char *GetInfo(Object Obj){
+	if(!Obj.exists()){
+		error("GetInfo: Übergebenes Objekt existiert nicht.\n");
+		return NULL;
+	}
+
+	return Obj.getObjectType().getDescription();
+}
+
+int GetWeight(Object Obj, int Count){
+	if(!Obj.exists()){
+		error("GetWeight: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	// TODO(fusion): Why do some UNTAKE items have weight, and even worse, hardcoded?
+
+	int Result = 0;
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(TAKE)){
+		int Weight = (int)ObjType.getAttribute(WEIGHT);
+		if(!ObjType.getFlag(CUMULATIVE)){
+			Count = 1;
+		}else if(Count == -1){
+			Count = (int)Obj.getAttribute(AMOUNT);
+		}
+		Result = Weight * Count;
+	}else if(ObjType.TypeID == 2904){ // LARGE AMPHORA
+		Result = 19500;
+	}else if(ObjType.TypeID == 3458){ // ANVIL
+		Result = 50000;
+	}else if(ObjType.TypeID == 3510){ // COAL BASIN
+		Result = 22800;
+	}else if(ObjType.TypeID == 4311){ // DEAD HUMAN
+		Result = 80000;
+	}else{
+		error("GetWeight: Objekttyp %d ist nicht nehmbar.\n", ObjType.TypeID);
+	}
+	return Result;
+}
+
+int GetCompleteWeight(Object Obj){
+	int Result = GetWeight(Obj, -1);
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(CONTAINER) || ObjType.getFlag(CHEST)){
+		Object Help = GetFirstContainerObject(Obj);
+		Result += GetRowWeight(Help);
+	}
+	return Result;
+}
+
+int GetRowWeight(Object Obj){
+	int Result = 0;
+	while(Obj != NONE){
+		// TODO(fusion): This is probably `GetCompleteWeight` inlined.
+		Result += GetWeight(Obj, -1);
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(CONTAINER) || ObjType.getFlag(CHEST)){
+			Object Help = GetFirstContainerObject(Obj);
+			Result += GetRowWeight(Help);
+		}
+		Obj = Obj.getNextObject();
+	}
+	return Result;
+}
+
+uint32 GetObjectCreatureID(Object Obj){
+	if(!Obj.exists()){
+		error("GetObjectCreatureID: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	uint32 CreatureID = 0;
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.isCreatureContainer()){
+			CreatureID = Obj.getCreatureID();
+			break;
+		}else if(ObjType.isMapContainer()){
+			break;
+		}
+		Obj = Obj.getContainer();
+	}
+	return CreatureID;
+}
+
+int GetObjectBodyPosition(Object Obj){
+	if(!Obj.exists()){
+		error("GetObjectBodyPosition: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	int Position = 0;
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.isBodyContainer()){
+			// NOTE(fusion): Body container type ids match inventory slots exactly.
+			Position = ObjType.TypeID;
+			break;
+		}else if(ObjType.isMapContainer()){
+			break;
+		}
+		Obj = Obj.getContainer();
+	}
+	return Position;
+}
+
+int GetObjectRNum(Object Obj){
+	if(!Obj.exists()){
+		error("GetObjectRNum: Übergebenes Objekt existiert nicht.\n");
+		return 0;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isMapContainer()){
+		error("GetObjectRNum: Objekt ist MapContainer.\n");
+		return 0;
+	}
+
+	int Result = 0;
+	Object Con = Obj.getContainer();
+	Object Help = GetFirstContainerObject(Con);
+	while(Help != NONE && Help != Obj){
+		Result += 1;
+		Help = Help.getNextObject();
+	}
+
+	if(Help != Obj){
+		error("GetObjectRNum: Objekt liegt nicht in Container\n");
+		Result = 0;
+	}
+
+	return Result;
+}
+
+bool ObjectInRange(uint32 CreatureID, Object Obj, int Range){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("ObjectInRange: Ungültige Kreatur CreatureID=%d übergeben.\n", CreatureID);
+		return false;
+	}
+
+	if(!Obj.exists()){
+		error("ObjectInRange: Übergebenes Objekt existiert nicht.\n");
+		return false;
+	}
+
+	int ObjX, ObjY, ObjZ;
+	GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+	return Creature->posz == ObjZ
+		&& std::abs(Creature->posx - ObjX) <= Range
+		&& std::abs(Creature->posy - ObjY) <= Range;
+}
+
+bool ObjectAccessible(uint32 CreatureID, Object Obj, int Range){
+	if(!Obj.exists()){
+		error("ObjectAccessible: Übergebenes Objekt existiert nicht.\n");
+		return false;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.isCreatureContainer()){
+		uint32 OwnerID = GetObjectCreatureID(Obj);
+		if(OwnerID != 0){
+			return OwnerID == CreatureID;
+		}
+	}
+
+	if(ObjType.getFlag(HANG)){
+		int ObjX, ObjY, ObjZ;
+		GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+
+		bool HookSouth = CoordinateFlag(ObjX, ObjY, ObjZ, HOOKSOUTH);
+		bool HookEast = CoordinateFlag(ObjX, ObjY, ObjZ, HOOKEAST);
+		if(HookSouth || HookEast){
+			TCreature *Creature = GetCreature(CreatureID);
+			if(Creature == NULL){
+				error("ObjectAccessible: Kreatur existiert nicht.\n");
+				return false;
+			}
+
+			if(HookSouth){
+				if(Creature->posy < ObjY
+						|| Creature->posy > (ObjY + Range)
+						|| Creature->posx < (ObjX - Range)
+						|| Creature->posx > (ObjX + Range)){
+					return false;
+				}
+			}
+
+			if(HookEast){
+				if(Creature->posx < ObjX
+						|| Creature->posx > (ObjX + Range)
+						|| Creature->posy < (ObjY - Range)
+						|| Creature->posy > (ObjY + Range)){
+					return false;
+				}
+			}
+		}
+	}
+
+	return ObjectInRange(CreatureID, Obj, Range);
+}
+
+int ObjectDistance(Object Obj1, Object Obj2){
+	if(!Obj1.exists() || !Obj2.exists()){
+		error("ObjectDistance: Übergebene Objekte existieren nicht.\n");
+		return INT_MAX;
+	}
+
+	int Distance = INT_MAX;
+	int ObjX1, ObjY1, ObjZ1;
+	int ObjX2, ObjY2, ObjZ2;
+	GetObjectCoordinates(Obj1, &ObjX1, &ObjY1, &ObjZ1);
+	GetObjectCoordinates(Obj2, &ObjX2, &ObjY2, &ObjZ2);
+	if(ObjZ1 == ObjZ2){
+		Distance = std::max<int>(
+				std::abs(ObjX1 - ObjX2),
+				std::abs(ObjY1 - ObjY2));
+	}
+	return Distance;
+}
+
+Object GetBodyContainer(uint32 CreatureID, int Position){
+	if((Position < INVENTORY_FIRST || Position > INVENTORY_LAST)
+	&& (Position < CONTAINER_FIRST || Position > CONTAINER_LAST)){
+		error("GetBodyContainer: ungültige Position: %d\n", Position);
+		return NONE;
+	}
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("GetBodyContainer: Kreatur %d existiert nicht.\n", CreatureID);
+		return NONE;
+	}
+
+	if(Position >= INVENTORY_FIRST && Position <= INVENTORY_LAST){
+		if(!Creature->CrObject.exists()){
+			error("GetBodyContainer: Kreatur-Objekt von %s existiert nicht (Pos %d).\n",
+					Creature->Name, Position);
+			return NONE;
+		}
+
+		return GetContainerObject(Creature->CrObject, Position - INVENTORY_FIRST);
+	}else{
+		if(Creature->Type != PLAYER){
+			error("GetBodyContainer: Nur Spieler haben offene Container.\n");
+			return NONE;
+		}
+
+		return ((TPlayer*)Creature)->GetOpenContainer(Position - CONTAINER_FIRST);
+	}
+}
+
+Object GetBodyObject(uint32 CreatureID, int Position){
+	if(Position < INVENTORY_FIRST || Position > INVENTORY_LAST){
+		error("GetBodyObject: ungültige Position %d\n", Position);
+		return NONE;
+	}
+
+	Object Obj = NONE;
+	Object Con = GetBodyContainer(CreatureID, Position);
+	if(Con != NONE){
+		Obj = GetFirstContainerObject(Con);
+	}
+	return Obj;
+}
+
+Object GetTopObject(int x, int y, int z, bool Move){
+	Object Obj = GetFirstObject(x, y, z);
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(!ObjType.getFlag(BANK)
+				&& !ObjType.getFlag(CLIP)
+				&& !ObjType.getFlag(BOTTOM)
+				&& !ObjType.getFlag(TOP)
+				&& (!Move || !ObjType.isCreatureContainer())){
+			break;
+		}
+		Obj = Obj.getNextObject();
+	}
+	return Obj;
+}
+
+Object GetContainer(uint32 CreatureID, int x, int y, int z){
+	if(x == 0xFFFF){ // SPECIAL_COORDINATE ?
+		return GetBodyContainer(CreatureID, y);
+	}else{
+		return GetMapContainer(x, y, z);
+	}
+}
+
+Object GetObject(uint32 CreatureID, int x, int y, int z, int RNum, ObjectType Type){
+	Object Obj = NONE;
+	if(x == 0xFFFF){ // SPECIAL_COORDINATE ?
+		if(y >= INVENTORY_FIRST && y <= INVENTORY_LAST){
+			Obj = GetBodyObject(CreatureID, y);
+		}else if(y >= CONTAINER_FIRST && y <= CONTAINER_LAST){
+			Object Con = GetBodyContainer(CreatureID, y);
+			if(Con != NONE){
+				Obj = GetContainerObject(Con, RNum);
+			}
+		}else if(y != 0){
+			error("GetObject: Ungültiger ContainerCode x=%d,y=%d,z=%d,RNum=%d,Type=%d.\n",
+					x, y, z, RNum, Type.TypeID);
+		}
+	}else if(RNum == -1){
+		Obj = GetTopObject(x, y, z, false);
+	}else{
+		Obj = GetFirstObject(x, y, z);
+		while(Obj != NONE){
+			if(Obj.getObjectType().getDisguise() == Type){
+				break;
+			}
+			Obj = Obj.getNextObject();
+		}
+	}
+
+	// NOTE(fusion): `Type` can be a map container (TypeID = 0) as a wildcard for
+	// any object found.
+	if(Obj != NONE && !Type.isMapContainer()
+			&& Obj.getObjectType().getDisguise() != Type){
+		Obj = NONE;
+	}
+
+	return Obj;
+}
+
+Object GetRowObject(Object Obj, ObjectType Type, uint32 Value, bool Recurse){
+	Object Result = NONE;
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(Recurse && ObjType.getFlag(CONTAINER)){
+			Object Help = GetFirstContainerObject(Obj);
+			Result = GetRowObject(Help, Type, Value, Recurse);
+			if(Result != NONE){
+				break;
+			}
+		}
+
+		if(ObjType == Type
+				&& (!ObjType.getFlag(LIQUIDCONTAINER) || Obj.getAttribute(CONTAINERLIQUIDTYPE) == Value)
+				&& (!ObjType.getFlag(KEY)             || Obj.getAttribute(KEYNUMBER)           == Value)){
+			Result = Obj;
+			break;
+		}
+
+		Obj = Obj.getNextObject();
+	}
+	return Result;
+}
+
+Object GetInventoryObject(uint32 CreatureID, ObjectType Type, uint32 Value){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("GetInventoryObject: Kreatur %d existiert nicht.\n",CreatureID);
+		return NONE;
+	}
+
+	Object Result = NONE;
+
+	// NOTE(fusion): Search inventory containers.
+	{
+		Object BodyCon = GetFirstContainerObject(Creature->CrObject);
+		while(BodyCon != NONE){
+			Object BodyObj = GetFirstContainerObject(BodyCon);
+			if(BodyObj != NONE && BodyObj.getObjectType().getFlag(CONTAINER)){
+				Object Help = GetFirstContainerObject(BodyObj);
+				Result = GetRowObject(Help, Type, Value, true);
+				if(Result != NONE){
+					break;
+				}
+			}
+			BodyCon = BodyCon.getNextObject();
+		}
+	}
+
+	// NOTE(fusion): Search inventory slots.
+	if(Result == NONE){
+		Object BodyCon = GetFirstContainerObject(Creature->CrObject);
+		while(BodyCon != NONE){
+			Object BodyObj = GetFirstContainerObject(BodyCon);
+			Result = GetRowObject(BodyObj, Type, Value, false);
+			if(Result != NONE){
+				break;
+			}
+			BodyCon = BodyCon.getNextObject();
+		}
+	}
+
+	return Result;
+}
+
+int CountObjectsInContainer(Object Con){
+	if(!Con.exists()){
+		error("CountObjectsInContainer: Container existiert nicht.\n");
+		return 0;
+	}
+
+	int Count = 0;
+	Object Obj = GetFirstContainerObject(Con);
+	while(Obj != NONE){
+		Count += 1;
+		Obj = Obj.getNextObject();
+	}
+	return Count;
+}
+
+int CountObjects(Object Obj){
+	if(!Obj.exists()){
+		return 0;
+	}
+
+	int Count = 1;
+	if(Obj.getObjectType().getFlag(CONTAINER)){
+		Object Help = GetFirstContainerObject(Obj);
+		while(Help != NONE){
+			Count += CountObjects(Help);
+			Help = Help.getNextObject();
+		}
+	}
+	return Count;
+}
+
+int CountObjects(Object Obj, ObjectType Type, uint32 Value){
+	if(!Obj.exists()){
+		return 0;
+	}
+
+	// TODO(fusion): This is different from the other `CountObjects` as it does
+	// check other objects in the chain.
+	int Count = 0;
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(CONTAINER)){
+			Object Help = GetFirstContainerObject(Obj);
+			// BUG(fusion): We probably meant to pass `Value` down the the call stack?
+			Count += CountObjects(Help, Type, 0);
+		}
+
+		if(ObjType == Type
+				&& (!ObjType.getFlag(LIQUIDCONTAINER) || Obj.getAttribute(CONTAINERLIQUIDTYPE) == Value)
+				&& (!ObjType.getFlag(KEY)             || Obj.getAttribute(KEYNUMBER)           == Value)){
+			if(ObjType.getFlag(CUMULATIVE)){
+				Count += (int)Obj.getAttribute(AMOUNT);
+			}else{
+				Count += 1;
+			}
+		}
+
+		Obj = Obj.getNextObject();
+	}
+	return Count;
+}
+
+int CountInventoryObjects(uint32 CreatureID, ObjectType Type, uint32 Value){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("CountInventoryObjects: Kreatur %d existiert nicht; Objekttyp %d.\n",
+				CreatureID, Type.TypeID);
+		return 0;
+	}
+
+	if(Creature->CrObject == NONE){
+		error("CountInventoryObjects: Kreatur %s hat kein Kreatur-Objekt.\n",
+				Creature->Name);
+		return 0;
+	}
+
+	Object Help = GetFirstContainerObject(Help);
+	return CountObjects(Help, Type, Value);
+}
+
+int CountMoney(Object Obj){
+	if(!Obj.exists()){
+		return 0;
+	}
+
+	int Result = 0;
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(CONTAINER)){
+			Object Help = GetFirstContainerObject(Obj);
+			Result += CountMoney(Help);
+		}
+
+		// TODO(fusion): This was three different if statements but I don't think
+		// we'd want the same object type to be all special money objects.
+		if(ObjType == GetSpecialObject(MONEY_ONE)){
+			Result += (int)Obj.getAttribute(AMOUNT);
+		}else if(ObjType == GetSpecialObject(MONEY_HUNDRED)){
+			Result += (int)Obj.getAttribute(AMOUNT) * 100;
+		}else if(ObjType == GetSpecialObject(MONEY_TENTHOUSAND)){
+			Result += (int)Obj.getAttribute(AMOUNT) * 10000;
+		}
+
+		Obj = Obj.getNextObject();
+	}
+	return Result;
+}
+
+int CountInventoryMoney(uint32 CreatureID){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("CountInventoryMoney: Kreatur %d existiert nicht.\n", CreatureID);
+		return 0;
+	}
+
+	if(Creature->CrObject == NONE){
+		error("CountInventoryMoney: Kreatur %s hat kein Kreatur-Objekt.\n", Creature->Name);
+		return 0;
+	}
+
+	Object Help = GetFirstContainerObject(Creature->CrObject);
+	return CountMoney(Help);
+}
+
+void CalculateChange(int Amount, int *Gold, int *Platinum, int *Crystal){
+	// TODO(fusion): This function is kind of a mess. We should simplify or
+	// get rid of it entirely. It is used when removing gold from a creature
+	// but doesnt doesn't report errors outside from the `error` logging. It
+	// expects the caller to also check whether the amount of gold, platinum,
+	// and crystal is sufficient? We'll see when it gets applied.
+
+	int Go = *Gold;
+	int Pl = *Platinum;
+	int Cr = *Crystal;
+
+	print(3, "Zahle %d mit %d/%d/%d Münzen...\n", Amount, Go, Pl, Cr);
+	if((Cr * 10000 + Pl * 100 + Go) < Amount){
+		error("CalculateChange: %d/%d/%d Münzen reichen nicht zur Bezahlung von %d.\n",
+				Go, Pl, Cr, Amount);
+		return;
+	}
+
+	int AmountCr = Amount / 10000;
+	int AmountRem = Amount % 10000;
+	if((Pl * 100 + Go) < AmountRem){
+		Cr = AmountCr + 1;
+		Pl = (AmountRem - 10000) / 100;
+		Go = (AmountRem - 10000) % 100;
+	}else{
+		if(Cr < AmountCr){
+			AmountRem = Amount - Cr * 10000;
+		}else{
+			Cr = AmountCr;
+		}
+
+		int AmountPl = AmountRem / 100;
+		int AmountGo = AmountRem % 100;
+		if(Go < AmountGo){
+			Pl = AmountPl + 1;
+			Go = AmountGo - 100;
+		}else if(Pl < AmountPl){
+			Go = AmountRem - Pl * 100;
+		}else{
+			Pl = AmountPl;
+			Go = AmountGo;
+		}
+	}
+
+	print(3, "Verwende %d/%d/%d Münzen.\n", Go, Pl, Cr);
+	*Gold = Go;
+	*Platinum = Pl;
+	*Crystal = Cr;
+
+	if((Cr * 10000 + Pl * 100 + Go) != Amount){
+		error("CalculateChange: Fehlerhafte Berechnung: %d/%d/%d Münzen für %d.\n",
+				Go, Pl, Cr, Amount);
+	}
+}
+
+int GetHeight(int x, int y, int z){
+	int Result = 0;
+	Object Obj = GetFirstObject(x, y, z);
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(HEIGHT)){
+			Result += (int)ObjType.getAttribute(ELEVATION);
+		}
+		Obj = Obj.getNextObject();
+	}
+	return Result;
+}
+
 bool JumpPossible(int x, int y, int z, bool AvoidPlayers){
 	bool HasBank = false;
 	Object Obj = GetFirstObject(x, y, z);
@@ -27,6 +702,39 @@ bool JumpPossible(int x, int y, int z, bool AvoidPlayers){
 		Obj = Obj.getNextObject();
 	}
 	return HasBank;
+}
+
+bool FieldPossible(int x, int y, int z, int FieldType){
+	Object Obj = GetFirstObject(x, y, z);
+
+	// NOTE(fusion): Only the first object on a given coordinate can be a bank
+	// on regular circumstances, so it makes sense to check it right away to
+	// determine whether a bank is present.
+	if(Obj == NONE || !Obj.getObjectType().getFlag(BANK)){
+		return false;
+	}
+
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(!ObjType.isCreatureContainer()){
+			if(ObjType.getFlag(UNPASS)){
+				return false;
+			}
+
+			if(ObjType.getFlag(UNLAY)){
+				return false;
+			}
+		}
+
+		if(FieldType == FIELD_TYPE_MAGICWALL || FieldType == FIELD_TYPE_WILDGROWTH){
+			if(ObjType.getFlag(UNPASS)){
+				return false;
+			}
+		}
+
+		Obj = Obj.getNextObject();
+	}
+	return true;
 }
 
 bool SearchFreeField(int *x, int *y, int *z, int Distance, uint16 HouseID, bool Jump){
@@ -55,8 +763,9 @@ bool SearchFreeField(int *x, int *y, int *z, int Distance, uint16 HouseID, bool 
 		}
 
 		if(MovePossible){
-			if(HouseID == HOUSEID_ANY || !IsHouse(FieldX, FieldY, FieldZ)
-			|| (HouseID != 0 && HouseID == GetHouseID(FieldX, FieldY, FieldZ))){
+			if(HouseID == HOUSEID_ANY
+					|| !IsHouse(FieldX, FieldY, FieldZ)
+					|| GetHouseID(FieldX, FieldY, FieldZ) == HouseID){
 				*x = FieldX;
 				*y = FieldY;
 				return true;
@@ -94,4 +803,221 @@ bool SearchFreeField(int *x, int *y, int *z, int Distance, uint16 HouseID, bool 
 	}
 
 	return false;
+}
+
+// TODO(fusion): This is a helper function for `SearchLoginField`. Perhaps we
+// should try to merge it there?
+static bool LoginPossible(int x, int y, int z, uint16 HouseID, bool Player){
+	Object Obj = GetFirstObject(x, y, z);
+	if(Obj == NONE){
+		return false;
+	}
+
+	if(Player && IsNoLogoutField(x, y, z)){
+		return false;
+	}
+
+	if(IsHouse(x, y, z) && GetHouseID(x, y, z) != HouseID){
+		return false;
+	}
+
+	bool HasBank = false;
+	while(Obj != NONE){
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.getFlag(BANK)){
+			HasBank = true;
+		}
+
+		if(ObjType.isCreatureContainer()){
+			return false;
+		}
+
+		if(ObjType.getFlag(UNPASS) && ObjType.getFlag(UNMOVE)){
+			return false;
+		}
+
+		if(!Player && ObjType.getFlag(AVOID) && ObjType.getFlag(UNMOVE)){
+			return false;
+		}
+
+		Obj = Obj.getNextObject();
+	}
+	return HasBank;
+}
+
+bool SearchLoginField(int *x, int *y, int *z, int Distance, bool Player){
+	uint16 HouseID = GetHouseID(*x, *y, *z);
+	if(SearchFreeField(x, y, z, Distance, HouseID, false)
+			&& (!Player || !IsNoLogoutField(*x, *y, *z))){
+		return true;
+	}
+
+	int OffsetX = 0;
+	int OffsetY = 0;
+	int CurrentDistance = 0;
+	int CurrentDirection = DIRECTION_EAST;
+	while(CurrentDistance <= Distance){
+		int FieldX = *x + OffsetX;
+		int FieldY = *y + OffsetY;
+		int FieldZ = *z;
+
+		if(LoginPossible(FieldX, FieldY, FieldZ, HouseID, Player)){
+			*x = FieldX;
+			*y = FieldY;
+			return true;
+		}
+
+		// NOTE(fusion): Same as `SearchFreeField`.
+		if(CurrentDirection == DIRECTION_NORTH){
+			OffsetY -= 1;
+			if(OffsetY <= -CurrentDistance){
+				CurrentDirection = DIRECTION_WEST;
+			}
+		}else if(CurrentDirection == DIRECTION_WEST){
+			OffsetX -= 1;
+			if(OffsetX <= -CurrentDistance){
+				CurrentDirection = DIRECTION_SOUTH;
+			}
+		}else if(CurrentDirection == DIRECTION_SOUTH){
+			OffsetY += 1;
+			if(OffsetY >= CurrentDistance){
+				CurrentDirection = DIRECTION_EAST;
+			}
+		}else{
+			ASSERT(CurrentDirection == DIRECTION_EAST);
+			OffsetX += 1;
+			if(OffsetX > CurrentDistance){
+				CurrentDistance = OffsetX;
+				CurrentDirection = DIRECTION_NORTH;
+			}
+		}
+	}
+	return false;
+}
+
+bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player){
+	// TODO(fusion): It seems `Distance` can be a negative number to do some
+	// extended search?
+	bool Minimize = true;
+	if(Distance < 0){
+		Minimize = false;
+		Distance = -Distance;
+	}
+
+	uint16 HouseID = GetHouseID(*x, *y, *z);
+	matrix<int> Map(-Distance, Distance, -Distance, Distance, INT_MAX);
+	*Map.at(0, 0) = 0;
+
+
+	int BestX = 0;
+	int BestY = 0;
+	int BestTieBreaker = -1;
+	int ExpansionPhase = 0;
+	while(true){
+		bool Found = false;
+		bool Expanded = false;
+		for(int OffsetY = -Distance; OffsetY <= Distance; OffsetY += 1)
+		for(int OffsetX = -Distance; OffsetX <= Distance; OffsetX += 1){
+			if(*Map.at(OffsetX, OffsetY) != ExpansionPhase){
+				continue;
+			}
+
+			int FieldX = *x + OffsetX;
+			int FieldY = *y + OffsetY;
+			int FieldZ = *z;
+			if(IsHouse(FieldX, FieldY, FieldZ) && GetHouseID(FieldX, FieldY, FieldZ) != HouseID){
+				continue;
+			}
+
+			if(!Player && IsProtectionZone(FieldX, FieldY, FieldZ)){
+				continue;
+			}
+
+			Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+			if(Obj == NONE){
+				continue;
+			}
+
+			bool ExpansionPossible = true;
+			bool LoginPossible = true;
+			bool LoginBad = false;
+			while(Obj != NONE){
+				ObjectType ObjType = Obj.getObjectType();
+				if(ObjType.isCreatureContainer()){
+					LoginPossible = false;
+				}
+
+				if(ObjType.getFlag(UNPASS)){
+					if(ObjType.getFlag(UNMOVE)){
+						ExpansionPossible = false;
+						LoginPossible = false;
+					}else{
+						LoginBad = true;
+					}
+				}
+
+				if(ObjType.getFlag(AVOID)){
+					if(ObjType.getFlag(UNMOVE)){
+						ExpansionPossible = false;
+						LoginPossible = LoginPossible && !Player;
+					}else{
+						LoginBad = true;
+					}
+				}
+
+				Obj = Obj.getNextObject();
+			}
+
+			if(ExpansionPossible || ExpansionPhase == 0){
+				for(int NeighborOffsetY = OffsetY - 1; NeighborOffsetY <= OffsetY + 1; NeighborOffsetY += 1)
+				for(int NeighborOffsetX = OffsetX - 1; NeighborOffsetX <= OffsetX + 1; NeighborOffsetX += 1){
+					if(-Distance <= NeighborOffsetX && NeighborOffsetX <= Distance
+					&& -Distance <= NeighborOffsetY && NeighborOffsetY <= Distance){
+						int *NeighborPhase = Map.at(NeighborOffsetX, NeighborOffsetY);
+						if(*NeighborPhase > ExpansionPhase){
+							*NeighborPhase = ExpansionPhase
+									+ std::abs(NeighborOffsetX - OffsetX)
+									+ std::abs(NeighborOffsetY - OffsetY);
+						}
+					}
+				}
+			}
+
+			if(LoginPossible && (!Player || !IsNoLogoutField(FieldX, FieldY, FieldZ))){
+				int TieBreaker = random(0, 99);
+				if(!LoginBad){
+					TieBreaker += 100;
+				}
+
+				if(TieBreaker > BestTieBreaker){
+					BestX = FieldX;
+					BestY = FieldY;
+					BestTieBreaker = TieBreaker;
+				}
+			}
+		}
+
+		if((Found && Minimize) || !Expanded){
+			break;
+		}
+
+		ExpansionPhase += 1;
+	}
+
+	bool Result = false;
+	if(BestTieBreaker >= 0){
+		*x = BestX;
+		*y = BestY;
+		Result = true;
+	}
+
+	return Result;
+}
+
+void InitInfo(void){
+	// no-op
+}
+
+void ExitInfo(void){
+	// no-op
 }
