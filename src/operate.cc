@@ -4,7 +4,6 @@
 #include "stubs.hh"
 
 // operate.cc
-void AnnounceMovingCreature(uint32 CreatureID, Object Con);
 void CheckTopMoveObject(uint32 CreatureID, Object Obj, Object Ignore);
 void CheckMoveObject(uint32 CreatureID, Object Obj, bool Take);
 void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon);
@@ -22,6 +21,189 @@ void MovementEvent(Object Obj, Object Start, Object Dest);
 void CollisionEvent(Object Obj, Object Dest);
 void SeparationEvent(Object Obj, Object Start);
 
+
+//==================================================================================================
+//==================================================================================================
+//==================================================================================================
+//==================================================================================================
+
+void AnnounceMovingCreature(uint32 CreatureID, Object Con){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("AnnounceMovingCreature: Kreatur %d existiert nicht.\n", CreatureID);
+		return;
+	}
+
+	int ConX, ConY, ConZ;
+	GetObjectCoordinates(Con, &ConX, &ConY, &ConZ);
+
+	// TODO(fusion): 17 and 15 are probably related to the client's viewport dimensions.
+	int SearchWidth = 17 + std::abs(Creature->posx - ConX) / 2;
+	int SearchHeight = 15 + std::abs(Creature->posy - ConY) / 2;
+	int SearchCenterX = (Creature->posx + ConX) / 2;
+	int SearchCenterY = (Creature->posy + ConY) / 2;
+	TFindCreatures Search(SearchWidth, SearchHeight, SearchCenterX, SearchCenterY, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player != NULL && Player->Connection != NULL){
+			SendMoveCreature(Player->Connection, CreatureID, ConX, ConY, ConZ);
+		}
+	}
+}
+
+void AnnounceChangedCreature(uint32 CreatureID, int Type){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("AnnounceChangedCreature: Kreatur %d existiert nicht (Type=%d).\n", CreatureID, Type);
+		return;
+	}
+
+	for(TKnownCreature *KnownCreature = Creature->FirstKnowingConnection;
+			KnownCreature != NULL;
+			KnownCreature = KnownCreature->Next){
+		TConnection *KnowingConnection = KnownCreature->Connection;
+		if(KnowingConnection->State != CONNECTION_GAME
+				|| KnownCreature->State == KNOWNCREATURE_OUTDATED){
+			continue;
+		}
+
+		if(KnowingConnection->IsVisible(Creature->posx, Creature->posy, Creature->posz)){
+			switch(Type){
+				case CREATURE_HEALTH_CHANGED: SendCreatureHealth(KnowingConnection, CreatureID); break;
+				case CREATURE_LIGHT_CHANGED:  SendCreatureLight(KnowingConnection, CreatureID); break;
+				case CREATURE_OUTFIT_CHANGED: SendCreatureOutfit(KnowingConnection, CreatureID); break;
+				case CREATURE_SPEED_CHANGED:  SendCreatureSpeed(KnowingConnection, CreatureID); break;
+				case CREATURE_SKULL_CHANGED:  SendCreatureSkull(KnowingConnection, CreatureID); break;
+				case CREATURE_PARTY_CHANGED:  SendCreatureParty(KnowingConnection, CreatureID); break;
+			}
+		}else{
+			KnownCreature->State = KNOWNCREATURE_OUTDATED;
+		}
+	}
+}
+
+void AnnounceChangedField(Object Obj, int Type){
+	if(!Obj.exists()){
+		error("AnnounceChangedField: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	int ObjX, ObjY, ObjZ;
+	GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+	TFindCreatures Search(16, 14, ObjX, ObjY, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL || Player->Connection == NULL
+				|| !Player->Connection->IsVisible(ObjX, ObjY, ObjZ)){
+			continue;
+		}
+
+		switch(Type){
+			case OBJECT_DELETED: SendDeleteField(Player->Connection, ObjX, ObjY, ObjZ, Obj); break;
+			case OBJECT_CREATED: SendAddField(Player->Connection,    ObjX, ObjY, ObjZ, Obj); break;
+			case OBJECT_CHANGED: SendChangeField(Player->Connection, ObjX, ObjY, ObjZ, Obj); break;
+			default:{
+				error("AnnounceChangedField: Ungültiger Typ %d.\n", Type);
+				return;
+			}
+		}
+	}
+}
+
+void AnnounceChangedContainer(Object Obj, int Type){
+	if(!Obj.exists()){
+		error("AnnounceChangedContainer: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	Object Con = Obj.getContainer();
+	TFindCreatures Search(1, 1, Obj, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
+		}
+
+		for(int ContainerNr = 0;
+				ContainerNr <= NARRAY(Player->OpenContainer);
+				ContainerNr += 1){
+			if(Player->GetOpenContainer(ContainerNr) != Con){
+				continue;
+			}
+
+			switch(Type){
+				case OBJECT_DELETED: SendDeleteInContainer(Player->Connection, ContainerNr, Obj); break;
+				case OBJECT_CREATED: SendCreateInContainer(Player->Connection, ContainerNr, Obj); break;
+				case OBJECT_CHANGED: SendChangeInContainer(Player->Connection, ContainerNr, Obj); break;
+				default:{
+					error("AnnounceChangedContainer: Ungültiger Typ %d.\n", Type);
+					return;
+				}
+			}
+		}
+	}
+}
+
+void AnnounceChangedInventory(Object Obj, int Type){
+	if(!Obj.exists()){
+		error("AnnounceChangedInventory: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	uint32 OwnerID = GetObjectCreatureID(Obj);
+	TCreature *Creature = GetCreature(OwnerID);
+	if(Creature == NULL){
+		error("AnnounceChangedInventory: Objekt liegt in keinem Inventory.\n");
+		return;
+	}
+
+	if(Creature->Type != PLAYER){
+		return;
+	}
+
+	int Position = GetObjectBodyPosition(Obj);
+	switch(Type){
+		case OBJECT_DELETED: SendDeleteInventory(Creature->Connection, Position); break;
+		case OBJECT_CREATED: SendSetInventory(Creature->Connection, Position, Obj); break;
+		case OBJECT_CHANGED: SendSetInventory(Creature->Connection, Position, Obj); break;
+		default:{
+			error("AnnounceChangedInventory: Ungültiger Typ %d.\n", Type);
+			return;
+		}
+	}
+}
+
+void AnnounceChangedObject(Object Obj, int Type){
+	if(!Obj.exists()){
+		error("AnnounceChangedObject: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	Object Con = Obj.getContainer();
+	ObjectType ConType = Con.getObjectType();
+	if(ConType.isMapContainer()){
+		AnnounceChangedField(Obj, Type);
+	}else if(ConType.isBodyContainer()){
+		AnnounceChangedInventory(Obj, Type);
+	}else{
+		AnnounceChangedContainer(Obj, Type);
+	}
+}
 
 // TODO(fusion): This could have been a simple return value.
 void CheckContainerDestination(Object Obj, Object Con){
@@ -212,7 +394,7 @@ void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Ob
 	// easier to read.
 
 	if(!ObjType.isCreatureContainer() && Remainder == NONE){
-		AnnounceChangedObject(Obj, 0); // OBJECT_DISAPPEAR ?
+		AnnounceChangedObject(Obj, OBJECT_DELETED);
 		NotifyTrades(Obj);
 		NotifyDepot(CreatureID, Obj, CountObjects(Obj));
 	}
@@ -237,13 +419,13 @@ void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Ob
 	MoveObject(Obj, Con);
 
 	if(!ObjType.isCreatureContainer()){
-		AnnounceChangedObject(Obj, 1); // OBJECT_APPEAR
+		AnnounceChangedObject(Obj, OBJECT_CREATED);
 		NotifyTrades(Obj);
 		NotifyDepot(CreatureID, Obj, -CountObjects(Obj));
 	}
 
 	if(Remainder != NONE){
-		AnnounceChangedObject(Remainder, 2); // OBJECT_CHANGED
+		AnnounceChangedObject(Remainder, OBJECT_CHANGED);
 		NotifyTrades(Remainder);
 	}
 
@@ -336,17 +518,17 @@ void Merge(uint32 CreatureID, Object Obj, Object Dest, int Count, Object Ignore)
 
 	if(Count < ObjCount){
 		ChangeObject(Obj, AMOUNT, ObjCount - Count);
-		AnnounceChangedObject(Obj, 2); // OBJECT_CHANGED ?
+		AnnounceChangedObject(Obj, OBJECT_CHANGED);
 		NotifyTrades(Obj);
 		ChangeObject(Dest, AMOUNT, DestCount + Count);
 	}else{
-		AnnounceChangedObject(Obj, 0); // OBJECT_DISAPPEAR ?
+		AnnounceChangedObject(Obj, OBJECT_DELETED);
 		NotifyTrades(Obj);
 		NotifyDepot(CreatureID, Obj, 1);
 		MergeObjects(Obj, Dest);
 	}
 
-	AnnounceChangedObject(Dest, 2); // OBJECT_CHANGED ?
+	AnnounceChangedObject(Dest, OBJECT_CHANGED);
 	NotifyTrades(Dest);
 	NotifyCreature(ObjOwnerID, Dest, ObjCon.getObjectType().isBodyContainer());
 	NotifyCreature(DestOwnerID, Dest, DestCon.getObjectType().isBodyContainer());

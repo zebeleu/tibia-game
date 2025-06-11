@@ -15,6 +15,7 @@ struct TKnownCreature {
 
 struct TConnection {
 	void Logout(int Delay, bool StopFight);
+	bool IsVisible(int x, int y, int z);
 
 	// DATA
 	// =================

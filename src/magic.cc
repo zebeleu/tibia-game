@@ -1,6 +1,7 @@
 #include "magic.hh"
 #include "config.hh"
 #include "info.hh"
+#include "operate.hh"
 
 #include "stubs.hh"
 
@@ -1503,7 +1504,7 @@ void Teleport(TCreature *Actor, const char *Param){
 		GraphicalEffect(DestX, DestY, DestZ, EFFECT_ENERGY);
 	}else if(MDGoStrength != Actor->Skills[SKILL_GO_STRENGTH]->MDAct){
 		Actor->Skills[SKILL_GO_STRENGTH]->SetMDAct(MDGoStrength);
-		AnnounceChangedCreature(Actor->ID, 4); // CREATURE_GO_STRENGTH_CHANGED ?
+		AnnounceChangedCreature(Actor->ID, CREATURE_SPEED_CHANGED);
 		GraphicalEffect(DestX, DestY, DestZ, EFFECT_MAGIC_BLUE);
 	}
 }
@@ -2399,7 +2400,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 						Victim->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
 						if(Victim->Skills[SKILL_ILLUSION]->Get() == 0){
 							Victim->Outfit = Victim->OrgOutfit;
-							AnnounceChangedCreature(Victim->ID, 3); // CREATURE_OUTFIT_CHANGED ?
+							AnnounceChangedCreature(Victim->ID, CREATURE_OUTFIT_CHANGED);
 							NotifyAllCreatures(Victim->CrObject, 2, NONE); // CREATURE_APPEAR ?
 						}else{
 							Effect = EFFECT_BLOCK_HIT;

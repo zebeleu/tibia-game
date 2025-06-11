@@ -2,6 +2,7 @@
 #include "config.hh"
 #include "enums.hh"
 #include "info.hh"
+#include "operate.hh"
 
 #include "stubs.hh"
 
@@ -590,7 +591,7 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 			&& this->Outfit.ObjectType == 0){
 		this->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
 		this->Outfit = this->OrgOutfit;
-		AnnounceChangedCreature(this->ID, 3); // CREATURE_OUTFIT_CHANGED ?
+		AnnounceChangedCreature(this->ID, CREATURE_OUTFIT_CHANGED);
 		NotifyAllCreatures(this->CrObject, 2, NONE); // CREATURE_APPEAR ?
 	}
 
@@ -834,7 +835,7 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 		}
 	}
 
-	AnnounceChangedCreature(this->ID, 1); // CREATURE_HITPOINTS_CHANGED ?
+	AnnounceChangedCreature(this->ID, CREATURE_HEALTH_CHANGED);
 	return Damage;
 }
 

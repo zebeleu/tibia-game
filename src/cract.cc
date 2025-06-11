@@ -395,7 +395,7 @@ void TCreature::Go(int DestX, int DestY, int DestZ){
 
 void TCreature::Rotate(int Direction){
 	this->Direction = Direction;
-	AnnounceChangedObject(this->CrObject, 2); // OBJECT_CHANGED ?
+	AnnounceChangedObject(this->CrObject, OBJECT_CHANGED);
 }
 
 void TCreature::Rotate(TCreature *Target){
@@ -1561,7 +1561,7 @@ void TCreature::NotifyChangeInventory(void){
 				SkillsChanged = true;
 				Skill->DAct = NewDelta[SkillNr];
 				if(SkillNr == SKILL_GO_STRENGTH){
-					AnnounceChangedCreature(this->ID, 4); // CREATURE_GO_STRENGTH_CHANGED ?
+					AnnounceChangedCreature(this->ID, CREATURE_SPEED_CHANGED);
 				}else if(SkillNr == SKILL_ILLUSION){
 					if(NewDelta[SKILL_ILLUSION] > 0){
 						if(this->Outfit.OutfitID != 0 || this->Outfit.ObjectType != 0){
@@ -1574,7 +1574,7 @@ void TCreature::NotifyChangeInventory(void){
 					}else if(Skill->TimerValue() == 0){
 						this->Outfit = this->OrgOutfit;
 					}
-					AnnounceChangedCreature(this->ID, 3); // CREATURE_OUTFIT_CHANGED ?
+					AnnounceChangedCreature(this->ID, CREATURE_OUTFIT_CHANGED);
 				}
 			}
 		}

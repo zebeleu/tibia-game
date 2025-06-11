@@ -403,6 +403,13 @@ struct TCombat{
 
 // TFindCreatures
 // =============================================================================
+enum : int {
+	FIND_PLAYERS	= 0x01,
+	FIND_NPCS		= 0x02,
+	FIND_MONSTERS	= 0x04,
+	FIND_ALL		= FIND_PLAYERS | FIND_NPCS | FIND_MONSTERS,
+};
+
 struct TFindCreatures {
 	TFindCreatures(int RadiusX, int RadiusY, int CenterX, int CenterY, int Mask);
 	TFindCreatures(int RadiusX, int RadiusY, uint32 CreatureID, int Mask);

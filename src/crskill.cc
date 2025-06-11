@@ -1,4 +1,5 @@
 #include "cr.hh"
+#include "operate.hh"
 
 #include "stubs.hh"
 
@@ -350,7 +351,7 @@ bool TSkillLevel::Jump(int Range){
 	this->Master->Skills[SKILL_GO_STRENGTH   ]->Advance(Range);
 	this->Master->Skills[SKILL_CARRY_STRENGTH]->Advance(Range);
 
-	AnnounceChangedCreature(this->Master->ID, 4);
+	AnnounceChangedCreature(this->Master->ID, CREATURE_SPEED_CHANGED);
 	this->Master->Combat.CheckCombatValues();
 
 	if(this->Master->Type == PLAYER){
@@ -691,7 +692,7 @@ void TSkillHitpoints::Set(int Value){
 		if(Master->Type == PLAYER){
 			SendPlayerData(Master->Connection);
 		}
-		AnnounceChangedCreature(Master->ID, 1);
+		AnnounceChangedCreature(Master->ID, CREATURE_HEALTH_CHANGED);
 	}
 }
 
@@ -734,7 +735,7 @@ bool TSkillGoStrength::SetTimer(int Cycle, int Count, int MaxCount, int Addition
 	if(Master->Type == PLAYER){
 		((TPlayer*)Master)->CheckState();
 	}
-	AnnounceChangedCreature(Master->ID, 4);
+	AnnounceChangedCreature(Master->ID, CREATURE_SPEED_CHANGED);
 	return true;
 }
 
@@ -754,7 +755,7 @@ void TSkillGoStrength::Event(int Range){
 	if(this->SkNr == SKILL_GO_STRENGTH && Master->Type == PLAYER){
 		((TPlayer*)Master)->CheckState();
 	}
-	AnnounceChangedCreature(Master->ID, 4);
+	AnnounceChangedCreature(Master->ID, CREATURE_SPEED_CHANGED);
 }
 
 // TSkillCarryStrength
@@ -903,9 +904,9 @@ bool TSkillLight::SetTimer(int Cycle, int Count, int MaxCount, int AdditionalVal
 
 	// TODO(fusion): The decompiled function had this logic, but WTF.
 	//	if(GetCreature(Master->ID) != NULL){
-	//		AnnounceChangedCreature(Master->ID, 2);
+	//		AnnounceChangedCreature(Master->ID, CREATURE_LIGHT_CHANGED);
 	//	}
-	AnnounceChangedCreature(Master->ID, 2);
+	AnnounceChangedCreature(Master->ID, CREATURE_LIGHT_CHANGED);
 	return true;
 }
 
@@ -916,7 +917,7 @@ void TSkillLight::Event(int Range){
 		return;
 	}
 
-	AnnounceChangedCreature(Master->ID, 2);
+	AnnounceChangedCreature(Master->ID, CREATURE_LIGHT_CHANGED);
 }
 
 // TSkillIllusion
@@ -938,9 +939,9 @@ bool TSkillIllusion::SetTimer(int Cycle, int Count, int MaxCount, int Additional
 
 	// TODO(fusion): The decompiled function had this logic, but WTF.
 	//	if(GetCreature(Master->ID) != NULL){
-	//		AnnounceChangedCreature(Master->ID, 3);
+	//		AnnounceChangedCreature(Master->ID, CREATURE_OUTFIT_CHANGED);
 	//	}
-	AnnounceChangedCreature(Master->ID, 3);
+	AnnounceChangedCreature(Master->ID, CREATURE_OUTFIT_CHANGED);
 	return true;
 }
 
@@ -954,7 +955,7 @@ void TSkillIllusion::Event(int Range){
 
 		if(this->Get() <= 0){
 			Master->Outfit = Master->OrgOutfit;
-			AnnounceChangedCreature(Master->ID, 3);
+			AnnounceChangedCreature(Master->ID, CREATURE_OUTFIT_CHANGED);
 			NotifyAllCreatures(Master->CrObject, 2, NONE);
 		}
 	}
