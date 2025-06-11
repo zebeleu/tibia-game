@@ -556,7 +556,8 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 			::Move(this->ID, Obj, DestCon, MoveCount, false, DestObj);
 		}catch(RESULT r){
 			// NOTE(fusion): Attempt to exchange inventory items.
-			if(DestY < 64 && DestObj != NONE
+			if(DestY >= INVENTORY_FIRST && DestY <= INVENTORY_LAST
+					&& DestObj != NONE
 					&& (r == NOROOM
 						|| r == HANDSNOTFREE
 						|| r == HANDBLOCKED
