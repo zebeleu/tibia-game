@@ -1,4 +1,5 @@
 #include "operate.hh"
+#include "config.hh"
 #include "info.hh"
 
 #include "stubs.hh"
@@ -333,13 +334,7 @@ void CheckTopMoveObject(uint32 CreatureID, Object Obj, Object Ignore){
 				BestIsCreature = HelpType.isCreatureContainer();
 			}
 
-			// TODO(fusion): This is probably some inlined function to check whether
-			// an object has a low stack priority.
-			if(!HelpType.getFlag(BANK)
-					&& !HelpType.getFlag(CLIP)
-					&& !HelpType.getFlag(BOTTOM)
-					&& !HelpType.getFlag(TOP)
-					&& !HelpType.isCreatureContainer()){
+			if(GetObjectPriority(Help) == PRIORITY_LOW){
 				break;
 			}
 		}
@@ -375,15 +370,7 @@ void CheckTopUseObject(uint32 CreatureID, Object Obj){
 			Best = Help;
 		}
 
-		if(HelpType.getFlag(FORCEUSE)){
-			break;
-		}
-
-		if(!HelpType.getFlag(BANK)
-				&& !HelpType.getFlag(CLIP)
-				&& !HelpType.getFlag(BOTTOM)
-				&& !HelpType.getFlag(TOP)
-				&& !HelpType.isCreatureContainer()){
+		if(HelpType.getFlag(FORCEUSE) || GetObjectPriority(Help) == PRIORITY_LOW){
 			break;
 		}
 
@@ -392,6 +379,203 @@ void CheckTopUseObject(uint32 CreatureID, Object Obj){
 
 	if(Obj != Best){
 		throw NOTACCESSIBLE;
+	}
+}
+
+void CheckTopMultiuseObject(uint32 CreatureID, Object Obj){
+	if(!Obj.exists()){
+		error("CheckTopMultiuseObject: Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(CreatureID == 0 || !IsCreaturePlayer(CreatureID)){
+		return;
+	}
+
+	Object Con = Obj.getContainer();
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.isMapContainer()){
+		return;
+	}
+
+	Object Best = NONE;
+	Object Help = GetFirstContainerObject(Con);
+	while(Help != NONE){
+		ObjectType HelpType = Help.getObjectType();
+		if(Best == NONE || !HelpType.getFlag(LIQUIDPOOL)){
+			Best = Help;
+		}
+
+		if(HelpType.getFlag(FORCEUSE) || GetObjectPriority(Help) >= PRIORITY_CREATURE){
+			break;
+		}
+
+		Help = Help.getNextObject();
+	}
+
+	if(Obj != Best){
+		throw NOTACCESSIBLE;
+	}
+}
+
+void CheckMoveObject(uint32 CreatureID, Object Obj, bool Take){
+	if(CreatureID == 0){
+		return;
+	}
+
+	if(!ObjectAccessible(CreatureID, Obj, 1)){
+		throw NOTACCESSIBLE;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(UNMOVE)){
+		throw NOTMOVABLE;
+	}
+
+	if(ObjType.isCreatureContainer() && Obj.getCreatureID() != CreatureID){
+		TCreature *MovingCreature = GetCreature(Obj);
+		if(MovingCreature == NULL){
+			error("CheckMoveObject: Kreatur existiert nicht.\n");
+			throw ERROR;
+		}
+
+		if(GetRaceUnpushable(MovingCreature->Race) && (WorldType != NON_PVP || !MovingCreature->IsPeaceful())){
+			throw NOTMOVABLE;
+		}
+	}
+
+	if(Take && !ObjType.getFlag(TAKE)){
+		throw NOTTAKABLE;
+	}
+}
+
+// NOTE(fusion): This is a helper function for `CheckMapDestination` and improves
+// the readability of an otherwise convoluted function.
+static bool IsMapDestinationBlocked(int DestX, int DestY, int DestZ, ObjectType Type){
+	if(Type.isCreatureContainer()){
+		return false;
+	}
+
+	bool HasBank = CoordinateFlag(DestX, DestY, DestZ, BANK);
+	if(HasBank && !CoordinateFlag(DestX, DestY, DestZ, UNPASS)){
+		return false;
+	}
+
+	if(!Type.getFlag(UNPASS)){
+		if(HasBank && !CoordinateFlag(DestX, DestY, DestZ, UNLAY)){
+			return false;
+		}
+
+		if(CoordinateFlag(DestX, DestY, DestZ, HOOKSOUTH) || CoordinateFlag(DestX, DestY, DestZ, HOOKEAST)){
+			if(Type.getFlag(HANG) && !CoordinateFlag(DestX, DestY, DestZ, HANG)){
+				return true;
+			}
+		}
+	}
+
+	return true;
+}
+
+void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon){
+	if(CreatureID == 0){
+		return;
+	}
+
+	int DestX, DestY, DestZ;
+	ObjectType ObjType = Obj.getObjectType();
+	GetObjectCoordinates(MapCon, &DestX, &DestY, &DestZ);
+	if(IsMapDestinationBlocked(DestX, DestY, DestZ, ObjType)){
+		throw NOROOM;
+	}
+
+	int OrigX, OrigY, OrigZ;
+	GetObjectCoordinates(Obj, &OrigX, &OrigY, &OrigZ);
+	if(ObjType.isCreatureContainer()){
+		if(std::abs(OrigX - DestX) > 1
+				|| std::abs(OrigY - DestY) > 1
+				|| std::abs(OrigZ - DestZ) > 1){
+			throw OUTOFRANGE;
+		}
+
+		if(DestZ == (OrigZ - 1)){
+			if(GetHeight(OrigX, OrigY, OrigZ) < 24){ // JUMP_HEIGHT ?
+				throw NOROOM;
+			}
+		}else if(DestZ == (OrigZ + 1)){
+			if(GetHeight(DestX, DestY, DestZ) < 24){ // JUMP_HEIGHT ?
+				throw NOWAY;
+			}
+		}
+
+		// TODO(fusion): Should probably check if moving creature is NULL?
+		TCreature *MovingCreature = GetCreature(Obj);
+		if(OrigZ == DestZ || MovingCreature->Type != MONSTER){
+			if(!MovingCreature->MovePossible(DestX, DestY, DestZ, true, OrigZ != DestZ)){
+				if(CreatureID == MovingCreature->ID){
+					throw MOVENOTPOSSIBLE;
+				}else{
+					throw NOROOM;
+				}
+			}
+
+			if(CreatureID != MovingCreature->ID){
+				if(CoordinateFlag(DestX, DestY, DestZ, AVOID)){
+					throw NOROOM;
+				}
+
+				if(IsProtectionZone(OrigX, OrigY, OrigZ) && !IsProtectionZone(DestX, DestY, DestZ)){
+					throw PROTECTIONZONE;
+				}
+			}
+		}
+	}else{
+		if(!ObjType.getFlag(TAKE) && !ObjectInRange(CreatureID, MapCon, 2)){
+			throw OUTOFRANGE;
+		}
+	}
+
+	// TODO(fusion): This looks awfully similar to `ObjectAccessible` outside
+	// from the exceptions and floor check.
+	if(ObjType.getFlag(HANG)){
+		bool HookSouth = CoordinateFlag(DestX, DestY, DestZ, HOOKSOUTH);
+		bool HookEast = CoordinateFlag(DestX, DestY, DestZ, HOOKEAST);
+		if(HookSouth || HookEast){
+			TCreature *Creature = GetCreature(CreatureID);
+			if(Creature == NULL){
+				error("CheckMapDestination: Ausführende Kreatur existiert nicht.\n");
+				throw ERROR;
+			}
+
+			if(Creature->posz > DestZ){
+				throw UPSTAIRS;
+			}else if(Creature->posz < DestZ){
+				throw DOWNSTAIRS;
+			}
+
+			if(HookSouth){
+				if(Creature->posy < DestY
+						|| Creature->posy > (DestY + 1)
+						|| Creature->posx < (DestX - 1)
+						|| Creature->posx > (DestX + 1)){
+					throw OUTOFRANGE;
+				}
+			}
+			
+			if(HookEast){
+				if(Creature->posx < DestX
+						|| Creature->posx > (DestX + 1)
+						|| Creature->posy < (DestY - 1)
+						|| Creature->posy > (DestY + 1)){
+					throw OUTOFRANGE;
+				}
+			}
+
+			return;
+		}
+	}
+
+	if(!ThrowPossible(OrigX, OrigY, OrigZ, DestX, DestY, DestZ, 1)){
+		throw CANNOTTHROW;
 	}
 }
 

@@ -805,8 +805,8 @@ bool SearchFreeField(int *x, int *y, int *z, int Distance, uint16 HouseID, bool 
 	return false;
 }
 
-// TODO(fusion): This is a helper function for `SearchLoginField`. Perhaps we
-// should try to merge it there?
+// NOTE(fusion): This is a helper function for `SearchLoginField` and improves
+// the readability of an otherwise convoluted function.
 static bool LoginPossible(int x, int y, int z, uint16 HouseID, bool Player){
 	Object Obj = GetFirstObject(x, y, z);
 	if(Obj == NONE){

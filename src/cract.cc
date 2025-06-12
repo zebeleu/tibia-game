@@ -986,10 +986,10 @@ void TCreature::ToDoWait(int Delay){
 }
 
 void TCreature::ToDoGo(int DestX, int DestY, int DestZ, bool MustReach, int MaxSteps){
-	if(this->posz < DestZ){
-		throw DOWNSTAIRS;
-	}else if(this->posz > DestZ){
+	if(this->posz > DestZ){
 		throw UPSTAIRS;
+	}else if(this->posz < DestZ){
+		throw DOWNSTAIRS;
 	}
 
 	if(this->LockToDo){
