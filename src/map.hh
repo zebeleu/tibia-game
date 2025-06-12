@@ -26,7 +26,7 @@ enum : int {
 	PRIORITY_BOTTOM = 2,
 	PRIORITY_TOP = 3,
 	PRIORITY_CREATURE = 4,
-	PRIORITY_OTHER = 5,
+	PRIORITY_LOW = 5,
 };
 
 struct Object {

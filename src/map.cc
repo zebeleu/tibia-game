@@ -2017,7 +2017,7 @@ int GetObjectPriority(Object Obj){
 	}else if(ObjType.isCreatureContainer()){
 		ObjPriority = PRIORITY_CREATURE;
 	}else{
-		ObjPriority = PRIORITY_OTHER;
+		ObjPriority = PRIORITY_LOW;
 	}
 	return ObjPriority;
 }
@@ -2043,11 +2043,11 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 	Object Cur(Con.getAttribute(CONTENT));
 	if(ConType.isMapContainer()){
 		// TODO(fusion): Review. The loop below was a bit rough but it seems that
-		// append is forced for non PRIORITY_CREATURE and PRIORITY_OTHER.
+		// append is forced for non PRIORITY_CREATURE and PRIORITY_LOW.
 		int ObjPriority = GetObjectPriority(Obj);
 		Append = Append
 			|| (ObjPriority != PRIORITY_CREATURE
-				&& ObjPriority != PRIORITY_OTHER);
+				&& ObjPriority != PRIORITY_LOW);
 
 		while(Cur != NONE){
 			int CurPriority = GetObjectPriority(Cur);

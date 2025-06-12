@@ -4,7 +4,6 @@
 #include "stubs.hh"
 
 // operate.cc
-void CheckTopMoveObject(uint32 CreatureID, Object Obj, Object Ignore);
 void CheckMoveObject(uint32 CreatureID, Object Obj, bool Take);
 void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon);
 void CheckDepotSpace(uint32 CreatureID, Object Source, Object Destination, int Count);
@@ -27,6 +26,12 @@ void SeparationEvent(Object Obj, Object Start);
 //==================================================================================================
 //==================================================================================================
 
+// TODO(fusion): The radii parameters for `TFindCreatures` are commonly around
+// 16 and 14 for x and y respectively so there is probably some constant involved.
+//	Also, since we're talking about radii, these values are quite large when you
+// consider the regular client's viewport dimensions of 15x11 visible fields or
+// 18x14 total fields.
+
 void AnnounceMovingCreature(uint32 CreatureID, Object Con){
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
@@ -37,12 +42,11 @@ void AnnounceMovingCreature(uint32 CreatureID, Object Con){
 	int ConX, ConY, ConZ;
 	GetObjectCoordinates(Con, &ConX, &ConY, &ConZ);
 
-	// TODO(fusion): 17 and 15 are probably related to the client's viewport dimensions.
-	int SearchWidth = 17 + std::abs(Creature->posx - ConX) / 2;
-	int SearchHeight = 15 + std::abs(Creature->posy - ConY) / 2;
+	int SearchRadiusX = 16 + (std::abs(Creature->posx - ConX) / 2) + 1;
+	int SearchRadiusY = 14 + (std::abs(Creature->posy - ConY) / 2) + 1;
 	int SearchCenterX = (Creature->posx + ConX) / 2;
 	int SearchCenterY = (Creature->posy + ConY) / 2;
-	TFindCreatures Search(SearchWidth, SearchHeight, SearchCenterX, SearchCenterY, FIND_PLAYERS);
+	TFindCreatures Search(SearchRadiusX, SearchRadiusY, SearchCenterX, SearchCenterY, FIND_PLAYERS);
 	while(true){
 		uint32 CharacterID = Search.getNext();
 		if(CharacterID == 0){
@@ -50,9 +54,11 @@ void AnnounceMovingCreature(uint32 CreatureID, Object Con){
 		}
 
 		TPlayer *Player = GetPlayer(CharacterID);
-		if(Player != NULL && Player->Connection != NULL){
-			SendMoveCreature(Player->Connection, CreatureID, ConX, ConY, ConZ);
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
 		}
+
+		SendMoveCreature(Player->Connection, CreatureID, ConX, ConY, ConZ);
 	}
 }
 
@@ -103,8 +109,11 @@ void AnnounceChangedField(Object Obj, int Type){
 		}
 
 		TPlayer *Player = GetPlayer(CharacterID);
-		if(Player == NULL || Player->Connection == NULL
-				|| !Player->Connection->IsVisible(ObjX, ObjY, ObjZ)){
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
+		}
+
+		if(!Player->Connection->IsVisible(ObjX, ObjY, ObjZ)){
 			continue;
 		}
 
@@ -202,6 +211,187 @@ void AnnounceChangedObject(Object Obj, int Type){
 		AnnounceChangedInventory(Obj, Type);
 	}else{
 		AnnounceChangedContainer(Obj, Type);
+	}
+}
+
+void AnnounceGraphicalEffect(int x, int y, int z, int Type){
+	if(!IsOnMap(x, y, z)){
+		return;
+	}
+
+	TFindCreatures Search(16, 14, x, y, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
+		}
+
+		if(!Player->Connection->IsVisible(x, y, z)){
+			continue;
+		}
+
+		SendGraphicalEffect(Player->Connection, x, y, z, Type);
+	}
+}
+
+void AnnounceTextualEffect(int x, int y, int z, int Color, const char *Text){
+	if(!IsOnMap(x, y, z)){
+		return;
+	}
+
+	TFindCreatures Search(16, 14, x, y, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
+		}
+
+		if(!Player->Connection->IsVisible(x, y, z)){
+			continue;
+		}
+
+		SendTextualEffect(Player->Connection, x, y, z, Color, Text);
+	}
+}
+
+void AnnounceMissile(int OrigX, int OrigY, int OrigZ,
+		int DestX, int DestY, int DestZ, int Type){
+	if(!IsOnMap(OrigX, OrigY, OrigZ) || !IsOnMap(DestX, DestY, DestZ)){
+		return;
+	}
+
+	int SearchRadiusX = 16 + (std::abs(OrigX - DestX) / 2) + 1;
+	int SearchRadiusY = 14 + (std::abs(OrigY - DestY) / 2) + 1;
+	int SearchCenterX = (OrigX + DestX) / 2;
+	int SearchCenterY = (OrigY + DestY) / 2;
+	TFindCreatures Search(SearchRadiusX, SearchRadiusY, SearchCenterX, SearchCenterY, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
+		}
+
+		if(!Player->Connection->IsVisible(OrigX, OrigY, OrigY)
+		&& !Player->Connection->IsVisible(DestX, DestY, DestZ)){
+			continue;
+		}
+
+		SendMissileEffect(Player->Connection,
+				OrigX, OrigY, OrigY,
+				DestX, DestY, DestZ, Type);
+	}
+}
+
+void CheckTopMoveObject(uint32 CreatureID, Object Obj, Object Ignore){
+	if(!Obj.exists()){
+		error("CheckTopMoveObject: Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(CreatureID == 0 || !IsCreaturePlayer(CreatureID)){
+		return;
+	}
+
+	Object Con = Obj.getContainer();
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.isMapContainer()){
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isCreatureContainer() && Obj.getCreatureID() == CreatureID){
+		return;
+	}
+
+	Object Best = NONE;
+	bool BestIsCreature = false;
+	Object Help = GetFirstContainerObject(Con);
+	while(Help != NONE){
+		if(Help != Ignore){
+			ObjectType HelpType = Help.getObjectType();
+
+			// NOTE(fusion): We're looking for the top move object. The creature
+			// check here makes sure only the first creature found is kept as the
+			// best candidate, since creatures on a map container are in a sequence.
+			if(Best == NONE || (!HelpType.getFlag(UNMOVE) && (!BestIsCreature || !HelpType.isCreatureContainer()))){
+				Best = Help;
+				BestIsCreature = HelpType.isCreatureContainer();
+			}
+
+			// TODO(fusion): This is probably some inlined function to check whether
+			// an object has a low stack priority.
+			if(!HelpType.getFlag(BANK)
+					&& !HelpType.getFlag(CLIP)
+					&& !HelpType.getFlag(BOTTOM)
+					&& !HelpType.getFlag(TOP)
+					&& !HelpType.isCreatureContainer()){
+				break;
+			}
+		}
+		Help = Help.getNextObject();
+	}
+
+	if(Obj != Best){
+		throw NOTACCESSIBLE;
+	}
+}
+
+void CheckTopUseObject(uint32 CreatureID, Object Obj){
+	if(!Obj.exists()){
+		error("CheckTopUseObject: Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(CreatureID == 0 || !IsCreaturePlayer(CreatureID)){
+		return;
+	}
+
+	Object Con = Obj.getContainer();
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.isMapContainer()){
+		return;
+	}
+
+	Object Best = NONE;
+	Object Help = GetFirstContainerObject(Con);
+	while(Help != NONE){
+		ObjectType HelpType = Help.getObjectType();
+		if(Best == NONE || (!HelpType.isCreatureContainer() && !HelpType.getFlag(LIQUIDPOOL))){
+			Best = Help;
+		}
+
+		if(HelpType.getFlag(FORCEUSE)){
+			break;
+		}
+
+		if(!HelpType.getFlag(BANK)
+				&& !HelpType.getFlag(CLIP)
+				&& !HelpType.getFlag(BOTTOM)
+				&& !HelpType.getFlag(TOP)
+				&& !HelpType.isCreatureContainer()){
+			break;
+		}
+
+		Help = Help.getNextObject();
+	}
+
+	if(Obj != Best){
+		throw NOTACCESSIBLE;
 	}
 }
 
@@ -343,6 +533,9 @@ void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Ob
 		error("Move: Übergebenes Objekt existiert nicht mehr.\n");
 	}
 
+	// NOTE(fusion): Refresh object type just in case a merge event modified it.
+	ObjType = Obj.getObjectType();
+
 	int ObjCount = 1;
 	if(ObjType.getFlag(CUMULATIVE)){
 		ObjCount = (int)Obj.getAttribute(AMOUNT);
@@ -378,7 +571,7 @@ void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Ob
 		}
 	}
 
-	// NOTE(fusion): `Obj` becomes the split part while `Remainder`, the remainder.
+	// NOTE(fusion): `Obj` becomes the split part while `Remainder`, the remaining part.
 	Object Remainder = NONE;
 	if(Split){
 		Remainder = Obj;
