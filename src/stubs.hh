@@ -15,10 +15,7 @@ typedef void TRefreshSectorFunction(int SectorX, int SectorY, int SectorZ, const
 typedef void TSendMailsFunction(TPlayerData *PlayerData);
 
 extern void AbortWriter(void);
-extern void AnnounceChangedCreature(uint32 CreatureID, int Type);
-extern void AnnounceChangedObject(Object Obj, int Type);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
-extern void Change(Object Obj, ObjectType NewType, uint32 Value);
 extern void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 			uint32 Offender, const char *Remark, bool Unjustified);
@@ -26,18 +23,14 @@ extern bool CheckRight(uint32 CreatureID, RIGHT Right);
 extern void CleanHouseField(int x, int y, int z);
 extern void ConvinceMonster(TCreature *Master, TCreature *Slave);
 extern void ChallengeMonster(TCreature *Challenger, TCreature *Monster);
-extern Object Create(Object Con, ObjectType Type, uint32 Value);
 extern Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value);
 extern TCreature *CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master, bool ShowEffect);
 extern void CreatePlayerList(bool Online);
 extern void CreatePool(Object Con, ObjectType Type, uint32 Value);
-extern void Delete(Object Obj, int Count);
 extern void GetExitPosition(uint16 HouseID, int *x, int *y, int *z);
 extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
 extern TPlayer *GetPlayer(uint32 CreatureID);
-extern void GraphicalEffect(int x, int y, int z, int Type);
-extern void GraphicalEffect(Object Obj, int Type);
 extern int IdentifyPlayer(const char *Name, bool ExactMatch, bool IgnoreGamemasters, TPlayer **Player);
 extern void InitLog(const char *ProtocolName);
 extern void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest);
@@ -47,12 +40,8 @@ extern void LoadMonsterRaid(const char *FileName, int Start,
 		bool *Type, int *Date, int *Interval, int *Duration);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutAllPlayers(void);
-extern void Missile(Object Start, Object Dest, int Type);
-extern void Merge(uint32 CreatureID, Object Obj, Object Dest, int Count, Object Ignore);
-extern void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Object Ignore);
 extern void NetLoadCheck(void);
 extern void NetLoadSummary(void);
-extern void NotifyAllCreatures(Object Obj, int Type, Object OldCon);
 extern void ProcessCommunicationControl(void);
 extern void ProcessConnections(void);
 extern void ProcessCronSystem(void);
@@ -67,6 +56,7 @@ extern void SavePlayerDataOrder(void);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);
 extern void SendClearTarget(TConnection *Connection);
+extern void SendContainer(TConnection *Connection, int ContainerNr);
 extern void SendCloseContainer(TConnection *Connection, int ContainerNr);
 extern void SendCloseTrade(TConnection *Connection);
 extern void SendCreatureHealth(TConnection *Connection, uint32 CreatureID);
@@ -104,8 +94,10 @@ extern void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
 extern void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
-extern void TextualEffect(Object Obj, int Color, const char *Text, ...) ATTR_PRINTF(3, 4);
 extern void Turn(uint32 CreatureID, Object Obj);
 extern void Use(uint32 CreatureID, Object Obj1, Object Object2, uint8 Info);
+extern void MovementEvent(Object Obj, Object Start, Object Dest);
+extern void CollisionEvent(Object Obj, Object Dest);
+extern void SeparationEvent(Object Obj, Object Start);
 
 #endif //TIBIA_STUBS_HH_

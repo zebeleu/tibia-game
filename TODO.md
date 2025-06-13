@@ -28,5 +28,9 @@ The decompiled file has ~115K lines of C. If we take ~15K lines to be rubbish, t
 - Replace unsafe libc functions like `strcpy`, `strncpy`, `strcat`, `sprintf` etc...
 - Handle connections inline with `poll`/`epoll` (probably?).
 - Remove exceptions.
+	- Would be desirable but I feel it could change too much of the original code flow while also
+		littering functions with early return checks like `if(err != NOERROR) { return err }` although
+		we could also have some macros to simplify this since we know we only use `RESULT` for errors.
+		But then would we be in a better place?
 - Review signal usage for timing (SIGALRM, etc...).
 - Support Windows.

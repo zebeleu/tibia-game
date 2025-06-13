@@ -486,6 +486,17 @@ Object GetInventoryObject(uint32 CreatureID, ObjectType Type, uint32 Value){
 	return Result;
 }
 
+bool IsHeldByContainer(Object Obj, Object Con){
+	// TODO(fusion): Why do we check for map container in some loops?
+	while(Obj != NONE && !Obj.getObjectType().isMapContainer()){
+		if(Obj == Con){
+			return true;
+		}
+		Obj = Obj.getContainer();
+	}
+	return false;
+}
+
 int CountObjectsInContainer(Object Con){
 	if(!Con.exists()){
 		error("CountObjectsInContainer: Container existiert nicht.\n");

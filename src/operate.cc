@@ -4,29 +4,6 @@
 
 #include "stubs.hh"
 
-// operate.cc
-void CheckMoveObject(uint32 CreatureID, Object Obj, bool Take);
-void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon);
-void CheckDepotSpace(uint32 CreatureID, Object Source, Object Destination, int Count);
-void CheckWeight(uint32 CreatureID, Object Obj, int Count);
-void NotifyCreature(uint32 CreatureID, Object Obj, bool Inventory);
-void NotifyCreature(uint32 CreatureID, ObjectType Type, bool Inventory);
-//void NotifyAllCreatures(Object Obj, int Type, Object OldCon);
-void NotifyTrades(Object Obj);
-void NotifyDepot(uint32 CreatureID, Object Obj, int Count);
-void CloseContainer(Object Con, bool Force);
-
-// moveuse.cc
-void MovementEvent(Object Obj, Object Start, Object Dest);
-void CollisionEvent(Object Obj, Object Dest);
-void SeparationEvent(Object Obj, Object Start);
-
-
-//==================================================================================================
-//==================================================================================================
-//==================================================================================================
-//==================================================================================================
-
 // TODO(fusion): The radii parameters for `TFindCreatures` are commonly around
 // 16 and 14 for x and y respectively so there is probably some constant involved.
 //	Also, since we're talking about radii, these values are quite large when you
@@ -449,9 +426,9 @@ void CheckMoveObject(uint32 CreatureID, Object Obj, bool Take){
 	}
 }
 
-// NOTE(fusion): This is a helper function for `CheckMapDestination` and improves
-// the readability of an otherwise convoluted function.
-static bool IsMapDestinationBlocked(int DestX, int DestY, int DestZ, ObjectType Type){
+// NOTE(fusion): This is a helper function for `CheckMapDestination` and `CheckMapPlace`
+// and improves the readability of otherwise two convoluted functions.
+static bool IsMapBlocked(int DestX, int DestY, int DestZ, ObjectType Type){
 	if(Type.isCreatureContainer()){
 		return false;
 	}
@@ -466,9 +443,11 @@ static bool IsMapDestinationBlocked(int DestX, int DestY, int DestZ, ObjectType 
 			return false;
 		}
 
-		if(CoordinateFlag(DestX, DestY, DestZ, HOOKSOUTH) || CoordinateFlag(DestX, DestY, DestZ, HOOKEAST)){
-			if(Type.getFlag(HANG) && !CoordinateFlag(DestX, DestY, DestZ, HANG)){
-				return true;
+		if(Type.getFlag(HANG)){
+			bool HasHook = CoordinateFlag(DestX, DestY, DestZ, HOOKSOUTH)
+						|| CoordinateFlag(DestX, DestY, DestZ, HOOKEAST);
+			if(HasHook && !CoordinateFlag(DestX, DestY, DestZ, HANG)){
+				return false;
 			}
 		}
 	}
@@ -484,7 +463,7 @@ void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon){
 	int DestX, DestY, DestZ;
 	ObjectType ObjType = Obj.getObjectType();
 	GetObjectCoordinates(MapCon, &DestX, &DestY, &DestZ);
-	if(IsMapDestinationBlocked(DestX, DestY, DestZ, ObjType)){
+	if(IsMapBlocked(DestX, DestY, DestZ, ObjType)){
 		throw NOROOM;
 	}
 
@@ -507,8 +486,12 @@ void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon){
 			}
 		}
 
-		// TODO(fusion): Should probably check if moving creature is NULL?
 		TCreature *MovingCreature = GetCreature(Obj);
+		if(MovingCreature == NULL){
+			error("CheckMapDestination: Moving creature is NULL.");
+			throw ERROR;
+		}
+
 		if(OrigZ == DestZ || MovingCreature->Type != MONSTER){
 			if(!MovingCreature->MovePossible(DestX, DestY, DestZ, true, OrigZ != DestZ)){
 				if(CreatureID == MovingCreature->ID){
@@ -579,14 +562,34 @@ void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon){
 	}
 }
 
-// TODO(fusion): This could have been a simple return value.
-void CheckContainerDestination(Object Obj, Object Con){
-	Object Help = Con;
-	while(Help != NONE && !Help.getObjectType().isMapContainer()){
-		if(Help == Obj){
-			throw CROSSREFERENCE;
+void CheckMapPlace(uint32 CreatureID, ObjectType Type, Object MapCon){
+	int DestX, DestY, DestZ;
+	GetObjectCoordinates(MapCon, &DestX, &DestY, &DestZ);
+
+	if(!Type.getFlag(UNMOVE) && !CoordinateFlag(DestX, DestY, DestZ, BANK)){
+		if(!Type.getFlag(HANG)){
+			throw NOROOM;
 		}
-		Help = Help.getContainer();
+
+		if(!CoordinateFlag(DestX, DestY, DestZ, HOOKSOUTH)
+		&& !CoordinateFlag(DestX, DestY, DestZ, HOOKEAST)){
+			throw NOROOM;
+		}
+	}
+
+	// TODO(fusion): The original function used a slightly modified version of
+	// `IsMapBlocked` which wouldn't check if there was already a HANG item at
+	// the destination but since this function seems to only be called from
+	// `Create` which sets `CreatureID` to zero, I assume this was probably an
+	// oversight?
+	if(CreatureID != 0 && IsMapBlocked(DestX, DestY, DestZ, Type)){
+		throw NOROOM;
+	}
+}
+
+void CheckContainerDestination(Object Obj, Object Con){
+	if(IsHeldByContainer(Con, Obj)){
+		throw CROSSREFERENCE;
 	}
 
 	ObjectType ConType = Con.getObjectType();
@@ -594,6 +597,60 @@ void CheckContainerDestination(Object Obj, Object Con){
 		int ConObjects = CountObjectsInContainer(Con);
 		int ConCapacity = (int)ConType.getAttribute(CAPACITY);
 		if(ConObjects >= ConCapacity){
+			throw CONTAINERFULL;
+		}
+	}
+}
+
+void CheckContainerPlace(ObjectType Type, Object Con, Object OldObj){
+	if(Type == GetSpecialObject(DEPOT_CHEST)){
+		return;
+	}
+
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.getFlag(CHEST)){
+		if(Type.getFlag(UNMOVE)){
+			throw NOTMOVABLE;
+		}
+
+		if(!Type.getFlag(TAKE)){
+			throw NOTTAKABLE;
+		}
+
+		if(OldObj == NONE){
+			int ConObjects = CountObjectsInContainer(Con);
+			int ConCapacity = (int)ConType.getAttribute(CAPACITY);
+			if(ConObjects >= ConCapacity){
+				throw CONTAINERFULL;
+			}
+		}
+	}
+}
+
+void CheckDepotSpace(uint32 CreatureID, Object Source, Object Destination, int Count){
+	if(CreatureID == 0){
+		return;
+	}
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("CheckDepotSpace: Kreatur %u existiert nicht.\n", CreatureID);
+		throw ERROR;
+	}
+
+	if(Destination == NONE){
+		error("CheckDepotSpace: Ziel existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER){
+		TPlayer *Player = (TPlayer*)Creature;
+		if(Player->Depot == NONE || Count <= Player->DepotSpace){
+			return;
+		}
+
+		if(!IsHeldByContainer(Source, Player->Depot)
+		&& IsHeldByContainer(Destination, Player->Depot)){
 			throw CONTAINERFULL;
 		}
 	}
@@ -619,7 +676,7 @@ void CheckInventoryDestination(Object Obj, Object Con, bool Split){
 	}
 
 	uint32 CreatureID = GetObjectCreatureID(Con);
-	if(ObjType.isTwoHanded() && HandContainer){
+	if(HandContainer && ObjType.isTwoHanded()){
 		Object RightHand = GetBodyObject(CreatureID, INVENTORY_RIGHTHAND);
 		if(RightHand != NONE && RightHand != Obj){
 			throw HANDSNOTFREE;
@@ -656,6 +713,546 @@ void CheckInventoryDestination(Object Obj, Object Con, bool Split){
 			}
 		}
 	}
+}
+
+void CheckInventoryPlace(ObjectType Type, Object Con, Object OldObj){
+	// TODO(fusion): This is awfully similar to `CheckInventoryDestination` with
+	// a few subtle differences. Perhaps they use the same underlying function?
+
+	int ConPosition = GetObjectBodyPosition(Con);
+	bool HandContainer = ConPosition == INVENTORY_RIGHTHAND
+					|| ConPosition == INVENTORY_LEFTHAND;
+
+	if(!HandContainer && ConPosition != INVENTORY_AMMO){
+		if(!Type.getFlag(CLOTHES)){
+			throw WRONGPOSITION;
+		}
+
+		int TypePosition = (int)Type.getAttribute(BODYPOSITION);
+		if(TypePosition == 0){
+			throw WRONGPOSITION2;
+		}else if(TypePosition != ConPosition){
+			throw WRONGCLOTHES;
+		}
+	}
+
+	uint32 CreatureID = GetObjectCreatureID(Con);
+	if(HandContainer && Type.isTwoHanded()){
+		Object RightHand = GetBodyObject(CreatureID, INVENTORY_RIGHTHAND);
+		if(RightHand != NONE && RightHand != OldObj){
+			throw HANDSNOTFREE;
+		}
+
+		Object LeftHand = GetBodyObject(CreatureID, INVENTORY_LEFTHAND);
+		if(LeftHand != NONE && LeftHand != OldObj){
+			throw HANDSNOTFREE;
+		}
+
+		return;
+	}
+
+	if(GetBodyObject(CreatureID, ConPosition) != NONE
+	&& GetBodyObject(CreatureID, ConPosition) != OldObj){
+		throw NOROOM;
+	}
+
+	if(HandContainer){
+		for(int Position = INVENTORY_HAND_FIRST;
+				Position <= INVENTORY_HAND_LAST;
+				Position += 1){
+			Object Other = GetBodyObject(CreatureID, Position);
+			if(Other != NONE && Other != OldObj){
+				ObjectType OtherType = Other.getObjectType();
+				if(OtherType.isTwoHanded()){
+					throw HANDBLOCKED;
+				}
+
+				if(OtherType.isWeapon() && Type.isWeapon()){
+					throw ONEWEAPONONLY;
+				}
+			}
+		}
+	}
+}
+
+void CheckWeight(uint32 CreatureID, Object Obj, int Count){
+	if(GetObjectCreatureID(Obj) == CreatureID){
+		return;
+	}
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("CheckWeight: Kreatur %d existiert nicht.\n", CreatureID);
+		throw ERROR;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(TAKE)){
+		throw TOOHEAVY;
+	}
+
+	if(Creature->Type == PLAYER){
+		if(CheckRight(CreatureID, UNLIMITED_CAPACITY)){
+			return;
+		}
+
+		if(CheckRight(CreatureID, ZERO_CAPACITY)){
+			throw TOOHEAVY;
+		}
+	}
+
+	TSkill *CarryStrength = Creature->Skills[SKILL_CARRY_STRENGTH];
+	if(CarryStrength == NULL){
+		error("CheckWeight: Skill CARRYSTRENGTH existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int ObjWeight;
+	if(ObjType.getFlag(CUMULATIVE)){
+		ObjWeight = GetWeight(Obj, Count);
+	}else{
+		ObjWeight = GetCompleteWeight(Obj);
+	}
+
+	int InventoryWeight = GetInventoryWeight(CreatureID);
+	int MaxWeight = CarryStrength->Get() * 100;
+	if((InventoryWeight + ObjWeight) > MaxWeight){
+		throw TOOHEAVY;
+	}
+}
+
+void CheckWeight(uint32 CreatureID, ObjectType Type, uint32 Value, int OldWeight){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("CheckWeight: Kreatur %d existiert nicht.\n", CreatureID);
+		throw ERROR;
+	}
+
+	if(!Type.getFlag(TAKE)){
+		throw TOOHEAVY;
+	}
+
+	if(Creature->Type == PLAYER){
+		if(CheckRight(CreatureID, UNLIMITED_CAPACITY)){
+			return;
+		}
+
+		if(CheckRight(CreatureID, ZERO_CAPACITY)){
+			throw TOOHEAVY;
+		}
+	}
+
+	TSkill *CarryStrength = Creature->Skills[SKILL_CARRY_STRENGTH];
+	if(CarryStrength == NULL){
+		error("CheckWeight: Skill CARRYSTRENGTH existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TypeWeight = (int)Type.getAttribute(WEIGHT);
+	if(Type.getFlag(CUMULATIVE) && (int)Value > 1){
+		TypeWeight *= (int)Value;
+	}
+
+	if(TypeWeight > OldWeight){
+		int InventoryWeight = GetInventoryWeight(CreatureID);
+		int MaxWeight = CarryStrength->Get() * 100;
+		if((InventoryWeight + TypeWeight) > MaxWeight){
+			throw TOOHEAVY;
+		}
+	}
+}
+
+void NotifyCreature(uint32 CreatureID, Object Obj, bool Inventory){
+	if(CreatureID == 0){
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.isCreatureContainer()){
+		TCreature *Creature = GetCreature(CreatureID);
+		if(Creature == NULL){
+			error("NotifyCreature: Kreatur existiert nicht.\n");
+			return;
+		}
+
+		if(Inventory && ObjType.getFlag(LIGHT)){
+			AnnounceChangedCreature(CreatureID, CREATURE_LIGHT_CHANGED);
+		}
+
+		Creature->NotifyChangeInventory();
+	}
+}
+
+void NotifyCreature(uint32 CreatureID, ObjectType Type, bool Inventory){
+	if(CreatureID == 0){
+		return;
+	}
+
+	// TODO(fusion): Shouldn't we check if `Type` is creature container too?
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("NotifyCreature: Kreatur existiert nicht.\n");
+		return;
+	}
+
+	if(Inventory && Type.getFlag(LIGHT)){
+		AnnounceChangedCreature(CreatureID, CREATURE_LIGHT_CHANGED);
+	}
+
+	Creature->NotifyChangeInventory();
+}
+
+void NotifyAllCreatures(Object Obj, int Type, Object OldCon){
+	if(!Obj.exists()){
+		error("NotifyAllCreatures: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.isCreatureContainer()){
+		return;
+	}
+
+	int ObjX, ObjY, ObjZ;
+	uint32 CreatureID = Obj.getCreatureID();
+	GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+
+	constexpr int StimulusRadius = 10;
+	int SearchRadiusX = StimulusRadius;
+	int SearchRadiusY = StimulusRadius;
+	int SearchCenterX = ObjX;
+	int SearchCenterY = ObjY;
+	if(Type == OBJECT_MOVED){
+		if(!OldCon.exists()){
+			error("NotifyAllCreatures: Übergebener alter Container existiert nicht.\n");
+			return;
+		}
+
+		// NOTE(fusion): Report stimulus as `OBJECT_CHANGED`.
+		Type = OBJECT_CHANGED;
+
+		// NOTE(fusion): Perform a secondary search if the distances are beyond
+		// the stimulus diameter or, extend the primary search otherwise.
+		int OldX, OldY, OldZ;
+		GetObjectCoordinates(OldCon, &OldX, &OldY, &OldZ);
+		int DistanceX = std::abs(ObjX - OldX);
+		int DistanceY = std::abs(ObjY - OldY);
+		if(DistanceX > (StimulusRadius * 2) || DistanceY > (StimulusRadius * 2)){
+			TFindCreatures Search(StimulusRadius, StimulusRadius, OldX, OldY, FIND_ALL);
+			while(true){
+				uint32 SpectatorID = Search.getNext();
+				if(SpectatorID == 0){
+					break;
+				}
+
+				// TODO(fusion): Check if the spectator is NULL?
+				TCreature *Spectator = GetCreature(SpectatorID);
+				Spectator->CreatureMoveStimulus(CreatureID, Type);
+			}
+		}else{
+			SearchRadiusX = StimulusRadius + (DistanceX + 1) / 2;
+			SearchRadiusY = StimulusRadius + (DistanceY + 1) / 2;
+			SearchCenterX = (ObjX + OldX) / 2;
+			SearchCenterY = (ObjY + OldY) / 2;
+		}
+	}
+
+	TFindCreatures Search(SearchRadiusX, SearchRadiusY, SearchCenterX, SearchCenterY, FIND_ALL);
+	while(true){
+		uint32 SpectatorID = Search.getNext();
+		if(SpectatorID == 0){
+			break;
+		}
+
+		// TODO(fusion): Check if the spectator is NULL?
+		TCreature *Spectator = GetCreature(SpectatorID);
+		Spectator->CreatureMoveStimulus(CreatureID, Type);
+	}
+}
+
+void NotifyTrades(Object Obj){
+	if(!Obj.exists()){
+		error("NotifyTrades: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isCreatureContainer()){
+		return;
+	}
+
+	// TODO(fusion): These radii seem to be correct but I'm skeptical because
+	// you're required to be close to the trade object to even start the trade.
+	// Maybe you can walk around after a trade is started?
+	TFindCreatures Search(12, 10, Obj, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL){
+			error("NotifyTrade: Spieler existiert nicht.\n");
+			continue;
+		}
+
+		Object TradeObject = Player->InspectTrade(true, 0);
+		if(TradeObject != NONE){
+			if(IsHeldByContainer(Obj, TradeObject) || IsHeldByContainer(TradeObject, Obj)){
+				SendCloseTrade(Player->Connection);
+				SendMessage(Player->Connection, TALK_FAILURE_MESSAGE, "Trade cancelled.");
+				Player->RejectTrade();
+			}
+		}
+	}
+}
+
+void NotifyDepot(uint32 CreatureID, Object Obj, int Count){
+	if(CreatureID == 0){
+		return;
+	}
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("NotifyDepot: Kreatur %u existiert nicht.\n", CreatureID);
+		// TODO(fusion): We should probably also throw here.
+		//throw ERROR;
+		return;
+	}
+
+	if(!Obj.exists()){
+		error("NotifyDepot: Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Creature->Type == PLAYER){
+		TPlayer *Player = (TPlayer*)Creature;
+		if(Player->Depot == NONE){
+			return;
+		}
+
+		if(IsHeldByContainer(Obj, Player->Depot)){
+			Player->DepotSpace += Count;
+			print(3, "Neuer Depot-Freiraum für %s: %d\n",
+					Player->Name, Player->DepotSpace);
+		}
+	}
+}
+
+void CloseContainer(Object Con, bool Force){
+	if(!Con.exists()){
+		error("CloseContainer: Übergebener Container existiert nicht.\n");
+		return;
+	}
+
+	ObjectType ConType = Con.getObjectType();
+	if(ConType.isCreatureContainer()){
+		return;
+	}
+
+	// TODO(fusion): Similar to `NotifyTrades`.
+	TFindCreatures Search(12, 10, Con, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL){
+			error("CloseContainer: Spieler existiert nicht.\n");
+			continue;
+		}
+
+		for(int ContainerNr = 0;
+				ContainerNr < NARRAY(Player->OpenContainer);
+				ContainerNr += 1){
+			Object OpenCon = Player->GetOpenContainer(ContainerNr);
+			if(IsHeldByContainer(OpenCon, Con)){
+				if(Force || !ObjectAccessible(Player->ID, Con, 1)){
+					Player->SetOpenContainer(ContainerNr, NONE);
+					SendCloseContainer(Player->Connection, ContainerNr);
+				}else{
+					// TODO(fusion): Why are we doing this? Is the container being refreshed?
+					SendContainer(Player->Connection, ContainerNr);
+				}
+			}
+		}
+	}
+}
+
+Object Create(Object Con, ObjectType Type, uint32 Value){
+	if(!Con.exists()){
+		error("Create: Zielobjekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.getFlag(CONTAINER) && !ConType.getFlag(CHEST)){
+		error("Create: Zielobjekt ist kein Container.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): The map container does indeed use type id zero but it seems
+	// it is also considered a "no type" id so we might also want to add an alias
+	// to it as `isValid()`, `isVoid()`, `isNone()`, or `isNull()` perhaps.
+	if(Type.isMapContainer()){
+		error("Create: Objekttyp existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(ConType.isMapContainer()){
+		CheckMapPlace(0, Type, Con);
+	}else if(ConType.isBodyContainer()){
+		CheckInventoryPlace(Type, Con, NONE);
+	}else{
+		CheckContainerPlace(Type, Con, NONE);
+	}
+
+	uint32 ConOwnerID = GetObjectCreatureID(Con);
+	if(ConOwnerID != 0){
+		CheckWeight(ConOwnerID, Type, Value, 0);
+	}
+
+	// NOTE(fusion): Attempt to merge with top object.
+	if(ConType.isMapContainer() && Type.getFlag(CUMULATIVE)){
+		int ConX, ConY, ConZ;
+		GetObjectCoordinates(Con, &ConX, &ConY, &ConZ);
+		Object Top = GetTopObject(ConX, ConY, ConZ, true);
+		if(Top != NONE && Top.getObjectType() == Type){
+			uint32 Count = Top.getAttribute(AMOUNT);
+			if(Value != 0){
+				Count += Value;
+			}else{
+				Count += 1;
+			}
+
+			if(Count <= 100){
+				Change(Top, AMOUNT, Count);
+				return Top;
+			}
+		}
+	}
+
+	// TODO(fusion): I feel these usages of `Value` should be exclusive?
+
+	Object Obj = SetObject(Con, Type, (Type.isCreatureContainer() ? Value : 0));
+
+	if(Type.getFlag(CUMULATIVE)){
+		ChangeObject(Obj, AMOUNT, Value);
+	}
+
+	if(Type.getFlag(MAGICFIELD)){
+		ChangeObject(Obj, RESPONSIBLE, Value);
+	}
+
+	if(Type.getFlag(LIQUIDPOOL)){
+		ChangeObject(POOLLIQUIDTYPE, Value);
+	}
+
+	if(Type.getFlag(LIQUIDCONTAINER)){
+		ChangeObject(CONTAINERLIQUIDTYPE, Value);
+	}
+
+	if(Type.getFlag(KEY)){
+		ChangeObject(KEYNUMBER, Value);
+	}
+
+	if(Type.getFlag(RUNE)){
+		ChangeObject(CHARGES, Value);
+	}
+
+	if(Type.isCreatureContainer()){
+		// BUG(fusion): We should just check this before creating the object.
+		// Also, using `Delete` instead of `DeleteObject` here is problematic
+		// because the object's placement wasn't yet broadcasted.
+		TCreature *Creature = GetCreature(Value);
+		if(Creature == NULL){
+			error("Create: Ungültige Kreatur-ID %u\n", Value);
+			Delete(Obj, -1);
+			throw ERROR;
+		}
+
+		// IMPORTANT(fusion): Creature body containers are created here and their
+		// type ids match inventory slots exactly. We're looping in reverse because
+		// `SetObject` will insert objects at the front of the object chain.
+		for(int Position = INVENTORY_LAST;
+				Position >= INVENTORY_FIRST;
+				Position -= 1){
+			SetObject(Obj, ObjectType(Position), 0);
+		}
+
+		Creature->NotifyCreate();
+	}
+
+	AnnounceChangedObject(Obj, OBJECT_CREATED);
+	NotifyTrades(Obj);
+	NotifyCreature(ConOwnerID, Obj, ConType.isBodyContainer());
+	MovementEvent(Obj, Con, Con); // TODO(fusion): This one doesn't make a lot of sense.
+	CollisionEvent(Obj, Con);
+	NotifyAllCreatures(Obj, OBJECT_CREATED, NONE);
+	return Obj;
+}
+
+Object Copy(Object Con, Object Source){
+	if(!Con.exists()){
+		error("Copy: Ziel existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.getFlag(CONTAINER) && !ConType.getFlag(CHEST)){
+		error("Copy: Ziel ist kein Container.\n");
+		throw ERROR;
+	}
+
+	if(!Source.exists()){
+		error("Copy: Quelle existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType SourceType = Source.getObjectType();
+	if(SourceType.isCreatureContainer()){
+		error("Copy: Quelle ist eine Kreatur.\n");
+		throw ERROR;
+	}
+
+	if(ConType.isMapContainer()){
+		CheckMapDestination(0, Source, Con);
+	}else if(ConType.isBodyContainer()){
+		// TODO(fusion): Not sure about this third param.
+		CheckInventoryDestination(Source, Con, true);
+	}else{
+		CheckContainerDestination(Source, Con);
+	}
+
+	uint32 ConOwnerID = GetObjectCreatureID(Con);
+	if(ConOwnerID != 0){
+		CheckWeight(ConOwnerID, Source, -1);
+	}
+
+	// TODO(fusion): Using `Copy` recursively here should work because the object
+	// is placed when `CopyObject` is called. The thing is, announce and notify
+	// functions will do meaningless work there (I think, check what happens when
+	// we're actually running).
+	Object Obj = CopyObject(Con, Source);
+	if(SourceType.getFlag(CONTAINER)){
+		Object Help = GetFirstContainerObject(Source);
+		while(Help != NONE){
+			Copy(Obj, Help);
+			Help = Help.getNextObject();
+		}
+	}
+
+	AnnounceChangedObject(Obj, OBJECT_CREATED);
+	NotifyTrades(Obj);
+	NotifyCreature(ConOwnerID, Obj, ConType.isBodyContainer());
+	MovementEvent(Obj, Con, Con); // TODO(fusion): Same as `Create`.
+	CollisionEvent(Obj, Con);
+	NotifyAllCreatures(Obj, OBJECT_CREATED, NONE);
+	return Obj;
 }
 
 void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Object Ignore){
@@ -778,6 +1375,10 @@ void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Ob
 
 	// TODO(fusion): This could probably be moved to the end of the function
 	// along with the other `CloseContainer`.
+	//	Probably the other way around, since events could modify the object
+	// and I don't think it makes a difference if we close it before or after
+	// performing the move.
+	//	Except it does because the object's position will be different lol.
 	if(ObjType.getFlag(CONTAINER) && CreatureID == 0){
 		CloseContainer(Obj, true);
 	}
@@ -825,7 +1426,7 @@ void Move(uint32 CreatureID, Object Obj, Object Con, int Count, bool NoMerge, Ob
 
 	MovementEvent(Obj, OldCon, Con);
 	CollisionEvent(Obj, Con);
-	NotifyAllCreatures(Obj, 3, OldCon); // CREATURE_MOVE_STIMULUS_ ?
+	NotifyAllCreatures(Obj, OBJECT_MOVED, OldCon);
 }
 
 void Merge(uint32 CreatureID, Object Obj, Object Dest, int Count, Object Ignore){
@@ -910,5 +1511,296 @@ void Merge(uint32 CreatureID, Object Obj, Object Dest, int Count, Object Ignore)
 	NotifyCreature(ObjOwnerID, Dest, ObjCon.getObjectType().isBodyContainer());
 	NotifyCreature(DestOwnerID, Dest, DestCon.getObjectType().isBodyContainer());
 	CollisionEvent(Dest, DestCon);
-	NotifyAllCreatures(Dest, 2, NONE); // CREATURE_MOVE_STIMULUS_ ?
+	NotifyAllCreatures(Dest, OBJECT_CHANGED, NONE);
+}
+
+void Change(Object Obj, ObjectType NewType, uint32 Value){
+	if(Obj.exists()){
+		error("Change: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType OldType = Obj.getObjectType();
+	if(OldType.isCreatureContainer() || NewType.isCreatureContainer()){
+		error("Change: Kann keine Kreaturen verändern.\n");
+		throw ERROR;
+	}
+
+	// TODO(fusion): Same thing as `Create`. The zero type id is also used as
+	// a "no type" id.
+	if(NewType.isMapContainer()){
+		Delete(Obj, -1);
+		return;
+	}
+
+	if(OldType.getFlag(CONTAINER)){
+		if(!NewType.getFlag(CONTAINER) && GetFirstContainerObject(Obj) != NONE){
+			error("Change: Zielobjekt %d für %d ist kein Container mehr.\n",
+					NewType.TypeID, OldType.TypeID);
+			throw EMPTYCONTAINER;
+		}
+
+		if(NewType.getFlag(CONTAINER)){
+			int ObjectCount = CountObjectsInContainer(Obj);
+			int NewCapacity = (int)NewType.getAttribute(CAPACITY);
+			if(ObjectCount < NewCapacity){
+				error("Change: Zielobjekt %d für %d ist kleinerer Container.\n",
+						NewType.TypeID, OldType.TypeID);
+				throw EMPTYCONTAINER;
+			}
+		}
+	}
+
+	if(OldType.getFlag(CHEST) && !NewType.getFlag(CHEST)){
+		error("Change: Schatztruhe muß Schatztruhe bleiben.\n");
+		throw ERROR;
+	}
+
+	if(OldType.getFlag(CUMULATIVE)
+			&& OldType != NewType
+			&& Obj.getAttribute(AMOUNT) > 1){
+		throw SPLITOBJECT;
+	}
+
+	Object Con = Obj.getContainer();
+	ObjectType ConType = Con.getObjectType();
+	uint32 ObjOwnerID = GetObjectCreatureID(Obj);
+	if(ObjOwnerID != 0 && OldType != NewType){
+		if(ConType.isBodyContainer()){
+			CheckInventoryPlace(NewType, Con, Obj);
+		}else{
+			CheckContainerPlace(NewType, Con, Obj);
+		}
+
+		uint32 Count = 1;
+		if(OldType.getFlag(CUMULATIVE)){
+			Count = Obj.getAttribute(AMOUNT);
+		}
+
+		int OldWeight = GetWeight(Obj, -1);
+		CheckWeight(ObjOwnerID, NewType, Count, OldWeight);
+	}
+
+	if(OldType.getFlag(CONTAINER) && !NewType.getFlag(CONTAINER)){
+		CloseContainer(Obj, true);
+	}
+
+	ChangeObject(Obj, NewType);
+
+	// TODO(fusion): Same thing as `Create`. I feel these usages of `Value`
+	// should be exclusive.
+
+	if(NewType.getFlag(CUMULATIVE) && !OldType.getFlag(CUMULATIVE)){
+		ChangeObject(Obj, AMOUNT, Value);
+	}
+
+	if(NewType.getFlag(MAGICFIELD) && !OldType.getFlag(MAGICFIELD)){
+		ChangeObject(Obj, RESPONSIBLE, Value);
+	}
+
+	if(NewType.getFlag(LIQUIDPOOL) && !OldType.getFlag(LIQUIDPOOL)){
+		ChangeObject(Obj, POOLLIQUIDTYPE, Value);
+	}
+
+	if(NewType.getFlag(LIQUIDCONTAINER) && !OldType.getFlag(LIQUIDCONTAINER)){
+		ChangeObject(Obj, CONTAINERLIQUIDTYPE, Value);
+	}
+
+	if(NewType.getFlag(KEY) && !OldType.getFlag(KEY)){
+		ChangeObject(Obj, KEYNUMBER, Value);
+	}
+
+	if(NewType.getFlag(RUNE) && !OldType.getFlag(RUNE)){
+		ChangeObject(Obj, CHARGES, Value);
+	}
+
+	AnnounceChangedObject(Obj, OBJECT_CHANGED);
+	NotifyTrades(Obj);
+	NotifyCreature(ObjOwnerID, Obj, ConType.isBodyContainer());
+	NotifyAllCreatures(Obj, OBJECT_CHANGED, NONE);
+}
+
+void Change(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value){
+	if(!Obj.exists()){
+		error("Change: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Attribute == CONTENT
+			|| Attribute == CHESTQUESTNUMBER
+			|| Attribute == DOORLEVEL
+			|| Attribute == DOORQUESTNUMBER
+			|| Attribute == DOORQUESTVALUE
+			|| Attribute == ABSTELEPORTDESTINATION
+			|| Attribute == REMAININGEXPIRETIME){
+		error("Change: Kann Attribut %d nicht ändern.\n", Attribute);
+		throw ERROR;
+	}
+
+	uint32 ObjOwnerID = GetObjectCreatureID(Obj);
+	if(ObjOwnerID != 0 && Attribute == AMOUNT && Value > Obj.getAttribute(AMOUNT)){
+		int OldWeight = GetWeight(Obj, -1);
+		CheckWeight(ObjOwnerID, Obj.getObjectType(), Value, OldWeight);
+	}
+
+	ChangeObject(Obj, Attribute, Value);
+	if(Attribute == AMOUNT
+			|| Attribute == CONTAINERLIQUIDTYPE
+			|| Attribute == POOLLIQUIDTYPE){
+		AnnounceChangedObject(Obj, OBJECT_CHANGED);
+	}
+
+	NotifyTrades(Obj);
+	NotifyCreature(ObjOwnerID, Obj, Obj.getContainer().getObjectType().isBodyContainer());
+}
+
+void Delete(Object Obj, int Count){
+	if(!Obj.exists()){
+		error("Delete: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.getFlag(CUMULATIVE) && Count > (int)Obj.getAttribute(AMOUNT)){
+		error("Delete: Ungültige Anzahl %d an Teilen bei kumulierbarem Objekt.\n", Count);
+		throw ERROR;
+	}
+
+	Object Remainder = NONE;
+	if(ObjType.getFlag(CUMULATIVE) && Count != -1
+			&& Count < (int)Obj.getAttribute(AMOUNT)){
+		Remainder = Obj;
+		Obj = SplitObject(Obj, Count);
+	}else{
+		NotifyTrades(Obj);
+	}
+
+	if(ObjType.getFlag(CONTAINER) || ObjType.getFlag(CHEST)){
+		if(ObjType.getFlag(CONTAINER)){
+			CloseContainer(Obj, true);
+		}
+
+		Object Help = GetFirstContainerObject(Obj);
+		while(Help != NONE){
+			Object Next = Help.getNextObject();
+			DeleteObject(Help);
+			Help = Next;
+		}
+	}
+
+	Object Con = Obj.getContainer();
+	uint32 ObjOwnerID = GetObjectCreatureID(Obj);
+	SeparationEvent(Obj, Con);
+
+	// BUG(fusion): Object may have been destroyed by the separation event? This
+	// looks suspicious because even if the object is properly destroyed, its
+	// remainder could be left unannounced.
+	//	If it's a container, its objects don't get a separation event trigger,
+	// and the separation event trigger on the container itself is only triggered
+	// after it is empty.
+	if(Obj.exists()){
+		if(Remainder == NONE){
+			AnnounceChangedObject(Obj, OBJECT_DELETED);
+		}
+
+		NotifyAllCreatures(Obj, OBJECT_DELETED, NONE);
+		if(ObjType.isCreatureContainer()){
+			TCreature *Creature = GetCreature(ObjOwnerID);
+			if(Creature != NULL){
+				Creature->NotifyDelete();
+			}else{
+				error("Delete: Kreatur mit ungültiger ID %d.\n", ObjOwnerID);
+			}
+		}
+
+		DeleteObject(Obj);
+
+		if(Remainder != NONE){
+			AnnounceChangedObject(Remainder, OBJECT_CHANGED);
+			NotifyTrades(Remainder);
+		}
+
+		NotifyCreature(ObjOwnerID, ObjType, Con.getObjectType().isBodyContainer());
+	}
+}
+
+void Empty(Object Con, int Remainder){
+	if(!Con.exists()){
+		error("Empty: Übergebener Container existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Remainder < 0){
+		error("Empty: Ungültiger Rest %d.\n", Remainder);
+		throw ERROR;
+	}
+
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.getFlag(CONTAINER)){
+		error("Empty: Übergebenes Objekt ist kein Container.\n");
+		throw ERROR;
+	}
+
+	CloseContainer(Con, true);
+
+	bool IsCorpse = ConType.getFlag(CORPSE);
+	int ObjectCount = CountObjectsInContainer(Con);
+	Object Help = GetFirstContainerObject(Con);
+	while(Help != NONE && ObjectCount > Remainder){
+		Object Next = Help.getNextObject();
+		if(IsCorpse){
+			Delete(Help, -1);
+		}else{
+			Move(0, Help, Con.getContainer(), -1, false, NONE);
+		}
+		Help = Next;
+		ObjectCount -= 1;
+	}
+}
+
+void GraphicalEffect(int x, int y, int z, int Type){
+	AnnounceGraphicalEffect(x, y, z, Type);
+}
+
+void GraphicalEffect(Object Obj, int Type){
+	if(Obj.exists()){
+		int ObjX, ObjY, ObjZ;
+		GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+		AnnounceGraphicalEffect(ObjX, ObjY, ObjZ, Type);
+	}
+}
+
+void TextualEffect(Object Obj, int Color, const char *Format, ...){
+	if(!Obj.exists()){
+		error("TextualEffect: Übergebener Mapcontainer existiert nicht.\n");
+		return;
+	}
+
+	char Buffer[10];
+	va_list ap;
+	va_start(ap, Format);
+	vsnprintf(Buffer, sizeof(Buffer), Format, ap);
+	va_end(ap);
+
+	int ObjX, ObjY, ObjZ;
+	GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+	AnnounceTextualEffect(ObjX, ObjY, ObjZ, Color, Buffer);
+}
+
+void Missile(Object Start, Object Dest, int Type){
+	if(!Start.exists()){
+		error("Missile: Übergebener Startpunkt existiert nicht.\n");
+		return;
+	}
+
+	if(!Dest.exists()){
+		error("Missile: Übergebener Zielpunkt existiert nicht.\n");
+		return;
+	}
+
+	int StartX, StartY, StartZ;
+	int DestX, DestY, DestZ;
+	GetObjectCoordinates(Start, &StartX, &StartY, &StartZ);
+	GetObjectCoordinates(Dest, &DestX, &DestY, &DestZ);
+	AnnounceMissile(StartX, StartY, StartZ, DestX, DestY, DestZ, Type);
 }

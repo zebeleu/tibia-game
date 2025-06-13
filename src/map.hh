@@ -145,7 +145,6 @@ Object CreateObject(void);
 void DeleteObject(Object Obj);
 void ChangeObject(Object Obj, ObjectType NewType);
 void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value);
-void ChangeObject(Object Obj, ObjectType NewType, uint32 Value);
 int GetObjectPriority(Object Obj);
 void PlaceObject(Object Obj, Object Con, bool Append);
 void CutObject(Object Obj);

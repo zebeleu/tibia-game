@@ -2,6 +2,7 @@
 #include "config.hh"
 #include "info.hh"
 #include "magic.hh"
+#include "operate.hh"
 
 #include "stubs.hh"
 

@@ -592,7 +592,7 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 		this->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
 		this->Outfit = this->OrgOutfit;
 		AnnounceChangedCreature(this->ID, CREATURE_OUTFIT_CHANGED);
-		NotifyAllCreatures(this->CrObject, 2, NONE); // CREATURE_APPEAR ?
+		NotifyAllCreatures(this->CrObject, OBJECT_CHANGED, NONE);
 	}
 
 	if(DamageType == DAMAGE_MANADRAIN){
@@ -890,8 +890,7 @@ void TCreature::CreatureMoveStimulus(uint32 CreatureID, int Type){
 		return;
 	}
 
-	// TODO(fusion): Find out what `Type` is here.
-	if(Type != 2 // STIMULUS_TYPE_??
+	if(Type != OBJECT_CHANGED
 			|| !this->LockToDo
 			|| this->ActToDo >= this->NrToDo
 			|| this->ToDoList.at(this->ActToDo)->Code != TDAttack){

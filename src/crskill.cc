@@ -956,7 +956,7 @@ void TSkillIllusion::Event(int Range){
 		if(this->Get() <= 0){
 			Master->Outfit = Master->OrgOutfit;
 			AnnounceChangedCreature(Master->ID, CREATURE_OUTFIT_CHANGED);
-			NotifyAllCreatures(Master->CrObject, 2, NONE);
+			NotifyAllCreatures(Master->CrObject, OBJECT_CHANGED, NONE);
 		}
 	}
 }

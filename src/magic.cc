@@ -2401,7 +2401,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 						if(Victim->Skills[SKILL_ILLUSION]->Get() == 0){
 							Victim->Outfit = Victim->OrgOutfit;
 							AnnounceChangedCreature(Victim->ID, CREATURE_OUTFIT_CHANGED);
-							NotifyAllCreatures(Victim->CrObject, 2, NONE); // CREATURE_APPEAR ?
+							NotifyAllCreatures(Victim->CrObject, OBJECT_CHANGED, NONE);
 						}else{
 							Effect = EFFECT_BLOCK_HIT;
 

@@ -1971,33 +1971,6 @@ void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value){
 	Obj.setAttribute(Attribute, Value);
 }
 
-// TODO(fusion): This probably belongs to `operate.cc`.
-void ChangeObject(Object Obj, ObjectType NewType, uint32 Value){
-	if(!Obj.exists()){
-		error("ChangeObject: Übergebenes Objekt existiert nicht (1, NewType=%d).\n", NewType.TypeID);
-		return;
-	}
-
-	// TODO(fusion): Why are we checking if `Obj` exists a second time? There is
-	// no reason to assume `Obj.getContainer()` would change anything since the
-	// first call.
-	Object Con = Obj.getContainer();
-	if(!Obj.exists()){
-		error("ChangeObject: Übergebenes Objekt existiert nicht (2, NewType=%d).\n", NewType.TypeID);
-		return;
-	}
-
-	ObjectType ObjType = Obj.getObjectType();
-	if(ObjType.getFlag(CUMULATIVE)){
-		uint32 Amount = Obj.getAttribute(AMOUNT);
-		if(Amount > 1){
-			Move(0, Obj, Con, Amount - 1, true, NONE);
-		}
-	}
-
-	Change(Obj, NewType, Value);
-}
-
 int GetObjectPriority(Object Obj){
 	if(!Obj.exists()){
 		error("GetObjectPriority: Übergebenes Objekt existiert nicht.\n");

@@ -717,6 +717,7 @@ struct TPlayer: TCreature {
 	Object GetOpenContainer(int ContainerNr);
 	void SetOpenContainer(int ContainerNr, Object Con);
 	void RejectTrade(void);
+	Object InspectTrade(bool OwnOffer, int Position);
 
 	// VIRTUAL FUNCTIONS
 	// =================
