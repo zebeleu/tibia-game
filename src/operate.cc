@@ -1804,3 +1804,648 @@ void Missile(Object Start, Object Dest, int Type){
 	GetObjectCoordinates(Dest, &DestX, &DestY, &DestZ);
 	AnnounceMissile(StartX, StartY, StartZ, DestX, DestY, DestZ, Type);
 }
+
+void Look(uint32 CreatureID, Object Obj){
+	// TODO(fusion): Honestly one of the first things we should focus on, after
+	// the server is running, is to implement a small stack buffer writer/formatter
+	// to retire `strcpy`, `strcat`, and `sprintf`.
+
+	TPlayer *Player = GetPlayer(CreatureID);
+	if(Player == NULL){
+		error("Look: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(!Obj.exists()){
+		error("Look: Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isCreatureContainer()){
+		TCreature *Target = GetCreature(Obj);
+		if(Target == NULL){
+			error("Look: Object %d hat keine Kreatur!\n", ObjType.TypeID);
+			return;
+		}
+
+		if(Target->Type == PLAYER){
+			TPlayer *TargetPlayer = (TPlayer*)Target;
+			bool Yourself = (CreatureID == TargetPlayer->ID);
+			char Pronoun[4] = {};
+			char Name[50] = {};
+			char Vocation[50] = {};
+
+			if(TargetPlayer->Sex == 1){
+				strcpy(Pronoun, "He");
+			}else{
+				strcpy(Pronoun, "She");
+			}
+
+			uint8 Profession = TargetPlayer->GetActiveProfession();
+			if(Yourself){
+				strcpy(Name, "yourself");
+
+				if(Profession != PROFESSION_NONE){
+					char Help[30];
+					GetProfessionName(Help, Profession, true, false);
+					snprintf(Vocation, sizeof(Vocation), "You are %s", Help);
+				}else{
+					strcpy(Vocation, "You have no vocation");
+				}
+			}else{
+				int Level = 1;
+				if(TargetPlayer->Skills[SKILL_LEVEL] != NULL){
+					Level = TargetPlayer->Skills[SKILL_LEVEL]->Get();
+				}
+				snprintf(Name, sizeof(Name), "%s (Level %d)", TargetPlayer->Name, Level);
+
+				if(Profession != PROFESSION_NONE){
+					char Help[30];
+					GetProfessionName(Help, Profession, true, false);
+					snprintf(Vocation, sizeof(Vocation), "%s is %s", Pronoun, Help);
+				}else{
+					snprintf(Vocation, sizeof(Vocation), "%s has no vocation", Pronoun);
+				}
+			}
+
+			if(TargetPlayer->Guild[0] != 0){
+				char Membership[200] = {};
+				if(Yourself){
+					strcpy(Membership, "You are ");
+				}else{
+					snprintf(Membership, sizeof(Membership), "%s id ", Pronoun);
+				}
+
+				if(TargetPlayer->Rank[0] != 0){
+					strcat(Membership, TargetPlayer->Rank);
+				}else{
+					strcat(Membership, "a member");
+				}
+
+				strcat(Membership, " of the ");
+				strcat(Membership, TargetPlayer->Guild);
+				if(TargetPlayer->Title[0] != 0){
+					strcat(Membership, " (");
+					strcat(Membership, TargetPlayer->Title);
+					strcat(Membership, ")");
+				}
+
+				SendMessage(Player->Connection, TALK_INFO_MESSAGE,
+						"You see %s. %s. %s.", Name, Vocation, Membership);
+			}else{
+				SendMessage(Player->Connection, TALK_INFO_MESSAGE,
+						"You see %s. %s.", Name, Vocation);
+			}
+		}else{
+			SendMessage(Player->Connection, TALK_INFO_MESSAGE, "You see %s.", Target->Name);
+		}
+	}else{
+		char Description[500] = {};
+		char Help[500] = {};
+
+		snprintf(Description, sizeof(Description), "You see %s", GetName(Obj));
+
+		if(ObjType.getFlag(LEVELDOOR)){
+			snprintf(Help, sizeof(Help), " for level %u",
+					Obj.getAttribute(DOORLEVEL));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(CONTAINER)){
+			snprintf(Help, sizeof(Help), " (Vol:%u)",
+					ObjType.getAttribute(CAPACITY));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(WEAPON)){
+			snprintf(Help, sizeof(Help), " (Atk:%u Def:%u)",
+					ObjType.getAttribute(WEAPONATTACKVALUE),
+					ObjType.getAttribute(WEAPONDEFENDVALUE));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(THROW)){
+			snprintf(Help, sizeof(Help), " (Atk:%u Def:%u)",
+					ObjType.getAttribute(THROWATTACKVALUE),
+					ObjType.getAttribute(THROWDEFENDVALUE));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(SHIELD)){
+			snprintf(Help, sizeof(Help), " (Def:%u)",
+					ObjType.getAttribute(SHIELDDEFENDVALUE));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(ARMOR)){
+			snprintf(Help, sizeof(Help), " (Arm:%u)",
+					ObjType.getAttribute(ARMORVALUE));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(KEY)){
+			snprintf(Help, sizeof(Help), " (Key:%04u)",
+					Obj.getAttribute(KEYNUMBER));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(KEYDOOR) && CheckRight(Player->ID, SHOW_KEYHOLE_NUMBERS)){
+			snprintf(Help, sizeof(Help), " (Door:%04u)",
+					Obj.getAttribute(KEYHOLENUMBER));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(SHOWDETAIL)){
+			if(ObjType.getFlag(WEAROUT) && ObjType.getAttribute(TOTALUSES) > 1){
+				uint32 RemainingUses = Obj.getAttribute(REMAININGUSES);
+				snprintf(Help, sizeof(Help), " that has %u charge%s left",
+						RemainingUses, (RemainingUses != 1 ? "s" : ""));
+				strcat(Description, Help);
+			}else if(ObjType.getFlag(EXPIRE) || ObjType.getFlag(EXPIRESTOP)){
+				uint32 SecondsLeft;
+				if(ObjType.getFlag(EXPIRE)){
+					SecondsLeft = CronInfo(Obj, false);
+				}else{
+					SecondsLeft = Obj.getAttribute(SAVEDEXPIRETIME);
+				}
+
+				uint32 MinutesLeft = (SecondsLeft + 59) / 60;
+				if(MinutesLeft == 0){
+					snprintf(Help, sizeof(Help), " that is brand-new");
+				}else{
+					snprintf(Help, sizeof(Help), " that has energy for %u minutes%s left",
+							MinutesLeft, (MinutesLeft != 1 ? "s" : ""));
+				}
+				strcat(Description, Help);
+			}else{
+				error("Look: Objekt %d hat Flag SHOWDETAIL, aber weder WEAROUT noch EXPIRE.\n", ObjType.TypeID);
+			}
+		}
+
+		if(ObjType.getFlag(RESTRICTLEVEL) || ObjType.getFlag(RESTRICTPROFESSION)){
+			strcat(Description, ".\nIt can only be wielded by ");
+			if(ObjType.getFlag(RESTRICTPROFESSION)){
+				int ProfessionCount = 0;
+				uint32 ProfessionMask = ObjType.getAttribute(PROFESSIONS);
+
+				if(ProfessionMask & 1){
+					ProfessionCount += 1;
+					strcpy(Help, "players without vocation");
+				}else{
+					strcpy(Help, "");
+				}
+
+				// NOTE(fusion): We're iterating professions in reverse because
+				// the string is built in reverse to avoid extra processing for
+				// adding commas and the final "and ...".
+				for(int Profession = 4; Profession >= 1; Profession -= 1){
+					if((ProfessionMask & (1 << Profession)) == 0){
+						continue;
+					}
+
+					char Temp[200] = {};
+					if(ProfessionCount == 1){
+						snprintf(Temp, sizeof(Temp), " and %s", Help);
+					}else if(ProfessionCount > 1){
+						snprintf(Temp, sizeof(Temp), ", %s", Help);
+					}
+
+					switch(Profession){
+						case PROFESSION_KNIGHT:		strcpy(Help, "knights"); break;
+						case PROFESSION_PALADIN:	strcpy(Help, "paladins"); break;
+						case PROFESSION_SORCERER:	strcpy(Help, "sorcerers"); break;
+						case PROFESSION_DRUID:		strcpy(Help, "druids"); break;
+					}
+
+					strcat(Help, Temp);
+				}
+			}else{
+				strcpy(Help, "players");
+			}
+
+			if(ObjType.getFlag(RESTRICTLEVEL)){
+				char Temp[200] = {};
+				snprintf(Temp, sizeof(Temp), " of level %u or higher",
+						ObjType.getAttribute(MINIMUMLEVEL));
+				strcat(Help, Temp);
+			}
+
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(RUNE)){
+			int MagicLevel;
+			GetMagicItemDescription(Obj, Help, &MagicLevel);
+			if(MagicLevel != 0){
+				char Temp[200] = {};
+				snprintf(Temp, sizeof(Temp), " for magic level %d", MagicLevel);
+				strcat(Description, Temp);
+			}
+
+			strcat(Description, ". It\'s an \"");
+			strcat(Description, Help);
+			strcat(Description, "\"-spell");
+
+			snprintf(Help, sizeof(Help), " (%ux)", Obj.getAttribute(CHARGES));
+			strcat(Description, Help);
+		}
+
+		if(ObjType.getFlag(BED)){
+			uint32 Sleeper = Obj.getAttribute(TEXTSTRING);
+			if(Sleeper != 0){
+				snprintf(Help, sizeof(Help), ". %s is sleeping there",
+						GetDynamicString(Sleeper));
+				strcat(Description, Help);
+			}
+		}
+
+		if(ObjType.getFlag(NAMEDOOR)){
+			int ObjX, ObjY, ObjZ;
+			GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+
+			uint16 HouseID = GetHouseID(ObjX, ObjY, ObjZ);
+			if(HouseID != 0){
+				// TODO(fusion): Make `GetHouseOwner` return "Nobody" when there
+				// is no owner name.
+				snprintf(Help, sizeof(Help),
+						". It belongs to house \'%s\'. %s owns this house",
+						GetHouseName(HouseID), GetHouseOwner(HouseID));
+				strcat(Description, Help);
+			}else{
+				error("Look: NameDoor auf [%d,%d,%d] gehört zu keinem Haus.\n", ObjX, ObjY, ObjZ);
+			}
+		}
+
+		strcat(Description, ".");
+
+		if((ObjType.getFlag(LIQUIDCONTAINER) && Obj.getAttribute(CONTAINERLIQUIDTYPE) == LIQUID_NONE)
+		|| (ObjType.getFlag(LIQUIDPOOL)      && Obj.getAttribute(POOLLIQUIDTYPE)      == LIQUID_NONE)){
+			strcat(Description, " It is empty.");
+		}
+
+		// TODO(fusion): This looks like an inlined function because we'd have
+		// already returned at the beginning if `CreatureID` was zero.
+		if(CreatureID == 0 || ObjectInRange(CreatureID, Obj, 1)){
+			if(ObjType.getFlag(TAKE) && GetWeight(Obj, -1) > 0){
+				int ObjWeight = GetCompleteWeight(Obj);
+				if(ObjType.getFlag(CUMULATIVE)
+						&& Obj.getAttribute(AMOUNT) > 1
+						&& IsCountable(ObjType.getName(1))){
+					snprintf(Help, sizeof(Help), "\nThey weigh %d.%02d oz.",
+							ObjWeight / 100, ObjWeight % 100);
+				}else{
+					snprintf(Help, sizeof(Help), "\nIt weighs %d.%02d oz.",
+							ObjWeight / 100, ObjWeight % 100);
+				}
+				strcat(Description, Help);
+			}
+
+			const char *ObjInfo = GetInfo(Obj);
+			if(ObjInfo != NULL){
+				snprintf(Help, sizeof(Help), "\n%s.", ObjInfo);
+				strcat(Description, Help);
+			}
+		}
+
+		if(ObjType.getFlag(TEXT)){
+			int FontSize = (int)ObjType.getAttribute(FONTSIZE);
+			if(FontSize == 0){
+				uint32 Text = Obj.getAttribute(TEXTSTRING);
+				if(Text != 0){
+					snprintf(Help, sizeof(Help), "\n%s.", GetDynamicString(Text));
+					strcat(Description, Help);
+				}
+			}else if(FontSize >= 2){
+				uint32 Text = Obj.getAttribute(TEXTSTRING);
+				if(Text != 0){
+					// TODO(fusion): Again, `CreatureID` can't be zero here.
+					if(CreatureID == 0 || ObjectInRange(CreatureID, Obj, FontSize)){
+						uint32 Editor = Obj.getAttribute(EDITOR);
+						if(Editor != 0){
+							snprintf(Help, sizeof(Help), "\n%s has written: %s",
+									GetDynamicString(Editor),
+									GetDynamicString(Text));
+						}else{
+							snprintf(Help, sizeof(Help), "\nYou read: %s",
+									GetDynamicString(Text));
+						}
+						strcat(Description, Help);
+					}else{
+						strcat(Description, "\nYou are too far away to read it.");
+					}
+				}else{
+					strcat(Description, "\nNothing is written on it.");
+				}
+			}
+		}
+
+		SendMessage(Player->Connection, TALK_INFO_MESSAGE, "%s", Description);
+	}
+}
+
+void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming){
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("Talk: Übergebene Kreatur %d existiert nicht.\n", CreatureID);
+		throw ERROR;
+	}
+
+	if(Text == NULL){
+		error("Talk: Text ist NULL (Sprecher: %s, Modus: %d).\n", Creature->Name, Mode);
+		throw ERROR;
+	}
+
+	int TextLen = (int)strlen(Text);
+	if(TextLen >= 256){
+		error("Talk: Text ist zu lang (Sprecher: %s, Länge: %d).\n", Creature->Name, TextLen);
+		throw ERROR;
+	}
+
+	int Channel = 0;
+	if(Mode == TALK_CHANNEL_CALL
+			|| Mode == TALK_GAMEMASTER_CHANNELCALL
+			|| Mode == TALK_HIGHLIGHT_CHANNELCALL
+			|| Mode == TALK_ANONYMOUS_CHANNELCALL){
+		// TODO(fusion): Check if `Addressee` is NULL?
+		Channel = atoi(Addressee);
+		if(Channel < 0 || Channel >= Channels){
+			error("Talk: Ungültiger Kanal %d.\n", Channel);
+			return;
+		}
+	}
+
+	print(2, "%s: \"%s\"\n", Creature->Name, Text);
+
+	if(Creature->Type == PLAYER){
+		TPlayer *Player = (TPlayer*)Creature;
+
+		// TODO(fusion): Some `IsTalkMuteable` inlined function?
+		bool TalkMuteable = Mode == TALK_SAY
+				|| Mode == TALK_WHISPER
+				|| Mode == TALK_YELL
+				|| Mode == TALK_PRIVATE_MESSAGE
+				|| ((Mode == TALK_CHANNEL_CALL
+					|| Mode == TALK_HIGHLIGHT_CHANNELCALL)
+						&& Channel >= 1 && Channel <= 7);
+
+		int Muting = 0;
+		if(CheckSpamming){
+			Muting = Player->CheckForMuting();
+			if(Muting > 0 && TalkMuteable){
+				SendMessage(Player->Connection, TALK_FAILURE_MESSAGE,
+						"You are still muted for %d second%s.",
+						Muting, (Muting != 1 ? "s" : ""));
+				return;
+			}
+		}
+
+		int SpellType = 0;
+		if(Muting == 0){
+			SpellType = CheckForSpell(CreatureID, Text);
+			if(SpellType < 0 || SpellType == 1 || SpellType == 5){
+				return;
+			}
+
+			if(SpellType != 0){
+				Mode = TALK_SAY;
+			}
+		}
+
+		if(Mode == TALK_YELL){
+			if(Player->EarliestYellRound > RoundNr){
+				throw EXHAUSTED;
+			}
+
+			// TODO(fusion): This would be valid if `Text` was `char*`, but I
+			// wanted to improve the quality of string handling and parameters
+			// across the board, and now we need some scratch buffer to actually
+			// modify the text.
+			strUpper(Text);
+		}
+
+		if(Mode == TALK_CHANNEL_CALL && Channel == 5){
+			if(Player->EarliestTradeChannelRound > RoundNr){
+				SendMessage(Player->Connection, TALK_FAILURE_MESSAGE,
+						"You may only place one offer in two minutes.");
+				return;
+			}
+
+			Player->EarliestTradeChannelRound = RoundNr + 120;
+		}
+
+		if(CheckSpamming && SpellType == 0 && TalkMuteable
+				&& !CheckRight(Player->ID, NO_BANISHMENT)){
+			Muting = Player->RecordTalk();
+			if(Muting > 0){
+				SendMessage(Player->Connection, TALK_FAILURE_MESSAGE,
+						"You are muted for %d second%s.",
+						Muting, (Muting != 1 ? "s" : ""));
+				return;
+			}
+		}
+	}
+
+	if(Mode == TALK_PRIVATE_MESSAGE
+			|| Mode == TALK_GAMEMASTER_ANSWER
+			|| Mode == TALK_PLAYER_ANSWER
+			|| Mode == TALK_GAMEMASTER_MESSAGE
+			|| Mode == TALK_GAMEMASTER_MESSAGE
+			|| Mode == TALK_ANONYMOUS_MESSAGE){
+		// TODO(fusion): These assumed the creature was a player but it wasn't checked.
+		if(Creature->Type != PLAYER){
+			error("Talk: Expected player creature for message talk modes.");
+			throw ERROR;
+		}
+
+		if(Addressee == NULL){
+			error("Talk: Adressat für Botschaft nicht angegeben.\n");
+			throw ERROR;
+		}
+
+		TPlayer *Player = (TPlayer*)Creature;
+		TPlayer *Receiver;
+		bool IgnoreGamemasters = !CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+		switch(IdentifyPlayer(Addressee, false, IgnoreGamemasters, &Receiver)){
+			case  0:	break; // PLAYERFOUND ?
+			case -1:	throw PLAYERNOTONLINE;
+			case -2:	throw NAMEAMBIGUOUS;
+			default:{
+				error("Talk: Ungültiger Rückgabewert von IdentifyPlayer.\n");
+				throw ERROR;
+			}
+		}
+
+		if(Mode == TALK_PRIVATE_MESSAGE){
+			Muting = Player->RecordMessage(Receiver->ID);
+			if(Muting > 0){
+				SendMessage(Player->Connection, TALK_FAILURE_MESSAGE,
+						"You have addressed too many players. You are muted for %d second%s.",
+						Muting, (Muting != 1 ? "s" : ""));
+				return;
+			}
+		}
+
+		if(Mode != TALK_ANONYMOUS_MESSAGE){
+			uint32 StatementID = LogCommunication(CreatureID, Mode, 0, Text);
+			LogListener(StatementID, Player);
+			SendTalk(Receiver->Connection, LogListener(StatementID, Receiver),
+					(Mode == TALK_GAMEMASTER_ANSWER ? "Gamemaster" : Player->Name),
+					Mode, Text, 0);
+		}else{
+			SendMessage(Receiver->Connection, TALK_ADMIN_MESSAGE, "%s", Text);
+		}
+
+		SendMessage(Player->Connection, TALK_FAILURE_MESSAGE, "Message sent to %s.",
+				(Mode == TALK_PLAYER_ANSWER ? "Gamemaster" : Receiver->Name));
+		return;
+	}else if(Mode == TALK_SAY
+			|| Mode == TALK_WHISPER
+			|| Mode == TALK_YELL
+			|| Mode == TALK_ANIMAL_LOW
+			|| Mode == TALK_ANIMAL_LOUD){
+		uint32 StatementID;
+		if(Creature->Type == PLAYER){
+			StatementID = LogCommunication(CreatureID, Mode, 0, Text);
+		}else{
+			StatementID = 0;
+		}
+
+		int Radius;
+		if(Mode == TALK_YELL || Mode == TALK_ANIMAL_LOUD){
+			Radius = 30; // RANGE_YELL ?
+		}else{
+			Radius = 7; // RANGE_SAY ?
+		}
+
+		TFindCreatures Search(Radius, Radius, Creature->posx, Creature->posy, FIND_PLAYERS);
+		while(true){
+			uint32 SpectatorID = Search.findNext();
+			if(SpectatorID == 0){
+				break;
+			}
+
+			TPlayer *Spectator = GetPlayer(SpectatorID);
+			if(Spectator == NULL || Spectator->Connection == NULL){
+				continue;
+			}
+
+			int DistanceX = std::abs(Spectator->posx - Creature->posx);
+			int DistanceY = std::abs(Spectator->posy - Creature->posy);
+			int DistanceZ = std::abs(Spectator->posz - Creature->posz);
+			if(Mode == TALK_SAY || Mode == TALK_ANIMAL_LOW){
+				if(DistanceX > 7 || DistanceY > 5 || DistanceZ > 0){
+					continue;
+				}
+			}else if(Mode == TALK_WHISPER){
+				if(DistanceX > 7 || DistanceY > 5 || DistanceZ > 0){
+					continue;
+				}
+
+				if(DistanceX > 1 && DistanceY > 1){
+					SendTalk(Spectator->Connection, 0, Creature->Name, Mode,
+							Creature->posx, Creature->posy, Creature->posz,
+							"pspsps");
+					continue;
+				}
+			}else if(Mode == TALK_YELL || Mode == TALK_ANIMAL_LOUD){
+				if(DistanceX > 30 || DistanceY > 30){
+					continue;
+				}
+
+				// TODO(fusion): This seems to be correct. Underground yells
+				// aren't multi floor.
+				if(DistanceZ > 0 && (Spectator->posz > 7 || Creature->posz > 7)){
+					continue;
+				}
+			}
+
+			SendTalk(Spectator->Connection,
+					LogListener(StatementID, Spectator),
+					Creature->Name, Mode,
+					Creature->posx, Creature->posy, Creature->posz, Text);
+		}
+	}else if(Mode == TALK_GAMEMASTER_BROADCAST){
+		uint32 StatementID = LogCommunication(CreatureID, Mode, 0, Text);
+		TConnection *Connection = GetFirstConnection();
+		while(Connection != NULL){
+			// TODO(fusion): Same as `AdvanceGame`. Definitely some inlined
+			// function to check whether the connection is in a valid state.
+			if(Connection->State == CONNECTION_LOGIN
+					|| Connection->State == CONNECTION_GAME
+					|| Connection->State == CONNECTION_DEAD
+					|| Connection->State == CONNECTION_LOGOUT){
+				SendTalk(Connection,
+						LogListener(StatementID, Connection->GetPlayer()),
+						Creature->Name, Mode, Text, 0);
+			}
+
+			Connection = GetNextConnection();
+		}
+	}else if(Mode == TALK_ANONYMOUS_BROADCAST){
+		TConnection *Connection = GetFirstConnection();
+		while(Connection != NULL){
+			// TODO(fusion): Same as above.
+			if(Connection->State == CONNECTION_LOGIN
+					|| Connection->State == CONNECTION_GAME
+					|| Connection->State == CONNECTION_DEAD
+					|| Connection->State == CONNECTION_LOGOUT){
+				SendMessage(Connection, TALK_ADMIN_MESSAGE, Text);
+			}
+
+			Connection = GetNextConnection();
+		}
+	}else if(Mode == TALK_CHANNEL_CALL
+			|| Mode == TALK_GAMEMASTER_CHANNELCALL
+			|| Mode == TALK_HIGHLIGHT_CHANNELCALL
+			|| Mode == TALK_ANONYMOUS_CHANNELCALL){
+		uint32 StatementID = 0;
+		if(Mode != TALK_ANONYMOUS_CHANNELCALL){
+			StatementID = LogCommunication(CreatureID, Mode, Channel, Text);
+		}
+
+		// TODO(fusion): We should probably cleanup these global iterators.
+		for(uint32 SubscriberID = GetFirstSubscriber(Channel);
+				SubscriberID != 0;
+				SubscriberID = GetNextSubscriber()){
+			TPlayer *Subscriber = GetPlayer(SubscriberID);
+			if(Subscriber == NULL){
+				continue;
+			}
+
+			// TODO(fusion): We should probably review this. What if both player
+			// guild names are empty? Is it checked elsewhere?
+			if(Channel == 0 && (Creature->Type != PLAYER
+					|| strcmp(((TPlayer*)Creature)->Guild, Subscriber->Guild) != 0)){
+				continue;
+			}
+
+			// TODO(fusion): There was some weird logic here to select the statement
+			// id and it didn't seem to make a difference since `LogListener` was
+			// always called, regardless.
+			SendTalk(Subscriber->Connection,
+					LogListener(StatementID, Subscriber),
+					Creature->Name, Mode, Channel, Text);
+		}
+	}else{
+		// TODO(fusion): Put private messages into this if-else chain.
+		error("Talk: Ungültiger Sprechmodus %d.\n", Mode);
+	}
+
+	if(Mode == TALK_SAY && Creature->Type == PLAYER){
+		TFindCreatures Search(3, 3, CreatureID, FIND_NPCS);
+		while(true){
+			uint32 SpectatorID = Search.getNext();
+			if(SpectatorID == 0){
+				break;
+			}
+
+			TCreature *Spectator = GetCreature(SpectatorID);
+			if(Spectator != NULL){
+				Spectator->TalkStimulus(CreatureID, Text);
+			}else{
+				error("Talk: Kreatur existiert nicht.\n");
+			}
+		}
+	}
+}
