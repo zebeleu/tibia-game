@@ -62,6 +62,17 @@ struct ObjectType {
 			|| this->getFlag(WAND);
 	}
 
+	bool isCloseWeapon(void){
+		if(!this->getFlag(WEAPON)){
+			return false;
+		}
+
+		int WeaponType = this->getAttribute(WEAPONTYPE);
+		return WeaponType == WEAPON_SWORD
+			|| WeaponType == WEAPON_CLUB
+			|| WeaponType == WEAPON_AXE;
+	}
+
 	ObjectType getDisguise(void){
 		if(this->getFlag(DISGUISE)){
 			return (int)this->getAttribute(DISGUISETARGET);

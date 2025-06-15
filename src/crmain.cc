@@ -719,9 +719,13 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 		GraphicalEffect(this->CrObject, HitEffect);
 		TextualEffect(this->CrObject, TextColor, "%d", Damage);
 		if(SplashLiquid != LIQUID_NONE){
-			CreatePool(GetMapContainer(this->CrObject),
-						GetSpecialObject(BLOOD_SPLASH),
-						SplashLiquid);
+			try{
+				CreatePool(GetMapContainer(this->CrObject),
+							GetSpecialObject(BLOOD_SPLASH),
+							SplashLiquid);
+			}catch(RESULT r){
+				// TODO(fusion): Ignore?
+			}
 		}
 	}
 
@@ -754,10 +758,15 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 					if(ObjType == AmuletOfLossType){
 						Log("game", "%s stirbt mit Amulett of Loss.\n", this->Name);
 						this->LoseInventory = 0;
-						Delete(Obj, -1);
-						// TODO(fusion): Shouldn't we break here? We could also
-						// just check if there is an amulet of loss in the necklace
-						// container instead of iterating over all of them.
+						try{
+							Delete(Obj, -1);
+							// TODO(fusion): Shouldn't we break here? We could also
+							// just check if there is an amulet of loss in the necklace
+							// container instead of iterating over all inventory.
+						}catch(RESULT r){
+							error("TCreature::Damage: Exception %d beim Löschen von Objekt %d.\n",
+									r, AmuletOfLossType.TypeID);
+						}
 					}
 				}
 			}

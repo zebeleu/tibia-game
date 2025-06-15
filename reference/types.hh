@@ -89,20 +89,6 @@ struct TWaitinglistEntry {
     bool Sleeping;
 };
 
-struct TReportedStatement {
-    ulong StatementID;
-    ulong TimeStamp;
-    ulong CharacterID;
-    int Mode;
-    int Channel;
-    char Text[256];
-};
-
-struct TListener {
-    ulong StatementID;
-    ulong CharacterID;
-};
-
 struct TDelayedMail {
     ulong CharacterID;
     int DepotNumber;
@@ -122,27 +108,10 @@ struct TMonsterhome {
     int Timer;
 };
 
-struct TChannel {
-    ulong Moderator;
-    char ModeratorName[30];
-    struct vector<long_unsigned_int> Subscriber;
-    int Subscribers;
-    struct vector<long_unsigned_int> InvitedPlayer;
-    int InvitedPlayers;
-};
-
 struct THelpDepot {
     ulong CharacterID;
     struct Object Box;
     int DepotNr;
-};
-
-struct TParty {
-    ulong Leader;
-    struct vector<long_unsigned_int> Member;
-    int Members;
-    struct vector<long_unsigned_int> InvitedPlayer;
-    int InvitedPlayers;
 };
 
 struct TMoveUseAction {
@@ -167,16 +136,6 @@ struct THouseArea {
     ushort ID;
     int SQMPrice;
     int DepotNr;
-};
-
-struct TStatement {
-    ulong StatementID;
-    ulong TimeStamp;
-    ulong CharacterID;
-    int Mode;
-    int Channel;
-    ulong Text;
-    bool Reported;
 };
 
 struct TDirectReplyData {

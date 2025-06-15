@@ -5,6 +5,7 @@
 #include "enums.hh"
 
 struct TConnection;
+struct TPlayer;
 
 struct TKnownCreature {
 	KNOWNCREATURESTATE State;
@@ -14,6 +15,7 @@ struct TKnownCreature {
 };
 
 struct TConnection {
+	TPlayer *GetPlayer(void);
 	void Logout(int Delay, bool StopFight);
 	bool IsVisible(int x, int y, int z);
 

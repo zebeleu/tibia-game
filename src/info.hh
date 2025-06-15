@@ -52,6 +52,7 @@ bool ThrowPossible(int OrigX, int OrigY, int OrigZ,
 			int DestX, int DestY, int DestZ, int Power);
 void GetCreatureLight(uint32 CreatureID, int *Brightness, int *Color);
 int GetInventoryWeight(uint32 CreatureID);
+bool CheckRight(uint32 CharacterID, RIGHT Right);
 bool CheckBanishmentRight(uint32 CharacterID, int Reason, int Action);
 const char *GetBanishmentReason(int Reason);
 void InitInfo(void);

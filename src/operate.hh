@@ -2,6 +2,8 @@
 #define TIBIA_OPERATE_HH_ 1
 
 #include "common.hh"
+#include "containers.hh"
+#include "cr.hh"
 #include "map.hh"
 
 enum : int {
@@ -18,6 +20,74 @@ enum : int {
 	OBJECT_CREATED				= 1,
 	OBJECT_CHANGED				= 2,
 	OBJECT_MOVED				= 3,
+};
+
+struct TChannel {
+	TChannel(void);
+
+	// TODO(fusion): `TChannel` will primarily live inside the `Channel` vector,
+	// which needs to resize its internal array as needed. To resize, it needs
+	// to copy/swap elements, which would be impossible since `TChannel` itself
+	// owns a few vectors which were made NON-COPYABLE to prevent memory bugs.
+	//	To fix this problem and allow `TChannel` to be copyable, we need to
+	// implement the copy constructor and assignment manually. They're annoying
+	// and expensive but should allow everything to compile again.
+	//	This problem arises from the fact that our unconventional `vector` type
+	// has a weird interface but still manages its underlying memory. If we are
+	// to resolve this completely, we'd need to re-implement `vector` properly
+	// and preferably with move semantics (if we want to follow the C++ route,
+	// which we may not).
+	TChannel(const TChannel &Other);
+	void operator=(const TChannel &Other);
+
+	// DATA
+	// =================
+	uint32 Moderator;
+	char ModeratorName[30];
+	vector<uint32> Subscriber;
+	int Subscribers;
+	vector<uint32> InvitedPlayer;
+	int InvitedPlayers;
+};
+
+struct TParty {
+	TParty(void);
+
+	// TODO(fusion): Same as `TChannel`.
+	TParty(const TParty &Other);
+	void operator=(const TParty &Other);
+
+	// DATA
+	// =================
+	uint32 Leader;
+	vector<uint32> Member;
+	int Members;
+	vector<uint32> InvitedPlayer;
+	int InvitedPlayers;
+};
+
+struct TStatement {
+	uint32 StatementID;
+	int TimeStamp;
+	uint32 CharacterID;
+	int Mode;
+	int Channel;
+	uint32 Text;
+	bool Reported;
+};
+
+struct TListener {
+	uint32 StatementID;
+	uint32 CharacterID;
+};
+
+struct TReportedStatement {
+    uint32 StatementID;
+	int TimeStamp;
+    uint32 CharacterID;
+    int Mode;
+    int Channel;
+    char Text[256];
 };
 
 void AnnounceMovingCreature(uint32 CreatureID, Object Con);
@@ -61,5 +131,31 @@ void GraphicalEffect(int x, int y, int z, int Type);
 void GraphicalEffect(Object Obj, int Type);
 void TextualEffect(Object Obj, int Color, const char *Format, ...) ATTR_PRINTF(3, 4);
 void Missile(Object Start, Object Dest, int Type);
+void Look(uint32 CreatureID, Object Obj);
+void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
+void Use(uint32 CreatureID, Object Obj1, Object Obj2, uint8 Info);
+void Turn(uint32 CreatureID, Object Obj);
+void CreatePool(Object Con, ObjectType Type, uint32 Value);
+void EditText(uint32 CreatureID, Object Obj, const char *Text);
+Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value);
+void DeleteAtCreature(uint32 CreatureID, ObjectType Type, int Amount, uint32 Value);
+
+void ProcessCronSystem(void);
+bool SectorRefreshable(int SectorX, int SectorY, int SectorZ);
+void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Count);
+void RefreshMap(void);
+void RefreshCylinders(void);
+void ApplyPatch(int SectorX, int SectorY, int SectorZ,
+		bool FullSector, TReadScriptFile *Script, bool SaveHouses);
+void ApplyPatches(void);
+
+uint32 LogCommunication(uint32 CreatureID, int Mode, int Channel, const char *Text);
+uint32 LogListener(uint32 StatementID, TPlayer *Player);
+void ProcessCommunicationControl(void);
+int GetCommunicationContext(uint32 CharacterID, uint32 StatementID,
+		int *NumberOfStatements, vector<TReportedStatement> **ReportedStatements);
+
+uint32 GetFirstSubscriber(int Channel);
+uint32 GetNextSubscriber(void);
 
 #endif //TIBIA_OPERATE_HH_

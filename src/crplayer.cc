@@ -1,4 +1,5 @@
 #include "cr.hh"
+#include "info.hh"
 
 #include "stubs.hh"
 

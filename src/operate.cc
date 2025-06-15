@@ -4,6 +4,23 @@
 
 #include "stubs.hh"
 
+#include <dirent.h>
+#include <time.h>
+
+static fifo<TStatement> Statements(1024);
+static fifo<TListener> Listeners(1024);
+
+static vector<TChannel> Channel(0, 18, 10);
+static int Channels;
+static int CurrentChannelID;
+static int CurrentSubscriberNumber;
+
+static vector<TParty> Party(0, 100, 50);
+static int Parties;
+
+// World Operations
+// =============================================================================
+
 // TODO(fusion): The radii parameters for `TFindCreatures` are commonly around
 // 16 and 14 for x and y respectively so there is probably some constant involved.
 //	Also, since we're talking about radii, these values are quite large when you
@@ -383,7 +400,9 @@ void CheckTopMultiuseObject(uint32 CreatureID, Object Obj){
 			Best = Help;
 		}
 
-		if(HelpType.getFlag(FORCEUSE) || GetObjectPriority(Help) >= PRIORITY_CREATURE){
+		if(HelpType.getFlag(FORCEUSE)
+				|| GetObjectPriority(Help) == PRIORITY_CREATURE
+				|| GetObjectPriority(Help) == PRIORITY_LOW){
 			break;
 		}
 
@@ -2145,6 +2164,14 @@ void Look(uint32 CreatureID, Object Obj){
 }
 
 void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming){
+	// TODO(fusion): `Text` was originally `char*`, but I wanted to improve
+	// string handling overall and modifying string parameters is a bad idea,
+	// specially when you don't know their capacity.
+	//	It is only modified when a player uses `TALK_YELL` to make it upper
+	// case, which shouldn't be a problem, but if we plan to do any cleanup
+	// afterwards, we need to get this right from the beginning.
+	char YellBuffer[256];
+
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
 		error("Talk: Übergebene Kreatur %d existiert nicht.\n", CreatureID);
@@ -2217,11 +2244,9 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 				throw EXHAUSTED;
 			}
 
-			// TODO(fusion): This would be valid if `Text` was `char*`, but I
-			// wanted to improve the quality of string handling and parameters
-			// across the board, and now we need some scratch buffer to actually
-			// modify the text.
-			strUpper(Text);
+			strcpy(YellBuffer, Text);
+			strUpper(YellBuffer);
+			Text = YellBuffer;
 		}
 
 		if(Mode == TALK_CHANNEL_CALL && Channel == 5){
@@ -2277,7 +2302,7 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 		}
 
 		if(Mode == TALK_PRIVATE_MESSAGE){
-			Muting = Player->RecordMessage(Receiver->ID);
+			int Muting = Player->RecordMessage(Receiver->ID);
 			if(Muting > 0){
 				SendMessage(Player->Connection, TALK_FAILURE_MESSAGE,
 						"You have addressed too many players. You are muted for %d second%s.",
@@ -2320,7 +2345,7 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 
 		TFindCreatures Search(Radius, Radius, Creature->posx, Creature->posy, FIND_PLAYERS);
 		while(true){
-			uint32 SpectatorID = Search.findNext();
+			uint32 SpectatorID = Search.getNext();
 			if(SpectatorID == 0){
 				break;
 			}
@@ -2413,8 +2438,8 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 				continue;
 			}
 
-			// TODO(fusion): We should probably review this. What if both player
-			// guild names are empty? Is it checked elsewhere?
+			// TODO(fusion): We should probably review this. You'd assume creature
+			// should be a player when talking to any channel.
 			if(Channel == 0 && (Creature->Type != PLAYER
 					|| strcmp(((TPlayer*)Creature)->Guild, Subscriber->Guild) != 0)){
 				continue;
@@ -2447,5 +2472,985 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 				error("Talk: Kreatur existiert nicht.\n");
 			}
 		}
+	}
+}
+
+void Use(uint32 CreatureID, Object Obj1, Object Obj2, uint8 Info){
+	if(!Obj1.exists()){
+		error("Use: Übergebenes Objekt Obj 1 existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(Obj2 != NONE && !Obj2.exists()){
+		error("Use: Übergebenes Objekt Obj 2 existiert nicht.\n");
+		throw ERROR;
+	}
+
+	CheckTopUseObject(CreatureID, Obj1);
+	if(!ObjectAccessible(CreatureID, Obj1, 1)){
+		throw NOTACCESSIBLE;
+	}
+
+	ObjectType ObjType1 = Obj1.getObjectType();
+	if(Obj2 != NONE){
+		// TODO(fusion): Is this correct?
+		if(!ObjType1.getFlag(DISTUSE)){
+			CheckTopMultiuseObject(CreatureID, Obj2);
+		}
+
+		if(!ObjectAccessible(CreatureID, Obj2, 1)){
+			if(!ObjType1.getFlag(DISTUSE)){
+				throw NOTACCESSIBLE;
+			}
+
+			TCreature *Creature = GetCreature(CreatureID);
+			if(Creature == NULL){
+				error("Use: Verursachende Kreatur existiert nicht.\n");
+				throw ERROR;
+			}
+
+			int ObjX2, ObjY2, ObjZ2;
+			GetObjectCoordinates(Obj2, &ObjX2, &ObjY2, &ObjZ2);
+			if(Creature->posz > ObjZ2){
+				throw UPSTAIRS;
+			}else if(Creature->posz < ObjZ2){
+				throw DOWNSTAIRS;
+			}
+
+			if(!ThrowPossible(Creature->posx, Creature->posy, Creature->posz, ObjX2, ObjY2, ObjZ2, 0)){
+				throw CANNOTTHROW;
+			}
+		}
+	}
+
+	if(ObjType1.getFlag(CONTAINER)){
+		UseContainer(CreatureID, Obj1, Info);
+	}else if(ObjType1.getFlag(CHEST)){
+		UseChest(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(LIQUIDCONTAINER)){
+		UseLiquidContainer(CreatureID, Obj1, Obj2);
+	}else if(ObjType1.getFlag(FOOD)){
+		UseFood(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(WRITE) || ObjType1.getFlag(WRITEONCE)){
+		UseTextObject(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(INFORMATION)){
+		UseAnnouncer(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(RUNE)){
+		UseMagicItem(CreatureID, Obj1, Obj2);
+	}else if(ObjType1.getFlag(KEY)){
+		UseKeyDoor(CreatureID, Obj1, Obj2);
+	}else if(ObjType1.getFlag(NAMEDOOR)){
+		UseNameDoor(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(LEVELDOOR)){
+		UseLevelDoor(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(QUESTDOOR)){
+		UseQuestDoor(CreatureID, Obj1);
+	}else if(ObjType1.isCloseWeapon()
+			&& Obj2 != NONE
+			&& Obj2.getObjectType().getFlag(DESTROY)){
+		UseWeapon(CreatureID, Obj1, Obj2);
+	}else if(ObjType1.getFlag(CHANGEUSE)){
+		UseChangeObject(CreatureID, Obj1);
+	}else if(ObjType1.getFlag(USEEVENT)){
+		if(Obj2 != NONE){
+			UseObjects(CreatureID, Obj1, Obj2);
+		}else{
+			UseObject(CreatureID, Obj1);
+		}
+	}else if(ObjType1.getFlag(TEXT)
+			&& ObjType1.getAttribute(FONTSIZE) == 1){
+		UseTextObject(CreatureID, Obj1);
+	}else{
+		throw NOTUSABLE;
+	}
+}
+
+void Turn(uint32 CreatureID, Object Obj){
+	if(!Obj.exists()){
+		error("Turn: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	if(!ObjectAccessible(CreatureID, Obj, 1)){
+		throw NOTACCESSIBLE;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(ROTATE)){
+		throw NOTTURNABLE;
+	}
+
+	ObjectType RotateTarget = ObjType.getAttribute(ROTATETARGET);
+	if(RotateTarget == ObjType){
+		error("Turn: Objekt %d wird durch Drehen zerstört.\n", ObjType.TypeID);
+	}
+
+	Change(Obj, RotateTarget, 0);
+}
+
+void CreatePool(Object Con, ObjectType Type, uint32 Value){
+	if(!Con.exists()){
+		error("CreatePool: Übergebener MapContainer existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ConType = Con.getObjectType();
+	if(!ConType.isMapContainer()){
+		error("CreatePool: Übergebenes Objekt ist kein MapContainer.\n");
+		throw ERROR;
+	}
+
+	// NOTE(fusion): There can be no liquid pools on fields with other BOTTOM
+	// objects, with the exception of other liquid pools, in which case the new
+	// liquid pool would replace the old one.
+	Object Help = GetFirstContainerObject(Con);
+	while(Help != NONE){
+		Object Next = Help.getNextObject();
+		ObjectType HelpType = Help.getObjectType();
+		if(HelpType.getFlag(BOTTOM)){
+			if(!HelpType.getFlag(LIQUIDPOOL)){
+				throw NOROOM;
+			}
+
+			try{
+				Delete(Help, -1);
+			}catch(RESULT r){
+				error("CreatePool: Exception %d beim Löschen des alten Pools.\n", r);
+			}
+		}
+		Help = Next;
+	}
+
+	Create(Con, Type, Value);
+}
+
+void EditText(uint32 CreatureID, Object Obj, const char *Text){
+	if(!Obj.exists()){
+		error("EditText: Übergebenes Objekt existiert nicht.\n");
+		throw ERROR;
+	}
+
+	ObjectType ObjType = Obj.getObjectType();
+	if(!ObjType.getFlag(WRITE) && (!ObjType.getFlag(WRITEONCE) || Obj.getAttribute(TEXTSTRING) != 0)){
+		error("EditText: Objekt ist nicht beschreibbar.\n");
+		throw ERROR;
+	}
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		error("EditText: Kreatur existiert nicht.\n");
+		throw ERROR;
+	}
+
+	int TextLength = (int)strlen(Text);
+	int MaxLength = (ObjType.getFlag(WRITE)
+			? ObjType.getAttribute(MAXLENGTH)
+			: ObjType.getAttribute(MAXLENGTHONCE));
+	if(TextLength >= MaxLength){
+		throw TOOLONG;
+	}
+
+	// TODO(fusion): Similar to maybe inlined function in `Look`.
+	// TODO(fusion): Same as in `Look`. `CreatureID` can't be zero here or we'd
+	// have already returned so its probably some inlined function.
+	if(CreatureID != 0 && !ObjectAccessible(CreatureID, Obj, 1)){
+		throw NOTACCESSIBLE;
+	}
+
+	uint32 ObjText = Obj.getAttribute(TEXTSTRING);
+	if((ObjText != 0 && strcmp(GetDynamicString(ObjText), Text) == 0)
+			|| (ObjText == 0 && Text[0] == 0)){
+		print(3, "Text hat sich nicht geändert.\n");
+		return;
+	}
+
+	DeleteDynamicString(ObjText);
+	Change(Obj, TEXTSTRING, AddDynamicString(Text));
+
+	DeleteDynamicString(Obj.getAttribute(EDITOR));
+	Change(Obj, EDITOR, AddDynamicString(Creature->Name));
+}
+
+Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value){
+	// TODO(fusion): Bruhh...
+
+	TCreature *Creature = GetCreature(CreatureID);
+	if(Creature == NULL){
+		// TODO(fusion): Different function name?
+		error("GiveObjectToCreature: Kann Kreatur nicht finden.\n");
+		throw ERROR;
+	}
+
+	try{
+		CheckWeight(CreatureID, Type, Value, 0);
+	}catch(RESULT r){
+		return Create(GetMapContainer(Creature->CrObject), Type, Value);
+	}
+
+	Object Obj = NONE;
+	bool CheckContainers = Type.getFlag(MOVEMENTEVENT);
+	for(int i = 0; i < 2; i += 1){
+		bool TooHeavy = false;
+		for(int Position = INVENTORY_FIRST;
+				Position <= INVENTORY_LAST;
+				Position += 1){
+			try{
+				Object BodyObj = GetBodyObject(CreatureID, Position);
+				if(CheckContainers){
+					if(BodyObj != NONE && BodyObj.getObjectType().getFlag(CONTAINER)){
+						Obj = Create(BodyObj, Type, Value);
+						break;
+					}
+				}else{
+					if(BodyObj == NONE){
+						Obj = Create(GetBodyContainer(CreatureID, Position), Type, Value);
+						break;
+					}
+				}
+			}catch(RESULT r){
+				// TODO(fusion): Is this even possible if we're checking the
+				// weight before hand?
+				if(r == TOOHEAVY){
+					TooHeavy = true;
+					break;
+				}
+			}
+		}
+
+		if(Obj != NONE || TooHeavy){
+			break;
+		}
+
+		CheckContainers = !CheckContainers;
+	}
+
+	if(Obj == NONE){
+		Obj = Create(GetMapContainer(Creature->CrObject), Type, Value);
+	}
+
+	return Obj;
+}
+
+void DeleteAtCreature(uint32 CreatureID, ObjectType Type, int Amount, uint32 Value){
+	while(Amount > 0){
+		Object Obj = GetInventoryObject(CreatureID, Type, Value);
+		if(Obj == NONE){
+			error("DeleteAtCreature: Kein Objekt gefunden.\n");
+			throw ERROR;
+		}
+
+		if(Type.getFlag(CUMULATIVE)){
+			int ObjAmount = (int)Obj.getAttribute(AMOUNT);
+			if(ObjAmount < Amount){
+				Delete(Obj, -1);
+				Amount -= ObjAmount;
+			}else{
+				Change(Obj, AMOUNT, (ObjAmount - Amount));
+				Amount = 0;
+			}
+		}else{
+			Delete(Obj, -1);
+			Amount -= 1;
+		}
+	}
+}
+
+void ProcessCronSystem(void){
+	while(true){
+		Object Obj = CronCheck();
+		if(Obj == NONE){
+			break;
+		}
+
+		ObjectType ObjType = Obj.getObjectType();
+		ObjectType ExpireTarget = ObjType.getAttribute(EXPIRETARGET);
+		if(ObjType.getFlag(CONTAINER)){
+			int Remainder = 0;
+			if(!ExpireTarget.isMapContainer() && ExpireTarget.getFlag(CONTAINER)){
+				Remainder = (int)ExpireTarget.getAttribute(CAPACITY);
+			}
+
+			Empty(Obj, Remainder);
+		}
+
+		Change(Obj, ExpireTarget, 0);
+	}
+}
+
+bool SectorRefreshable(int SectorX, int SectorY, int SectorZ){
+	// TODO(fusion): Have the sector size defined as a constant in `map.hh`?
+	//constexpr int SectorSize = 32;
+	int SearchRadiusX = 32 - 1;
+	int SearchRadiusY = 32 - 1;
+	int SearchCenterX = SectorX * 32 + (32 / 2);
+	int SearchCenterY = SectorY * 32 + (32 / 2);
+	TFindCreatures Search(SearchRadiusX, SearchRadiusY, SearchCenterX, SearchCenterY, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL){
+			error("SectorRefreshable: Kreatur existiert nicht.\n");
+			continue;
+		}
+
+		// TODO(fusion): Maybe an inlined function to check whether a player
+		// can see some floor. All floors above ground, when above ground. Or
+		// two floors up and down, when underground.
+		if(Player->posz <= 7){
+			if(SectorZ <= 7){
+				return false;
+			}
+		}else{
+			if(std::abs(Player->posz - SectorZ) <= 2){
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Count){
+	if(!SectorRefreshable(SectorX, SectorY, SectorZ)){
+		return;
+	}
+
+	TReadBuffer Buffer(Data, Count);
+	RefreshSector(SectorX, SectorY, SectorZ, &Buffer);
+
+	// TODO(fusion): This function is very similar to `ApplyPatch`.
+	int SearchRadiusX = 32 / 2;
+	int SearchRadiusY = 32 / 2;
+	int SearchCenterX = SectorX * 32 + (32 / 2);
+	int SearchCenterY = SectorY * 32 + (32 / 2);
+	TFindCreatures Search(SearchRadiusX, SearchRadiusY, SearchCenterX, SearchCenterY, FIND_ALL);
+	while(true){
+		uint32 CreatureID = Search.getNext();
+		if(CreatureID == 0){
+			break;
+		}
+
+		TCreature *Creature = GetCreature(CreatureID);
+		if(Creature == NULL){
+			error("RefreshSector: Kreatur existiert nicht.\n");
+			continue;
+		}
+
+		if(Creature->posz != SectorZ){
+			continue;
+		}
+
+		bool FieldBlocked = false;
+		int FieldX = Creature->posx;
+		int FieldY = Creature->posy;
+		int FieldZ = Creature->posz;
+		Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+		while(Obj != NONE){
+			ObjectType ObjType = Obj.getObjectType();
+			if(!ObjType.isCreatureContainer() && ObjType.getFlag(UNPASS)){
+				FieldBlocked = true;
+				break;
+			}
+			Obj = Obj.getNextObject();
+		}
+
+		if(FieldBlocked){
+			try{
+				if(!SearchFreeField(&FieldX, &FieldY, &FieldZ, 1, 0, false)){
+					if(Creature->Type == NPC){
+						print(2, "NPC auf [%d,%d,%d] muß auf seinen Start zurückgesetzt werden.\n", FieldX, FieldY, FieldZ);
+						FieldX = Creature->startx;
+						FieldY = Creature->starty;
+						FieldZ = Creature->startz;
+					}else if(Creature->Type == MONSTER){
+						print(2, "Monster auf [%d,%d,%d] muß gelöscht werden.\n", FieldX, FieldY, FieldZ);
+						delete Creature;
+						continue;
+					}else{
+						error("Spieler auf [%d,%d,%d] ist von Refresh betroffen.\n", FieldX, FieldY, FieldZ);
+						continue;
+					}
+				}
+
+				Object MapCon = GetMapContainer(FieldX, FieldY, FieldZ);
+				Move(0, Creature->CrObject, MapCon, -1, false, NONE);
+			}catch(RESULT r){
+				error("RefreshSector: Exception %d beim Neusetzen des Monsters.\n", r);
+			}
+		}
+	}
+}
+
+void RefreshMap(void){
+	TDynamicWriteBuffer HelpBuffer(0x10000);
+	for(int SectorZ = SectorZMin; SectorZ <= SectorZMax; SectorZ += 1)
+	for(int SectorY = SectorYMin; SectorY <= SectorYMax; SectorY += 1)
+	for(int SectorX = SectorXMin; SectorX <= SectorXMax; SectorX += 1){
+		if(!SectorRefreshable(SectorX, SectorY, SectorZ)){
+			continue;
+		}
+
+		char FileName[4096];
+		snprintf(FileName, sizeof(FileName), "%s/%04u-%04u-%02u.sec",
+				ORIGMAPPATH, SectorX, SectorY, SectorZ);
+		if(!FileExists(FileName)){
+			continue;
+		}
+
+		bool Refreshable = false;
+		int OffsetX = -1;
+		int OffsetY = -1;
+		HelpBuffer.reset();
+		try{
+			TReadScriptFile Script;
+			Script.open(FileName);
+			while(true){
+				Script.nextToken();
+				if(Script.Token == ENDOFFILE){
+					Script.close();
+					break;
+				}
+
+				if(Script.Token == SPECIAL && Script.getSpecial() == ','){
+					continue;
+				}
+
+				if(Script.Token == BYTES){
+					uint8 *SectorOffset = Script.getBytesequence();
+					OffsetX = (int)SectorOffset[0];
+					OffsetY = (int)SectorOffset[1];
+					Script.readSymbol(':');
+					continue;
+				}
+
+				// TODO(fusion): We don't enforce the token to be an identifier
+				// here as we do when loading any sector file in `map.cc`.
+				if(Script.Token == IDENTIFIER){
+					if(OffsetX == -1 || OffsetY == -1){
+						Script.error("coordinate expected");
+					}
+
+					const char *Identifier = Script.getIdentifier();
+					if(strcmp(Identifier, "refresh") == 0){
+						Refreshable = true;
+					}else if(strcmp(Identifier, "content") == 0){
+						Script.readSymbol('=');
+						if(Refreshable){
+							HelpBuffer.writeByte((uint8)OffsetX);
+							HelpBuffer.writeByte((uint8)OffsetY);
+						}
+						LoadObjects(&Script, &HelpBuffer, !Refreshable);
+					}
+				}
+			}
+
+			if(HelpBuffer.Position > 0){
+				TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
+				RefreshSector(SectorX, SectorY, SectorZ, &ReadBuffer);
+			}
+		}catch(const char *str){
+			error("RefreshMap: Fehler beim Bearbeiten der Datei (%s).\n", str);
+		}
+	}
+}
+
+void RefreshCylinders(void){
+	// TODO(fusion): `RefreshedCylinders` is the number of cylinders we attempt to
+	// refresh in this function, which is called every minute or so by `AdvanceGame`.
+	// We should probably rename it to something more clear.
+
+	// TODO(fusion): This might be on purpose but `RefreshX` and `RefreshY` will be
+	// way below `SectorXMin` and `SectorYMin` the first N times this function is
+	// called and depending on the value of `RefreshedCylinders`, could take a few
+	// hours before we even start refreshing the map.
+	//	If the intent is to delay refreshing cylinders until some time after startup,
+	// we should change how this function is called by `AdvanceGame` instead.
+
+	static int RefreshX = -1;
+	static int RefreshY = -1;
+	for(int i = 0; i < RefreshedCylinders; i += 1){
+		if(RefreshX < SectorXMax){
+			RefreshX += 1;
+		}else{
+			RefreshX = SectorXMin;
+			if(RefreshY < SectorYMax){
+				RefreshY += 1;
+			}else{
+				RefreshY = SectorYMin;
+			}
+		}
+
+		for(int RefreshZ = SectorZMin;
+				RefreshZ <= SectorZMax;
+				RefreshZ += 1){
+			if(SectorRefreshable(RefreshX, RefreshY, RefreshZ)){
+				LoadSectorOrder(RefreshX, RefreshY, RefreshZ);
+			}
+		}
+	}
+}
+
+void ApplyPatch(int SectorX, int SectorY, int SectorZ,
+		bool FullSector, TReadScriptFile *Script, bool SaveHouses){
+	if(SectorX < SectorXMin || SectorX > SectorXMax
+	|| SectorY < SectorYMin || SectorY > SectorYMax
+	|| SectorZ < SectorZMin || SectorZ > SectorZMax){
+		return;
+	}
+
+	PrepareHouseCleanup();
+	PatchSector(SectorX, SectorY, SectorZ, FullSector, Script, SaveHouses);
+	FinishHouseCleanup();
+
+	// TODO(fusion): Similar to `SectorRefreshable` but with a reduced radius.
+	int SearchRadiusX = 32 / 2;
+	int SearchRadiusY = 32 / 2;
+	int SearchCenterX = SectorX * 32 + (32 / 2);
+	int SearchCenterY = SectorY * 32 + (32 / 2);
+	TFindCreatures Search(SearchRadiusX, SearchRadiusY, SearchCenterX, SearchCenterY, FIND_ALL);
+	while(true){
+		uint32 CreatureID = Search.getNext();
+		if(CreatureID == 0){
+			break;
+		}
+
+		TCreature *Creature = GetCreature(CreatureID);
+		if(Creature == NULL){
+			error("ApplyPatch: Kreatur existiert nicht.\n");
+			continue;
+		}
+
+		if(Creature->posz != SectorZ){
+			continue;
+		}
+
+		bool FieldBlocked = false;
+		int FieldX = Creature->posx;
+		int FieldY = Creature->posy;
+		int FieldZ = Creature->posz;
+		Object Obj = GetFirstObject(FieldX, FieldY, FieldZ);
+		while(Obj != NONE){
+			ObjectType ObjType = Obj.getObjectType();
+			if(!ObjType.isCreatureContainer() && ObjType.getFlag(UNPASS)){
+				FieldBlocked = true;
+				break;
+			}
+			Obj = Obj.getNextObject();
+		}
+
+		if(!FieldBlocked){
+			// TODO(fusion): Not sure why we're moving the creature to the same
+			// field, specially with `MoveObject`. Does `PatchSector` leave
+			// creatures on invalid indices?
+			Object MapCon = GetMapContainer(FieldX, FieldY, FieldZ);
+			MoveObject(Creature->CrObject, MapCon);
+		}else{
+			try{
+				if(!SearchFreeField(&FieldX, &FieldY, &FieldZ, 1, 0, false)){
+					if(Creature->Type == NPC){
+						print(2, "NPC auf [%d,%d,%d] muß auf seinen Start zurückgesetzt werden.\n", FieldX, FieldY, FieldZ);
+						FieldX = Creature->startx;
+						FieldY = Creature->starty;
+						FieldZ = Creature->startz;
+					}else if(Creature->Type == MONSTER){
+						print(2, "Monster auf [%d,%d,%d] muß gelöscht werden.\n", FieldX, FieldY, FieldZ);
+						Delete(Creature->CrObject, -1);
+						Creature->StartLogout(false, false);
+						continue;
+					}else{
+						error("Spieler auf [%d,%d,%d] ist von Patch betroffen.\n", FieldX, FieldY, FieldZ);
+						continue;
+					}
+				}
+
+				Object MapCon = GetMapContainer(FieldX, FieldY, FieldZ);
+				Move(0, Creature->CrObject, MapCon, -1, false, NONE);
+			}catch(RESULT r){
+				error("ApplyPatch: Exception %d beim Neusetzen des Monsters.\n", r);
+			}
+		}
+	}
+}
+
+void ApplyPatches(void){
+	// TODO(fusion): We don't handle any script exceptions in here which could
+	// lead to `PatchDir` being leaked. It may not be a problem overall because
+	// this function is only called at startup by `InitAll`.
+
+	char FileName[4096];
+	bool SaveHouses = false;
+	snprintf(FileName, sizeof(FileName), "%s/save-houses", SAVEPATH);
+	if(FileExists(FileName)){
+		SaveHouses = true;
+		print(2, "Häuser werden nicht gepatcht.\n");
+		unlink(FileName);
+	}
+
+	DIR *PatchDir = opendir(SAVEPATH);
+	if(PatchDir == NULL){
+		error("ApplyPatches: Unterverzeichnis %s nicht gefunden.\n", SAVEPATH);
+		return;
+	}
+
+	int MaxPatch = -1;
+	while(dirent *DirEntry = readdir(PatchDir)){
+		if(DirEntry->d_type != DT_REG){
+			continue;
+		}
+
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt == NULL){
+			continue;
+		}
+
+		if(strcmp(FileExt, ".pat") == 0){
+			int Patch;
+			if(sscanf(DirEntry->d_name, "%d.pat", &Patch) == 1){
+				if(MaxPatch < Patch){
+					MaxPatch = Patch;
+				}
+			}
+		}else if(strcmp(FileExt, ".sec") == 0){
+			int SectorX, SectorY, SectorZ;
+			if(sscanf(DirEntry->d_name, "%d-%d-%d.sec", &SectorX, &SectorY, &SectorZ) == 3){
+				print(2,"Patche kompletten Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+				snprintf(FileName, sizeof(FileName), "%s/%s", SAVEPATH, DirEntry->d_name);
+
+				TReadScriptFile Script;
+				Script.open(FileName);
+				ApplyPatch(SectorX, SectorY, SectorZ, true, &Script, SaveHouses);
+				Script.close();
+				unlink(FileName);
+			}
+		}
+	}
+
+	closedir(PatchDir);
+
+	for(int Patch = 0; Patch <= MaxPatch; Patch += 1){
+		snprintf(FileName, sizeof(FileName), "%s/%03d.pat", SAVEPATH, Patch);
+		if(FileExists(FileName)){
+			TReadScriptFile Script;
+			Script.open(FileName);
+			if(strcmp(Script.readIdentifier(), "sector") != 0){
+				Script.error("Sector expected");
+			}
+
+			int SectorX = Script.readNumber();
+			Script.readSymbol(',');
+			int SectorY = Script.readNumber();
+			Script.readSymbol(',');
+			int SectorZ = Script.readNumber();
+
+			print(2, "Patche Teile von Sektor %d/%d/%d (Patch %d) ...\n",
+					SectorX, SectorY, SectorZ, Patch);
+			ApplyPatch(SectorX, SectorY, SectorZ, false, &Script, false);
+			Script.close();
+			unlink(FileName);
+		}
+	}
+}
+
+// Communication Logging
+// =============================================================================
+uint32 LogCommunication(uint32 CreatureID, int Mode, int Channel, const char *Text){
+	static uint32 StatementID = 0;
+
+	if(Text == NULL){
+		error("LogCommunication: Text ist NULL.\n");
+		return 0;
+	}
+
+	if(CreatureID == 0){
+		error("LogCommunication: CharacterID ist Null.\n");
+		return 0;
+	}
+
+	StatementID += 1;
+
+	TStatement *Statement = Statements.append();
+	Statement->StatementID = StatementID;
+	Statement->TimeStamp = (uint32)time(NULL);
+	Statement->CharacterID = CreatureID;
+	Statement->Mode = Mode;
+	Statement->Channel = Channel;
+	Statement->Text = AddDynamicString(Text);
+	Statement->Reported = false;
+	return StatementID;
+}
+
+uint32 LogListener(uint32 StatementID, TPlayer *Player){
+	if(StatementID == 0 || Player == NULL
+			|| !CheckRight(Player->ID, LOG_COMMUNICATION)){
+		return 0;
+	}
+
+	TListener *Listener = Listeners.append();
+	Listener->StatementID = StatementID;
+	Listener->CharacterID = Player->ID;
+	return StatementID;
+}
+
+void ProcessCommunicationControl(void){
+	// NOTE(fusion): Remove statements older than 30 minutes.
+	int Now = (int)time(NULL);
+	uint32 Limit = 0;
+	while(true){
+		TStatement *Statement = Statements.next();
+		if(Statement == NULL || Now <= (Statement->TimeStamp + 1800)){
+			if(Statement != NULL){
+				Limit = Statement->StatementID;
+			}
+			break;
+		}
+
+		DeleteDynamicString(Statement->Text);
+		Statements.remove();
+	}
+
+	// TODO(fusion): If there are no statements left we'll end up with `Limit`
+	// equal to zero which will prevent any listeners entry from being removed.
+	while(true){
+		TListener *Listener = Listeners.next();
+		if(Listener == NULL || Listener->StatementID >= Limit){
+			break;
+		}
+
+		Listeners.remove();
+	}
+}
+
+int GetCommunicationContext(uint32 CharacterID, uint32 StatementID,
+		int *NumberOfStatements, vector<TReportedStatement> **ReportedStatements){
+	TStatement *Statement = NULL;
+	int StatementsIter = Statements.iterFirst();
+	while(true){
+		Statement = Statements.iterNext(&StatementsIter);
+		if(Statement == NULL || Statement->StatementID == StatementID){
+			break;
+		}
+	}
+
+	if(Statement == NULL){
+		return 1; // STATEMENT_UNKNOWN ?
+	}
+
+	if(CharacterID == 0){
+		bool ChannelMode = Statement->Mode == TALK_CHANNEL_CALL
+				|| Statement->Mode == TALK_GAMEMASTER_CHANNELCALL
+				|| Statement->Mode == TALK_HIGHLIGHT_CHANNELCALL;
+
+		bool ReportableChannel = Statement->Channel == 2	// CHANNEL_TUTOR
+				|| Statement->Channel == 4					// CHANNEL_GAME
+				|| Statement->Channel == 5					// CHANNEL_TRADE
+				|| Statement->Channel == 6					// CHANNEL_RLCHAT
+				|| Statement->Channel == 7;					// CHANNEL_HELP
+
+		if(!ChannelMode || !ReportableChannel){
+			error("GetCommunicationContext: Äußerung dürfte nicht gemeldet werden.\n");
+			return 1; // STATEMENT_UNKNOWN ?
+		}
+	}
+
+	if(Statement->Reported){
+		return 2; // STATEMENT_ALREADY_REPORTED ?
+	}
+
+	// TODO(fusion): `FreeSpace` limits the amount of data that is gathered. It
+	// seems to grow/shrink with the size of the text plus an extra 46 bytes for
+	// each statement entry. This flat memory overhead of 46 bytes could be some
+	// compilation/decompilation artifact so I've left it out for now.
+	//	The end point of this data is `ProcessPunishmentOrder` which may record
+	// statements into the database so it may be related to that.
+
+	bool StatementContained = false;
+	int FreeSpace = KB(16);
+	*NumberOfStatements = 0;
+	*ReportedStatements = new vector<TReportedStatement>(0, 100, 100);
+	StatementsIter = Statements.iterLast();
+	while(true){
+		TStatement *Current = Statements.iterPrev(&StatementsIter);
+		if(Current == NULL){
+			break;
+		}
+
+		if(Current->TimeStamp < (Statement->TimeStamp - 180)
+		|| Current->TimeStamp > (Statement->TimeStamp + 60)){
+			continue;
+		}
+
+		if(FreeSpace <= 0 && Current->TimeStamp > Statement->TimeStamp){
+			error("GetCommunicationContext: Kontext wird zu groß. Schneide Ende ab.\n");
+			break;
+		}
+
+		if(CharacterID == 0){
+			bool ChannelMode = Current->Mode == TALK_CHANNEL_CALL
+					|| Current->Mode == TALK_GAMEMASTER_CHANNELCALL
+					|| Current->Mode == TALK_HIGHLIGHT_CHANNELCALL;
+			if(!ChannelMode || Current->Channel != Statement->Channel){
+				continue;
+			}
+		}else{
+			// NOTE(fusion): Check if the character listened to the current statement.
+			TListener *Listener = NULL;
+			int ListenersIter = Listeners.iterLast();
+			while(true){
+				Listener = Listeners.iterPrev(&ListenersIter);
+				if(Listener == NULL
+						|| Listener->StatementID > Current->StatementID
+						|| (Listener->StatementID == Current->StatementID
+								&& Listener->CharacterID == CharacterID)){
+					break;
+				}
+			}
+
+			if(Listener == NULL || Listener->StatementID != Current->StatementID){
+				continue;
+			}
+		}
+
+		TReportedStatement *Entry = (*ReportedStatements)->at(*NumberOfStatements);
+		Entry->StatementID = Current->StatementID;
+		Entry->TimeStamp = Current->TimeStamp;
+		Entry->CharacterID = Current->CharacterID;
+		Entry->Mode = Current->Mode;
+		Entry->Channel = Current->Channel;
+		if(Current->Text != 0){
+			// TODO(fusion): OOF SIZE: Large.
+			strcpy(Entry->Text, GetDynamicString(Current->Text));
+		}else{
+			Entry->Text[0] = 0;
+		}
+		*NumberOfStatements += 1;
+		FreeSpace -= (int)strlen(Entry->Text);
+
+		if(Current->StatementID == StatementID){
+			StatementContained = true;
+		}
+	}
+
+	if(FreeSpace < 0){
+		error("GetCommunicationContext: Kontext wird um %d Bytes zu groß. Lösche Anfang.\n", -FreeSpace);
+
+		for(int i = 0; i < *NumberOfStatements && FreeSpace < 0; i += 1){
+			TReportedStatement *Entry = (*ReportedStatements)->at(i);
+			if(Entry->StatementID != StatementID){
+				Entry->StatementID = 0;
+				FreeSpace += (int)strlen(Entry->Text);
+			}
+		}
+
+		if(FreeSpace < 0){
+			error("GetCommunicationContext: FreeSpace ist immer noch negativ (%d).\n", FreeSpace);
+		}
+	}
+
+	if(!StatementContained){
+		error("GetCommunicationContext: Statement ist nicht im Kontext enthalten.\n");
+		delete *ReportedStatements;
+		*NumberOfStatements = 0;
+		*ReportedStatements = NULL;
+		return 1; // STATEMENT_UNKNOWN ?
+	}
+
+	Statement->Reported = true;
+	return 0; // STATEMENT_REPORTED ?
+}
+
+// Channel
+// =============================================================================
+TChannel::TChannel(void) : Subscriber(0, 10, 10), InvitedPlayer(0, 10, 10) {
+	this->Moderator = 0;
+	this->ModeratorName[0] = 0;
+	this->Subscribers = 0;
+	this->InvitedPlayers = 0;
+}
+
+TChannel::TChannel(const TChannel &Other) : TChannel() {
+	this->operator=(Other);
+}
+
+void TChannel::operator=(const TChannel &Other){
+	this->Subscribers = Other.Subscribers;
+	for(int i = 0; i < Other.Subscribers; i += 1){
+		*this->Subscriber.at(i) = Other.Subscriber.copyAt(i);
+	}
+
+	this->InvitedPlayers = Other.InvitedPlayers;
+	for(int i = 0; i < Other.InvitedPlayers; i += 1){
+		*this->InvitedPlayer.at(i) = Other.InvitedPlayer.copyAt(i);
+	}
+}
+
+bool ChannelActive(int ChannelID){
+	if(ChannelID < 0 || ChannelID >= Channels){
+		error("ChannelActive: Ungültige Kanalnummer %d.\n", ChannelID);
+		return false;
+	}
+
+	return ChannelID <= 7 || Channel.at(ChannelID)->Moderator != 0;
+}
+
+const char *GetChannelName(int ChannelID, uint32 CharacterID){
+	static char ChannelName[40];
+
+	if(!ChannelActive(ChannelID)){
+		return "Unknown";
+	}
+
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("GetChannelName: Spieler existiert nicht.\n");
+		return "Unknown";
+	}
+
+	switch(ChannelID){
+		case 0:	return Player->Guild;
+		case 1: return "Gamemaster";
+		case 2: return "Tutor";
+		case 3: return "Rule Violations";
+		case 4: return "Game-Chat";
+		case 5: return "Trade";
+		case 6: return "RL-Chat";
+		case 7: return "Help";
+		default:{
+			if(ChannelID > 7){
+				snprintf(ChannelName, sizeof(ChannelName), "%s\'s Channel",
+						Channel.at(ChannelID)->ModeratorName);
+				return ChannelName;
+			}else{
+				error("GetChannelName: Unbenutzter Kanal %d.\n", ChannelID);
+				return "Unknown";
+			}
+		}
+	}
+}
+
+// Party
+// =============================================================================
+TParty::TParty(void) : Member(0, 10, 10), InvitedPlayer(0, 10, 10) {
+	this->Leader = 0;
+	this->Members = 0;
+	this->InvitedPlayers = 0;
+}
+
+TParty::TParty(const TParty &Other) : TParty() {
+	this->operator=(Other);
+}
+
+void TParty::operator=(const TParty &Other){
+	this->Members = Other.Members;
+	for(int i = 0; i < Other.Members; i += 1){
+		*this->Member.at(i) = Other.Member.copyAt(i);
+	}
+
+	this->InvitedPlayers = Other.InvitedPlayers;
+	for(int i = 0; i < Other.InvitedPlayers; i += 1){
+		*this->InvitedPlayer.at(i) = Other.InvitedPlayer.copyAt(i);
 	}
 }

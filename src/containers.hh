@@ -118,6 +118,14 @@ struct vector{
 		return &this->entry[index - this->start];
 	}
 
+	T copyAt(int index) const {
+		T Result = {};
+		if(index >= this->start && index < (this->start + this->space)){
+			Result = this->entry[index - this->start];
+		}
+		return Result;
+	}
+
 	// DATA
 	// =================
 	int min;
@@ -466,7 +474,7 @@ struct fifo{
 
 		// TODO(fusion): We don't consider integer overflow at all.
 		this->Head += 1;
-		return this->Entry[this->Head % this->Size];
+		return &this->Entry[this->Head % this->Size];
 	}
 
 	void remove(void){
@@ -476,6 +484,33 @@ struct fifo{
 		}
 
 		this->Tail += 1;
+	}
+
+	int iterFirst(void){
+		return this->Head;
+	}
+
+	int iterLast(void){
+		return this->Tail;
+	}
+
+	T *iterNext(int *Position){
+		if(*Position < this->Tail || this->Head < *Position){
+			return NULL;
+		}
+		T *Result = &this->Entry[*Position % this->Size];
+		*Position -= 1;
+		return Result;
+	}
+
+	T *iterPrev(int *Position){
+		if(*Position < this->Tail || this->Head < *Position){
+			return NULL;
+		}
+
+		T *Result = &this->Entry[*Position % this->Size];
+		*Position += 1;
+		return Result;
 	}
 
 	// TODO(fusion): There is also a `fifoIterator` used a few times and it is

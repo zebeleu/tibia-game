@@ -19,14 +19,11 @@ extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 			uint32 Offender, const char *Remark, bool Unjustified);
-extern bool CheckRight(uint32 CreatureID, RIGHT Right);
 extern void CleanHouseField(int x, int y, int z);
 extern void ConvinceMonster(TCreature *Master, TCreature *Slave);
 extern void ChallengeMonster(TCreature *Challenger, TCreature *Monster);
-extern Object CreateAtCreature(uint32 CreatureID, ObjectType Type, uint32 Value);
 extern TCreature *CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master, bool ShowEffect);
 extern void CreatePlayerList(bool Online);
-extern void CreatePool(Object Con, ObjectType Type, uint32 Value);
 extern void GetExitPosition(uint16 HouseID, int *x, int *y, int *z);
 extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
@@ -39,22 +36,18 @@ extern void InitLog(const char *ProtocolName);
 extern void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest);
 extern void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames, int *KilledPlayers, int *KilledCreatures);
 extern bool LagDetected(void);
-extern void LoadMonsterRaid(const char *FileName, int Start,
-		bool *Type, int *Date, int *Interval, int *Duration);
+extern void LoadSectorOrder(int SectorX, int SectorY, int SectorZ);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutAllPlayers(void);
 extern void NetLoadCheck(void);
 extern void NetLoadSummary(void);
-extern void ProcessCommunicationControl(void);
+extern void PrepareHouseCleanup(void);
+extern void FinishHouseCleanup(void);
 extern void ProcessConnections(void);
-extern void ProcessCronSystem(void);
 extern void ProcessMonsterhomes(void);
 extern void ProcessReaderThreadReplies(TRefreshSectorFunction *RefreshSector, TSendMailsFunction *SendMails);
 extern void ProcessWriterThreadReplies(void);
 extern void ReceiveData(void);
-extern void RefreshCylinders(void);
-extern void RefreshMap(void);
-extern void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int Size);
 extern void SavePlayerDataOrder(void);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);
@@ -92,13 +85,32 @@ extern void SendPlayerSkills(TConnection *Connection);
 extern void SendPlayerState(TConnection *Connection, uint8 State);
 extern void SendResult(TConnection *Connection, RESULT r);
 extern void SendSnapback(TConnection *Connection);
+extern void SendTalk(TConnection *Connection, uint32 StatementID,
+		const char *Sender, int Mode, const char *Text, int Data);
+extern void SendTalk(TConnection *Connection, uint32 StatementID,
+		const char *Sender, int Mode, int Channel, const char *Text);
+extern void SendTalk(TConnection *Connection, uint32 StatementID,
+		const char *Sender, int Mode, int x,int y,int z, const char *Text);
 extern void SendTradeOffer(TConnection *Connection, const char *Name, bool OwnOffer, Object Obj);
 extern void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
-extern void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, bool CheckSpamming);
-extern void Turn(uint32 CreatureID, Object Obj);
-extern void Use(uint32 CreatureID, Object Obj1, Object Object2, uint8 Info);
+
+// moveuse.cc
+extern void UseContainer(uint32 CreatureID, Object Con, uint8 ContainerNr);
+extern void UseChest(uint32 CreatureID, Object Chest);
+extern void UseLiquidContainer(uint32 CreatureID, Object Obj, Object Dest);
+extern void UseFood(uint32 CreatureID, Object Obj);
+extern void UseTextObject(uint32 CreatureID, Object Obj);
+extern void UseAnnouncer(uint32 CreatureID, Object Obj);
+extern void UseKeyDoor(uint32 CreatureID, Object Key, Object Door);
+extern void UseNameDoor(uint32 CreatureID, Object Door);
+extern void UseLevelDoor(uint32 CreatureID, Object Door);
+extern void UseQuestDoor(uint32 CreatureID, Object Door);
+extern void UseWeapon(uint32 CreatureID, Object Weapon, Object Target);
+extern void UseChangeObject(uint32 CreatureID, Object Obj);
+extern void UseObject(uint32 CreatureID, Object Obj);
+extern void UseObjects(uint32 CreatureID, Object Obj1, Object Obj2);
 extern void MovementEvent(Object Obj, Object Start, Object Dest);
 extern void CollisionEvent(Object Obj, Object Dest);
 extern void SeparationEvent(Object Obj, Object Start);

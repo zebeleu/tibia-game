@@ -4,6 +4,7 @@
 #include "map.hh"
 #include "magic.hh"
 #include "objects.hh"
+#include "operate.hh"
 
 #include "stubs.hh"
 
@@ -238,7 +239,7 @@ static void InitAll(void){
 		InitCr();
 		//InitHouses();
 		InitTime();
-		//ApplyPatches();
+		ApplyPatches();
 	}catch(const char *str){
 		error("Initialisierungsfehler: %s\n", str);
 		exit(EXIT_FAILURE);
