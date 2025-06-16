@@ -3843,3 +3843,453 @@ void TParty::operator=(const TParty &Other){
 		*this->InvitedPlayer.at(i) = Other.InvitedPlayer.copyAt(i);
 	}
 }
+
+TParty *GetParty(uint32 LeaderID){
+	TParty *Result = NULL;
+	for(int i = 0; i < Parties; i += 1){
+		if(Party.at(i)->Leader == LeaderID){
+			Result = Party.at(i);
+			break;
+		}
+	}
+	return Result;
+}
+
+bool IsInvitedToParty(uint32 GuestID, uint32 HostID){
+	bool Result = false;
+	TParty *P = GetParty(HostID);
+	if(P != NULL){
+		for(int i = 0; i < P->InvitedPlayers; i += 1){
+			if(*P->InvitedPlayer.at(i) == GuestID){
+				Result = true;
+				break;
+			}
+		}
+	}
+	return Result;
+}
+
+void DisbandParty(uint32 LeaderID){
+	TParty *P = GetParty(LeaderID);
+	if(P == NULL){
+		error("DisbandParty: Party von Anführer %u nicht gefunden.\n", LeaderID);
+		return;
+	}
+
+	// NOTE(fusion): We need to iterate over members twice because `SendCreatureParty`
+	// and `SendCreatureSkull` use party information, which is annoying.
+
+	for(int i = 0; i < P->Members; i += 1){
+		uint32 MemberID = *P->Member.at(i);
+		TPlayer *Member = GetPlayer(MemberID);
+		if(Member != NULL){
+			Member->LeaveParty();
+		}
+	}
+
+	P->Leader = 0;
+
+	for(int i = 0; i < P->Members; i += 1){
+		uint32 MemberID = *P->Member.at(i);
+		TPlayer *Member = GetPlayer(MemberID);
+		if(Member != NULL && Member->Connection != NULL){
+			SendMessage(Member->Connection, TALK_INFO_MESSAGE,
+					"Your party has been disbanded.");
+			for(int j = 0; j < P->Members; j += 1){
+				uint32 OtherID = *P->Member.at(j);
+				SendCreatureParty(Member->Connection, OtherID);
+				SendCreatureSkull(Member->Connection, OtherID);
+			}
+		}
+	}
+
+	TPlayer *Leader = GetPlayer(LeaderID);
+	if(Leader != NULL){
+		for(int i = 0; i < P->InvitedPlayers; i += 1){
+			uint32 GuestID = *P->InvitedPlayer.at(i);
+			TPlayer *Guest = GetPlayer(GuestID);
+			if(Guest != NULL){
+				SendCreatureParty(Guest->Connection, LeaderID);
+				SendCreatureParty(Leader->Connection, GuestID);
+			}
+		}
+	}
+}
+
+void InviteToParty(uint32 HostID, uint32 GuestID){
+	if(HostID == GuestID){
+		return;
+	}
+
+	TPlayer *Host = GetPlayer(HostID);
+	if(Host == NULL){
+		error("InviteToParty: Einladender Spieler %u existiert nicht.\n", HostID);
+		return;
+	}
+
+	TPlayer *Guest = GetPlayer(GuestID);
+	if(Guest == NULL){
+		SendResult(Host->Connection, PLAYERNOTONLINE);
+		return;
+	}
+
+	if(Host->GetPartyLeader(true) == 0){
+		if(Guest->GetPartyLeader(true) != 0){
+			SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+					"%s is already member of a party.", Guest->Name);
+			return;
+		}
+
+		TParty *P = GetParty(0);
+		if(P == NULL){
+			P = Party.at(Parties);
+			Parties += 1;
+		}
+
+		P->Leader = HostID;
+		*P->Member.at(0) = HostID;
+		P->Members = 1;
+		*P->InvitedPlayer.at(0) = GuestID;
+		P->InvitedPlayers = 1;
+
+		Host->JoinParty(HostID);
+		SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+				"%s has been invited.", Guest->Name);
+		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+				"%s invites you to %s party.", Host->Name,
+				(Host->Sex == 1 ? "his" : "her"));
+		SendCreatureParty(Host->Connection, HostID);
+		SendCreatureSkull(Host->Connection, HostID);
+		SendCreatureParty(Host->Connection, GuestID);
+		SendCreatureParty(Guest->Connection, HostID);
+	}else if(Host->GetPartyLeader(false) == HostID){
+		if(Guest->GetPartyLeader(true) != 0){
+			SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+					"%s is already member of %s party.", Guest->Name,
+					(Guest->GetPartyLeader(true) == HostID ? "your" : "a"));
+			return;
+		}
+
+		TParty *P = GetParty(HostID);
+		if(P == NULL){
+			error("InviteToParty: Party von Anführer %u nicht gefunden.\n", HostID);
+			return;
+		}
+
+		for(int i = 0; i < P->InvitedPlayers; i += 1){
+			if(*P->InvitedPlayer.at(i) == GuestID){
+				SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+						"%s has already been invited.", Guest->Name);
+				return;
+			}
+		}
+
+		*P->InvitedPlayer.at(P->InvitedPlayers) = GuestID;
+		P->InvitedPlayers += 1;
+
+		SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+				"%s has been invited.", Guest->Name);
+		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+				"%s invites you to %s party.", Host->Name,
+				(Host->Sex == 1 ? "his" : "her"));
+		SendCreatureParty(Host->Connection, GuestID);
+		SendCreatureParty(Guest->Connection, HostID);
+	}else{
+		SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+				"You may not invite players.");
+	}
+}
+
+void RevokeInvitation(uint32 HostID, uint32 GuestID){
+	TPlayer *Host = GetPlayer(HostID);
+	if(Host == NULL){
+		error("RevokeInvitation: Einladender Spieler %u existiert nicht.\n", HostID);
+		return;
+	}
+
+	if(Host->GetPartyLeader(false) != HostID){
+		SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+				"You may not invite players.");
+		return;
+	}
+
+	TParty *P = GetParty(HostID);
+	if(P == NULL){
+		error("RevokeInvitation: Party von Anführer %u nicht gefunden.\n", HostID);
+		return;
+	}
+
+	int InviteIndex = 0;
+	while(InviteIndex < P->InvitedPlayers){
+		if(*P->InvitedPlayer.at(InviteIndex) == GuestID){
+			break;
+		}
+		InviteIndex += 1;
+	}
+
+	TPlayer *Guest = GetPlayer(GuestID);
+	if(InviteIndex >= P->InvitedPlayers){
+		if(Guest != NULL){
+			SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+					"%s has not been invited.", Guest->Name);
+		}else{
+			SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+					"This player has not been invited.");
+		}
+		return;
+	}
+
+	// TODO(fusion): This ordered removal isn't relevant at all. It could be a
+	// swap and pop just like in `JoinParty`, unlike when removing members.
+	P->InvitedPlayers -= 1;
+	for(int i = InviteIndex; i < P->InvitedPlayers; i += 1){
+		*P->InvitedPlayer.at(i) = *P->InvitedPlayer.at(i + 1);
+	}
+
+	if(Guest != NULL){
+		SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+				"Invitation for %s has been revoked.", Guest->Name);
+		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+				"%s has revoked %s invitation.", Host->Name,
+				(Host->Sex == 1 ? "his" : "her"));
+		SendCreatureParty(Host->Connection, GuestID);
+		SendCreatureParty(Guest->Connection, HostID);
+	}else{
+		SendMessage(Host->Connection, TALK_INFO_MESSAGE,
+				"Invitation has been revoked.");
+	}
+
+	if(P->Members == 1 && P->InvitedPlayers == 0){
+		DisbandParty(HostID);
+	}
+}
+
+void JoinParty(uint32 GuestID, uint32 HostID){
+	if(GuestID == HostID){
+		return;
+	}
+
+	TPlayer *Guest = GetPlayer(GuestID);
+	if(Guest == NULL){
+		error("JoinParty: Eingeladener Spieler %u existiert nicht.\n", GuestID);
+		return;
+	}
+
+	TPlayer *Host = GetPlayer(HostID);
+	if(Host == NULL){
+		SendResult(Guest->Connection, PLAYERNOTONLINE);
+		return;
+	}
+
+	if(Guest->GetPartyLeader(true) != 0){
+		bool SameParty = Guest->GetPartyLeader(true) == Host->GetPartyLeader(true);
+		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+				"You are already member of %s party.",
+				(SameParty ? "this" : "a"));
+		return;
+	}
+
+	TParty *P = GetParty(HostID);
+	if(P == NULL){
+		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+				"%s has not invited you.", Host->Name);
+		return;
+	}
+
+	int InviteIndex = 0;
+	while(InviteIndex < P->InvitedPlayers){
+		if(*P->InvitedPlayer.at(InviteIndex) == GuestID){
+			break;
+		}
+		InviteIndex += 1;
+	}
+
+	if(InviteIndex >= P->InvitedPlayers){
+		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+				"%s has not invited you.", Host->Name);
+		return;
+	}
+
+	// NOTE(fusion): A little swap and pop action.
+	P->InvitedPlayers -= 1;
+	*P->InvitedPlayer.at(InviteIndex) = *P->InvitedPlayer.at(P->InvitedPlayers);
+
+	*P->Member.at(P->Members) = GuestID;
+	P->Members += 1;
+
+	Guest->JoinParty(HostID);
+	SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
+			"You have joined %s\'s party.", Host->Name);
+	for(int i = 0; i < P->Members; i += 1){
+		uint32 MemberID = *P->Member.at(i);
+		SendCreatureParty(Guest->Connection, MemberID);
+		SendCreatureSkull(Guest->Connection, MemberID);
+		if(MemberID != GuestID){
+			TPlayer *Member = GetPlayer(MemberID);
+			if(Member != NULL){
+				SendMessage(Member->Connection, TALK_INFO_MESSAGE,
+						"%s has joined the party.", Guest->Name);
+				SendCreatureParty(Member->Connection, GuestID);
+				SendCreatureSkull(Member->Connection, GuestID);
+			}
+		}
+	}
+}
+
+void PassLeadership(uint32 OldLeaderID, uint32 NewLeaderID){
+	if(OldLeaderID == NewLeaderID){
+		return;
+	}
+
+	TPlayer *OldLeader = GetPlayer(OldLeaderID);
+	if(OldLeader == NULL){
+		error("PassLeadership: Alter Anführer %u existiert nicht.\n", OldLeaderID);
+		return;
+	}
+
+	TPlayer *NewLeader = GetPlayer(NewLeaderID);
+	if(NewLeader == NULL){
+		SendResult(OldLeader->Connection, PLAYERNOTONLINE);
+		return;
+	}
+
+	if(OldLeader->GetPartyLeader(false) != OldLeaderID){
+		SendMessage(OldLeader->Connection, TALK_INFO_MESSAGE,
+				"You are not leader of a party.");
+		return;
+	}
+
+	if(NewLeader->GetPartyLeader(false) != OldLeaderID){
+		SendMessage(OldLeader->Connection, TALK_INFO_MESSAGE,
+				"%s is not member of your party.", NewLeader->Name);
+		return;
+	}
+
+	TParty *P = GetParty(OldLeaderID);
+	if(P == NULL){
+		error("PassLeadership: Party von Anführer %u nicht gefunden.\n", OldLeaderID);
+		return;
+	}
+
+	P->Leader = NewLeaderID;
+
+	// NOTE(fusion): Same as `DisbandParty`.
+	for(int i = 0; i < P->Members; i += 1){
+		uint32 MemberID = *P->Member.at(i);
+		TPlayer *Member = GetPlayer(MemberID);
+		if(Member != NULL){
+			Member->JoinParty(NewLeaderID);
+		}
+	}
+
+	for(int i = 0; i < P->Members; i += 1){
+		uint32 MemberID = *P->Member.at(i);
+		TPlayer *Member = GetPlayer(MemberID);
+		if(Member != NULL){
+			if(MemberID == NewLeaderID){
+				SendMessage(Member->Connection, TALK_INFO_MESSAGE,
+						"You are now leader of your party.");
+			}else{
+				SendMessage(Member->Connection, TALK_INFO_MESSAGE,
+						"%s is now leader of your party.", NewLeader->Name);
+			}
+			SendCreatureParty(Member->Connection, OldLeaderID);
+			SendCreatureParty(Member->Connection, NewLeaderID);
+		}
+	}
+
+	// NOTE(fusion): The list of invited players is cleared here.
+	int InvitedPlayers = P->InvitedPlayers;
+	P->InvitedPlayers = 0;
+
+	for(int i = 0; i < InvitedPlayers; i += 1){
+		uint32 GuestID = *P->InvitedPlayer.at(i);
+		TPlayer *Guest = GetPlayer(GuestID);
+		if(Guest != NULL){
+			SendCreatureParty(Guest->Connection, OldLeaderID);
+			SendCreatureParty(OldLeader->Connection, GuestID);
+		}
+	}
+}
+
+void LeaveParty(uint32 MemberID, bool Forced){
+	TPlayer *Member = GetPlayer(MemberID);
+	if(Member == NULL){
+		error("LeaveParty: Mitglied existiert nicht.\n");
+		return;
+	}
+
+	uint32 LeaderID = Member->GetPartyLeader(false);
+	if(LeaderID == 0){
+		error("LeaveParty: Spieler ist kein Mitglied einer Jagdgruppe.\n");
+		return;
+	}
+
+	if(!Forced && Member->EarliestLogoutRound > RoundNr){
+		SendMessage(Member->Connection, TALK_INFO_MESSAGE,
+				"You may not leave your party during or immediately after a fight!");
+		return;
+	}
+
+	TParty *P = GetParty(LeaderID);
+	if(P == NULL){
+		error("LeaveParty: Party von Anführer %u nicht gefunden.\n", LeaderID);
+		return;
+	}
+
+	if(P->Members == 1 || (P->Members == 2 && P->InvitedPlayers == 0)){
+		DisbandParty(LeaderID);
+		return;
+	}
+
+	if(LeaderID == MemberID){
+		LeaderID = *P->Member.at(0);
+		if(LeaderID == MemberID){
+			LeaderID = *P->Member.at(1);
+		}
+		PassLeadership(MemberID, LeaderID);
+	}
+
+	int MemberIndex = 0;
+	while(MemberIndex < P->Members){
+		if(*P->Member.at(MemberIndex) == MemberID){
+			break;
+		}
+		MemberIndex += 1;
+	}
+
+	if(MemberIndex >= P->Members){
+		error("LeaveParty: Mitglied nicht gefunden.\n");
+		return;
+	}
+
+	// NOTE(fusion): This ordered removal is important because we want the oldest
+	// members to get leadership when the leader leaves.
+	P->Members -= 1;
+	for(int i = MemberIndex; i < P->Members; i += 1){
+		*P->Member.at(i) = *P->Member.at(i + 1);
+	}
+
+	Member->LeaveParty();
+	if(!Forced){
+		SendMessage(Member->Connection, TALK_INFO_MESSAGE,
+				"You have left the party.");
+	}
+
+	SendCreatureParty(Member->Connection, MemberID);
+	SendCreatureSkull(Member->Connection, MemberID);
+
+	for(int i = 0; i < P->Members; i += 1){
+		uint32 OtherID = *P->Member.at(i);
+		SendCreatureParty(Member->Connection, OtherID);
+		SendCreatureSkull(Member->Connection, OtherID);
+
+		TPlayer *Other = GetPlayer(OtherID);
+		if(Other != NULL){
+			SendMessage(Other->Connection, TALK_INFO_MESSAGE,
+					"%s has left the party.", Member->Name);
+			SendCreatureParty(Other->Connection, MemberID);
+			SendCreatureSkull(Other->Connection, MemberID);
+		}
+	}
+}

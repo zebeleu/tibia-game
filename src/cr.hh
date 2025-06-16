@@ -702,6 +702,8 @@ struct TPlayer: TCreature {
 	int GetQuestValue(int Number);
 	void SetQuestValue(int Number, int Value);
 
+	void JoinParty(uint32 Leader);
+	void LeaveParty(void);
 	uint32 GetPartyLeader(bool CheckFormer);
 
 	bool SpellKnown(int SpellNr);

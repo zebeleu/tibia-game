@@ -22,6 +22,7 @@ enum : int {
 	OBJECT_MOVED				= 3,
 };
 
+#if 0
 // TODO(fusion): Use these?
 enum : int {
 	CHANNEL_GUILD				= 0,
@@ -33,11 +34,11 @@ enum : int {
 	CHANNEL_RLCHAT				= 6,
 	CHANNEL_HELP				= 7,
 
-	CHANNEL_PUBLIC_FIRST		= 0,
-	CHANNEL_PUBLIC_LAST			= 7,
 	CHANNEL_PRIVATE_FIRST		= 8,
-	CHANNEL_PRIVATE_LAST		= 0xFFFF,
+	CHANNEL_FIRST				= 0,
+	CHANNEL_LAST				= 0xFFFF,
 };
+#endif
 
 struct TChannel {
 	TChannel(void);
@@ -187,5 +188,14 @@ void ExcludeFromChannel(uint32 CharacterID, const char *Name);
 bool JoinChannel(int ChannelID, uint32 CharacterID);
 void LeaveChannel(int ChannelID, uint32 CharacterID, bool Close);
 void LeaveAllChannels(uint32 CharacterID);
+
+TParty *GetParty(uint32 LeaderID);
+bool IsInvitedToParty(uint32 GuestID, uint32 HostID);
+void DisbandParty(uint32 LeaderID);
+void InviteToParty(uint32 HostID, uint32 GuestID);
+void RevokeInvitation(uint32 HostID, uint32 GuestID);
+void JoinParty(uint32 GuestID, uint32 HostID);
+void PassLeadership(uint32 OldLeaderID, uint32 NewLeaderID);
+void LeaveParty(uint32 MemberID, bool Forced);
 
 #endif //TIBIA_OPERATE_HH_
