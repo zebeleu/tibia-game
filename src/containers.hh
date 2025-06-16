@@ -122,6 +122,8 @@ struct vector{
 		T Result = {};
 		if(index >= this->start && index < (this->start + this->space)){
 			Result = this->entry[index - this->start];
+		}else if(this->initialized){
+			Result = this->init;
 		}
 		return Result;
 	}

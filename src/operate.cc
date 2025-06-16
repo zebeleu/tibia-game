@@ -3387,6 +3387,10 @@ void TChannel::operator=(const TChannel &Other){
 	}
 }
 
+int GetNumberOfChannels(void){
+    return Channels;
+}
+
 bool ChannelActive(int ChannelID){
 	if(ChannelID < 0 || ChannelID >= Channels){
 		error("ChannelActive: Ungültige Kanalnummer %d.\n", ChannelID);
@@ -3394,6 +3398,44 @@ bool ChannelActive(int ChannelID){
 	}
 
 	return ChannelID <= 7 || Channel.at(ChannelID)->Moderator != 0;
+}
+
+bool ChannelAvailable(int ChannelID, uint32 CharacterID){
+	if(!ChannelActive(ChannelID)){
+		return false;
+	}
+
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("ChannelAvailable: Spieler existiert nicht.\n");
+		return false;
+	}
+
+	switch(ChannelID){
+		case 0: return Player->Guild[0] != 0;
+		case 1: return CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+		case 2: return CheckRight(Player->ID, READ_TUTOR_CHANNEL);
+		case 3: return CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+		case 4: return true;
+		case 5: return true;
+		case 6: return true;
+		case 7: return true;
+		default:{
+			if(ChannelID > 7){
+				TChannel *Chan = Channel.at(ChannelID);
+				if(Chan->Moderator == CharacterID){
+					return true;
+				}
+
+				for(int i = 0; i < Chan->InvitedPlayers; i += 1){
+					if(*Chan->InvitedPlayer.at(i) == CharacterID){
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+	}
 }
 
 const char *GetChannelName(int ChannelID, uint32 CharacterID){
@@ -3410,7 +3452,7 @@ const char *GetChannelName(int ChannelID, uint32 CharacterID){
 	}
 
 	switch(ChannelID){
-		case 0:	return Player->Guild;
+		case 0: return Player->Guild;
 		case 1: return "Gamemaster";
 		case 2: return "Tutor";
 		case 3: return "Rule Violations";
@@ -3427,6 +3469,353 @@ const char *GetChannelName(int ChannelID, uint32 CharacterID){
 				error("GetChannelName: Unbenutzter Kanal %d.\n", ChannelID);
 				return "Unknown";
 			}
+		}
+	}
+}
+
+bool ChannelSubscribed(int ChannelID, uint32 CharacterID){
+	if(!ChannelActive(ChannelID)){
+		return false;
+	}
+
+	TChannel *Chan = Channel.at(ChannelID);
+	for(int i = 0; i < Chan->Subscribers; i += 1){
+		if(*Chan->Subscriber.at(i) == CharacterID){
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// TODO(fusion): This could have been a simple for loop?
+uint32 GetFirstSubscriber(int ChannelID){
+	CurrentChannelID = ChannelID;
+	CurrentSubscriberNumber = 0;
+	return GetNextSubscriber();
+}
+
+uint32 GetNextSubscriber(void){
+	if(!ChannelActive(CurrentChannelID)){
+		return 0;
+	}
+
+	uint32 Subscriber = 0;
+	TChannel *Chan = Channel.at(CurrentChannelID);
+	if(CurrentSubscriberNumber < Chan->Subscribers){
+		Subscriber = *Chan->Subscriber.at(CurrentSubscriberNumber);
+		CurrentSubscriberNumber += 1;
+	}
+
+	return Subscriber;
+}
+
+bool MayOpenChannel(uint32 CharacterID){
+	if(Channels >= 0xFFFF){
+		return false;
+	}
+
+	if(!CheckRight(CharacterID, PREMIUM_ACCOUNT)){
+		return false;
+	}
+
+	// NOTE(fusion): Check if character is already moderator of any non-public channel.
+	for(int ChannelID = 8; ChannelID < Channels; ChannelID += 1){
+		if(Channel.at(ChannelID)->Moderator == CharacterID){
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void OpenChannel(uint32 CharacterID){
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("OpenChannel: Kreatur %u existiert nicht.\n", CharacterID);
+		throw ERROR;
+	}
+
+	// TODO(fusion): Shouldn't we scan for a free channel before returning here?
+	if(Channels >= 0xFFFF){
+		error("OpenChannel: Zu viele Kanäle.\n");
+		throw ERROR;
+	}
+
+	if(!CheckRight(CharacterID, PREMIUM_ACCOUNT)){
+		throw NOPREMIUMACCOUNT;
+	}
+
+	// NOTE(fusion): Check if character already has an open channel.
+	for(int ChannelID = 8; ChannelID < Channels; ChannelID += 1){
+		if(Channel.at(ChannelID)->Moderator == CharacterID){
+			SendOpenOwnChannel(Player->Connection, ChannelID);
+			return;
+		}
+	}
+
+	// NOTE(fusion): Assign free channel to character.
+	int ChannelID = 8;
+	while(ChannelID < Channels){
+		if(Channel.at(ChannelID)->Moderator == 0){
+			break;
+		}
+		ChannelID += 1;
+	}
+
+	if(ChannelID == Channels){
+		Channels += 1;
+	}
+
+	TChannel *Chan = Channel.at(ChannelID);
+	Chan->Moderator = CharacterID;
+	strcpy(Chan->ModeratorName, Player->Name);
+	*Chan->Subscriber.at(0) = CharacterID;
+	Chan->Subscribers = 1;
+	Chan->InvitedPlayers = 0;
+	SendOpenOwnChannel(Player->Connection, ChannelID);
+}
+
+void CloseChannel(int ChannelID){
+	if(ChannelID <= 7 || ChannelID >= Channels){
+		error("CloseChannel: Ungültige ChannelID %d.\n", ChannelID);
+		return;
+	}
+
+	TChannel *Chan = Channel.at(ChannelID);
+	if(Chan->Moderator == 0){
+		error("CloseChannel: Kanal ist schon geschlossen.\n");
+		return;
+	}
+
+	Chan->Moderator = 0;
+}
+
+void InviteToChannel(uint32 CharacterID, const char *Name){
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("InviteToChannel: Kreatur %u existiert nicht.\n", CharacterID);
+		return;
+	}
+
+	int ChannelID = 8;
+	while(ChannelID < Channels){
+		if(Channel.at(ChannelID)->Moderator == CharacterID){
+			break;
+		}
+		ChannelID += 1;
+	}
+
+	if(ChannelID >= Channels){
+		return;
+	}
+
+	TPlayer *Other = NULL;
+	uint32 OtherID = 0;
+	bool IgnoreGamemasters = !CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(Name, false, IgnoreGamemasters, &Other)){
+		case 0:{ // PLAYERFOUND ?
+			OtherID = Other->ID;
+			Name = Other->Name;
+			break;
+		}
+
+		case -1:{ // PLAYERNOTONLINE ?
+			OtherID = GetCharacterID(Name);
+			if(OtherID == 0){
+				throw PLAYERNOTEXISTING;
+			}
+
+			Name = GetCharacterName(Name);
+			break;
+		}
+
+		case -2:{ // NAMEAMBIGUOUS ?
+			OtherID = GetCharacterID(Name);
+			if(OtherID == 0){
+				throw NAMEAMBIGUOUS;
+			}
+
+			Name = GetCharacterName(Name);
+			break;
+		}
+
+		default:{
+			// TODO(fusion): This wasn't here but I don't think `IdentifyPlayer`
+			// can return anything else than 0, -1, and -2 anyways.
+			error("InviteToChannel: Ungültiger Rückgabewert von IdentifyPlayer.\n");
+			throw ERROR;
+		}
+	}
+
+	print(3, "Lade Spieler %s (%u) in Private Channel ein.\n", Name, OtherID);
+	if(CharacterID != OtherID){
+		TChannel *Chan = Channel.at(ChannelID);
+		for(int i = 0; i < Chan->InvitedPlayers; i += 1){
+			if(*Chan->InvitedPlayer.at(i) == OtherID){
+				SendMessage(Player->Connection, TALK_INFO_MESSAGE,
+						"%s has already been invited.", Name);
+				return;
+			}
+		}
+
+		*Chan->InvitedPlayer.at(Chan->InvitedPlayers) = OtherID;
+		Chan->InvitedPlayers += 1;
+
+		SendMessage(Player->Connection, TALK_INFO_MESSAGE,
+				"%s has been invited.", Name);
+
+		if(Other != NULL){
+			SendMessage(Other->Connection, TALK_INFO_MESSAGE,
+					"%s invites you to %s private chat channel.",
+					Player->Name, (Player->Sex == 1 ? "his" : "her"));
+		}
+	}
+}
+
+void ExcludeFromChannel(uint32 CharacterID, const char *Name){
+	TPlayer *Player = GetPlayer(CharacterID);
+	if(Player == NULL){
+		error("ExcludeFromChannel: Kreatur %u existiert nicht.\n", CharacterID);
+		return;
+	}
+
+	int ChannelID = 8;
+	while(ChannelID < Channels){
+		if(Channel.at(ChannelID)->Moderator == CharacterID){
+			break;
+		}
+		ChannelID += 1;
+	}
+
+	if(ChannelID >= Channels){
+		return;
+	}
+
+	// TODO(fusion): Why don't we call `GetCharacterName` as we do in
+	// `InviteToChannel`, when the player is not found?
+	TPlayer *Other = NULL;
+	uint32 OtherID = 0;
+	bool IgnoreGamemasters = !CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+	switch(IdentifyPlayer(Name, false, IgnoreGamemasters, &Other)){
+		case 0:{ // PLAYERFOUND ?
+			OtherID = Other->ID;
+			Name = Other->Name;
+			break;
+		}
+
+		case -1:{ // PLAYERNOTONLINE ?
+			OtherID = GetCharacterID(Name);
+			if(OtherID == 0){
+				throw PLAYERNOTEXISTING;
+			}
+			break;
+		}
+
+		case -2:{ // NAMEAMBIGUOUS ?
+			OtherID = GetCharacterID(Name);
+			if(OtherID == 0){
+				throw NAMEAMBIGUOUS;
+			}
+			break;
+		}
+
+		default:{
+			// TODO(fusion): Same as `InviteToChannel`.
+			error("ExcludeFromChannel: Ungültiger Rückgabewert von IdentifyPlayer.\n");
+			throw ERROR;
+		}
+	}
+
+	print(3, "Schließe Spieler %s (%u) aus Private Channel aus.\n", Name, OtherID);
+	if(CharacterID != OtherID){
+		bool Removed = false;
+		TChannel *Chan = Channel.at(ChannelID);
+		for(int i = 0; i < Chan->InvitedPlayers; i += 1){
+			if(*Chan->InvitedPlayer.at(i) == OtherID){
+				// NOTE(fusion): A little swap and pop action.
+				Chan->InvitedPlayers -= 1;
+				*Chan->InvitedPlayer.at(i) = *Chan->InvitedPlayer.at(Chan->InvitedPlayers);
+				Removed = true;
+				break;
+			}
+		}
+
+		if(!Removed){
+			SendMessage(Player->Connection, TALK_INFO_MESSAGE,
+					"%s has not been invited.", Name);
+		}else{
+			SendMessage(Player->Connection, TALK_INFO_MESSAGE,
+					"%s has been excluded.", Name);
+			if(ChannelSubscribed(ChannelID, OtherID)){
+				LeaveChannel(ChannelID, OtherID, false);
+
+				// TODO(fusion): We didn't check if `Other` was NULL here. It
+				// seems that the player destructor will call `LeaveAllChannels`
+				// to make sure a player is only subscribed if it is still valid.
+				//	Nevertheless, this check should become invisible to the branch
+				// predictor and it's always best to be safe.
+				if(Other != NULL){
+					SendCloseChannel(Other->Connection, ChannelID);
+				}
+			}
+		}
+	}
+}
+
+bool JoinChannel(int ChannelID, uint32 CharacterID){
+	if(!ChannelActive(ChannelID)){
+		throw ERROR;
+	}
+
+	if(!ChannelAvailable(ChannelID, CharacterID)){
+		throw NOTACCESSIBLE;
+	}
+
+	TChannel *Chan = Channel.at(ChannelID);
+	if(!ChannelSubscribed(ChannelID, CharacterID)){
+		*Chan->Subscriber.at(Chan->Subscribers) = CharacterID;
+		Chan->Subscribers += 1;
+	}
+
+	return CharacterID == Chan->Moderator;
+}
+
+void LeaveChannel(int ChannelID, uint32 CharacterID, bool Close){
+	if(!ChannelActive(ChannelID)){
+		return;
+	}
+
+	TChannel *Chan = Channel.at(ChannelID);
+	for(int i = 0; i < Chan->Subscribers; i += 1){
+		if(*Chan->Subscriber.at(i) == CharacterID){
+			// NOTE(fusion): A little swap and pop action.
+			Chan->Subscribers -= 1;
+			*Chan->Subscriber.at(i) = *Chan->Subscriber.at(Chan->Subscribers);
+			break;
+		}
+	}
+
+	if(Close && CharacterID == Chan->Moderator){
+		for(int i = 0; i < Chan->Subscribers; i += 1){
+			uint32 SubscriberID = *Chan->Subscriber.at(i);
+			TPlayer *Subscriber = GetPlayer(SubscriberID);
+			if(Subscriber != NULL){
+				SendCloseChannel(Subscriber->Connection, ChannelID);
+			}
+		}
+		Chan->Subscribers = 0;
+	}
+
+	if(ChannelID > 7 && Chan->Subscribers == 0){
+		CloseChannel(ChannelID);
+	}
+}
+
+void LeaveAllChannels(uint32 CharacterID){
+	for(int ChannelID = 0; ChannelID < Channels; ChannelID += 1){
+		if(ChannelActive(ChannelID)){
+			LeaveChannel(ChannelID, CharacterID, false);
 		}
 	}
 }

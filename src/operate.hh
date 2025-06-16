@@ -22,6 +22,23 @@ enum : int {
 	OBJECT_MOVED				= 3,
 };
 
+// TODO(fusion): Use these?
+enum : int {
+	CHANNEL_GUILD				= 0,
+	CHANNEL_GAMEMASTER			= 1,
+	CHANNEL_TUTOR				= 2,
+	CHANNEL_RULEVIOLATIONS		= 3,
+	CHANNEL_GAMECHAT			= 4,
+	CHANNEL_TRADE				= 5,
+	CHANNEL_RLCHAT				= 6,
+	CHANNEL_HELP				= 7,
+
+	CHANNEL_PUBLIC_FIRST		= 0,
+	CHANNEL_PUBLIC_LAST			= 7,
+	CHANNEL_PRIVATE_FIRST		= 8,
+	CHANNEL_PRIVATE_LAST		= 0xFFFF,
+};
+
 struct TChannel {
 	TChannel(void);
 
@@ -155,7 +172,20 @@ void ProcessCommunicationControl(void);
 int GetCommunicationContext(uint32 CharacterID, uint32 StatementID,
 		int *NumberOfStatements, vector<TReportedStatement> **ReportedStatements);
 
-uint32 GetFirstSubscriber(int Channel);
+int GetNumberOfChannels(void);
+bool ChannelActive(int ChannelID);
+bool ChannelAvailable(int ChannelID, uint32 CharacterID);
+const char *GetChannelName(int ChannelID, uint32 CharacterID);
+bool ChannelSubscribed(int ChannelID, uint32 CharacterID);
+uint32 GetFirstSubscriber(int ChannelID);
 uint32 GetNextSubscriber(void);
+bool MayOpenChannel(uint32 CharacterID);
+void OpenChannel(uint32 CharacterID);
+void CloseChannel(int ChannelID);
+void InviteToChannel(uint32 CharacterID, const char *Name);
+void ExcludeFromChannel(uint32 CharacterID, const char *Name);
+bool JoinChannel(int ChannelID, uint32 CharacterID);
+void LeaveChannel(int ChannelID, uint32 CharacterID, bool Close);
+void LeaveAllChannels(uint32 CharacterID);
 
 #endif //TIBIA_OPERATE_HH_
