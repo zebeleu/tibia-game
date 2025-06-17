@@ -12,6 +12,8 @@ typedef int (ThreadFunction)(void *);
 constexpr ThreadHandle INVALID_THREAD_HANDLE = 0;
 
 ThreadHandle StartThread(ThreadFunction *Function, void *Argument, bool Detach);
+ThreadHandle StartThread(ThreadFunction *Function, void *Argument, size_t StackSize, bool Detach);
+ThreadHandle StartThread(ThreadFunction *Function, void *Argument, void *Stack, size_t StackSize, bool Detach);
 int JoinThread(ThreadHandle Handle);
 void DelayThread(int Seconds, int MicroSeconds);
 

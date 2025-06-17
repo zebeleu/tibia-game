@@ -532,7 +532,9 @@ union storeitem{
 	// IMPORTANT(fusion): This will only work properly with POD structures. We
 	// could also manually handle `data` construction and destruction but I don't
 	// think we need it.
-	STATIC_ASSERT(std::is_pod<T>::value);
+	STATIC_ASSERT(std::is_trivially_default_constructible<T>::value
+			&& std::is_trivially_destructible<T>::value
+			&& std::is_trivially_copyable<T>::value);
 	storeitem<T> *next;
 	T data;
 };
@@ -560,7 +562,7 @@ struct store{
 
 	T *getFreeItem(void){
 		if(this->firstFreeItem == NULL){
-			storeunit<T, N> *Unit = &this->Units.append()->data;
+			storeunit<T, N> *Unit = &this->Units->append()->data;
 			for(usize i = 0; i < (N - 1); i += 1){
 				Unit->item[i].next = &Unit->item[i + 1];
 			}
@@ -577,7 +579,7 @@ struct store{
 		// TODO(fusion): Not the safest thing to do.
 		ASSERT(Item != NULL);
 		((storeitem<T>*)Item)->next = this->firstFreeItem;
-		this->firstfreeItem = (storeitem<T>*)Item;
+		this->firstFreeItem = (storeitem<T>*)Item;
 	}
 
 	// DATA

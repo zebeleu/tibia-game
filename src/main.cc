@@ -5,6 +5,7 @@
 #include "magic.hh"
 #include "objects.hh"
 #include "operate.hh"
+#include "query.hh"
 
 #include "stubs.hh"
 
@@ -184,36 +185,27 @@ static void LockGame(void){
 }
 
 void LoadWorldConfig(void){
-#if 0
-	// TODO(fusion): Whenever we implement query/database stuff.
-	TQueryManagerConnection Connection(0x4000);
-	if(Connection.WriteBuffer.Position < 0){
+	TQueryManagerConnection Connection(KB(16));
+	if(!Connection.isConnected()){
 		error("LoadWorldConfig: Kann nicht zum Query-Manager verbinden.\n");
 		throw "cannot connect to querymanager";
 	}
 
+	int HelpWorldType;
 	int HelpGameAddress[4];
-	int Ret = Connection.loadWorldConfig(&WorldType, &RebootTime, HelpGameAddress,
-		&Port, &MaxPlayers, &PremiumPlayerBuffer, &MaxNewbies, &PremiumNewbieBuffer);
-	if(Ret != 0){ // TODO(fusion): Maybe `Ret != QUERY_OK` or something?
+	int Ret = Connection.loadWorldConfig(&HelpWorldType, &RebootTime,
+			HelpGameAddress, &GamePort,
+			&MaxPlayers, &PremiumPlayerBuffer,
+			&MaxNewbies, &PremiumNewbieBuffer);
+	if(Ret != 0){
 		error("LoadWorldConfig: Kann Konfigurationsdaten nicht holen.\n");
 		throw "cannot load world config";
 	}
 
-	// NOTE(fusion): Ugh...
+	WorldType = (TWorldType)HelpWorldType;
 	snprintf(GameAddress, sizeof(GameAddress), "%d.%d.%d.%d",
-				HelpGameAddress[0], HelpGameAddress[1],
-				HelpGameAddress[2], HelpGameAddress[3]);
-#endif
-
-	WorldType = NORMAL;
-	RebootTime = 6 * 60; // minutes
-	strcpy(GameAddress, "127.0.0.1"); // I KNOW
-	GamePort = 7171;
-	MaxPlayers = 1000;
-	PremiumPlayerBuffer = 100;
-	MaxNewbies = 200;
-	PremiumNewbieBuffer = 50;
+			HelpGameAddress[0], HelpGameAddress[1],
+			HelpGameAddress[2], HelpGameAddress[3]);
 }
 
 static void InitAll(void){

@@ -30,26 +30,6 @@ struct TPreparedQuery {
     char *Name;
 };
 
-struct TPlayerIndexNode {
-    bool InternalNode;
-};
-
-struct TPlayerIndexInternalNode {
-    struct TPlayerIndexNode super_TPlayerIndexNode;
-    struct TPlayerIndexNode *Child[27];
-};
-
-struct TPlayerIndexEntry {
-    char Name[30];
-    ulong CharacterID;
-};
-
-struct TPlayerIndexLeafNode {
-    struct TPlayerIndexNode super_TPlayerIndexNode;
-    int Count;
-    struct TPlayerIndexEntry Entry[10];
-};
-
 struct THouseGuest {
     char Name[60];
 };
@@ -243,31 +223,6 @@ struct TReaderThreadReply {
     int SectorZ;
     uchar *Data;
     int Size;
-};
-
-struct TQueryManagerConnection {
-    int BufferSize;
-    uchar *Buffer;
-    struct TReadBuffer ReadBuffer;
-    struct TWriteBuffer WriteBuffer;
-    int Socket;
-    bool QueryOk;
-    undefined field6_0x2d;
-    undefined field7_0x2e;
-    undefined field8_0x2f;
-};
-
-struct TQueryManagerPoolConnection {
-    struct TQueryManagerConnectionPool *QueryManagerConnectionPool;
-    struct TQueryManagerConnection *QueryManagerConnection;
-};
-
-struct TQueryManagerConnectionPool {
-    int NumberOfConnections;
-    struct TQueryManagerConnection *QueryManagerConnection;
-    bool *QueryManagerConnectionFree;
-    struct Semaphore FreeQueryManagerConnections;
-    struct Semaphore QueryManagerConnectionMutex;
 };
 
 // NOTE(fusion): Probably bigint structures for RSA decoding.

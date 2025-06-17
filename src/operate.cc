@@ -2886,7 +2886,7 @@ void RefreshSector(int SectorX, int SectorY, int SectorZ, const uint8 *Data, int
 }
 
 void RefreshMap(void){
-	TDynamicWriteBuffer HelpBuffer(0x10000);
+	TDynamicWriteBuffer HelpBuffer(KB(64));
 	for(int SectorZ = SectorZMin; SectorZ <= SectorZMax; SectorZ += 1)
 	for(int SectorY = SectorYMin; SectorY <= SectorYMax; SectorY += 1)
 	for(int SectorX = SectorXMin; SectorX <= SectorXMax; SectorX += 1){

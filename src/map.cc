@@ -41,7 +41,7 @@ static vector<TDepotInfo> DepotInfo(0, 4, 5);
 static vector<TMark> Mark(0, 4, 5);
 static int Marks;
 
-static TDynamicWriteBuffer HelpBuffer(0x10000);
+static TDynamicWriteBuffer HelpBuffer(KB(64));
 
 // Object
 // =============================================================================

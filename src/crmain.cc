@@ -16,7 +16,7 @@ static uint32 NextCreatureID;
 static int FirstFreeCreature;
 static TCreature *HashList[1000];
 static matrix<uint32> *FirstChainCreature;
-static vector<TCreature*> CreatureList(0, 10000, 1000);
+static vector<TCreature*> CreatureList(0, 10000, 1000, NULL);
 static priority_queue<uint32, TAttackWave*> AttackWaveQueue(100, 100);
 static int KilledCreatures[MAX_RACES];
 static int KilledPlayers[MAX_RACES];

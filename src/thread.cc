@@ -46,6 +46,54 @@ ThreadHandle StartThread(ThreadFunction *Function, void *Argument, bool Detach){
 	return (ThreadHandle)Handle;
 }
 
+ThreadHandle StartThread(ThreadFunction *Function, void *Argument, size_t StackSize, bool Detach){
+	TThreadStarter *Starter = new TThreadStarter;
+	Starter->Function = Function;
+	Starter->Argument = Argument;
+	Starter->Detach = Detach;
+
+	pthread_t Handle;
+	pthread_attr_t Attr;
+	pthread_attr_init(&Attr);
+	pthread_attr_setstacksize(&Attr, StackSize);
+	int err = pthread_create(&Handle, &Attr, ThreadStarter, Starter);
+	pthread_attr_destroy(&Attr);
+	if(err != 0){
+		error("StartThread: Kann Thread nicht anlegen; Fehlercode %d.\n", err);
+		return INVALID_THREAD_HANDLE;
+	}
+
+	if(Detach){
+		pthread_detach(Handle);
+	}
+
+	return (ThreadHandle)Handle;
+}
+
+ThreadHandle StartThread(ThreadFunction *Function, void *Argument, void *Stack, size_t StackSize, bool Detach){
+	TThreadStarter *Starter = new TThreadStarter;
+	Starter->Function = Function;
+	Starter->Argument = Argument;
+	Starter->Detach = Detach;
+
+	pthread_t Handle;
+	pthread_attr_t Attr;
+	pthread_attr_init(&Attr);
+	pthread_attr_setstack(&Attr, Stack, StackSize);
+	int err = pthread_create(&Handle, &Attr, ThreadStarter, Starter);
+	pthread_attr_destroy(&Attr);
+	if(err != 0){
+		error("StartThread: Kann Thread nicht anlegen; Fehlercode %d.\n", err);
+		return INVALID_THREAD_HANDLE;
+	}
+
+	if(Detach){
+		pthread_detach(Handle);
+	}
+
+	return (ThreadHandle)Handle;
+}
+
 int JoinThread(ThreadHandle Handle){
 	int Result = 0;
 	int *ResultPointer;

@@ -688,6 +688,24 @@ struct TMonster: TNonplayer {
 
 // TPlayer
 // =============================================================================
+struct TPlayerIndexNode {
+	bool InternalNode;
+};
+
+struct TPlayerIndexInternalNode: TPlayerIndexNode {
+	TPlayerIndexNode *Child[27];
+};
+
+struct TPlayerIndexEntry {
+	char Name[30];
+	uint32 CharacterID;
+};
+
+struct TPlayerIndexLeafNode: TPlayerIndexNode {
+	int Count;
+	TPlayerIndexEntry Entry[10];
+};
+
 struct TPlayer: TCreature {
 	//TPlayer(void);
 
