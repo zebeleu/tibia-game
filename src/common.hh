@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <algorithm>
 
@@ -139,6 +140,7 @@ char *Capitals(char *Text);
 // =============================================================================
 extern uint32 RoundNr;
 extern uint32 ServerMilliseconds;
+struct tm GetLocalTimeTM(time_t t);
 void GetRealTime(int *Hour, int *Minute);
 void GetTime(int *Hour, int *Minute);
 void GetDate(int *Year, int *Cycle, int *Day);

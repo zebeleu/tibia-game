@@ -5,7 +5,6 @@
 #include "stubs.hh"
 
 #include <dirent.h>
-#include <time.h>
 
 static fifo<TStatement> Statements(1024);
 static fifo<TListener> Listeners(1024);

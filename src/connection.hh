@@ -18,6 +18,8 @@ struct TConnection {
 	TPlayer *GetPlayer(void);
 	void Logout(int Delay, bool StopFight);
 	bool IsVisible(int x, int y, int z);
+	void EnterGame(void);
+	const char *GetIPAddress(void);
 
 	// DATA
 	// =================

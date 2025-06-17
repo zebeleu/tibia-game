@@ -433,6 +433,12 @@ struct TFindCreatures {
 
 // TCreature
 // =============================================================================
+enum : int {
+	LOSE_INVENTORY_NONE		= 0,
+	LOSE_INVENTORY_SOME		= 1,
+	LOSE_INVENTORY_ALL		= 2,
+};
+
 struct TToDoEntry {
 	ToDoType Code;
 	union{
@@ -707,7 +713,11 @@ struct TPlayerIndexLeafNode: TPlayerIndexNode {
 };
 
 struct TPlayer: TCreature {
-	//TPlayer(void);
+	TPlayer(TConnection *Connection, uint32 CharacterID);
+	void SetInList(void);
+	void DelInList(void);
+
+//==
 
 	// TODO(fusion): Eventually sort these out when we implement player functions.
 	uint8 GetRealProfession(void);
@@ -716,22 +726,16 @@ struct TPlayer: TCreature {
 	bool GetActivePromotion(void);
 	void ClearProfession(void);
 	void SetProfession(uint8 Profession);
-
 	int GetQuestValue(int Number);
 	void SetQuestValue(int Number, int Value);
-
 	void JoinParty(uint32 Leader);
 	void LeaveParty(void);
 	uint32 GetPartyLeader(bool CheckFormer);
-
 	bool SpellKnown(int SpellNr);
-
 	bool IsAttackJustified(uint32 Victim);
 	void RecordAttack(uint32 Victim);
 	void RecordMurder(uint32 Victim);
-
 	void CheckState(void);
-
 	void ClearPlayerkillingMarks(void);
 	void SaveInventory(void);
 	Object GetOpenContainer(int ContainerNr);
@@ -741,10 +745,16 @@ struct TPlayer: TCreature {
 	int CheckForMuting(void);
 	int RecordTalk(void);
 	int RecordMessage(uint32 Addressee);
+	void LoadData(void);
+	void SaveData(void);
+	void CheckOutfit(void);
+	void Regenerate(void);
+	void LoadInventory(bool SetDefaultInventory);
+	void SendBuddies(void);
 
 	// VIRTUAL FUNCTIONS
 	// =================
-	// TODO
+	~TPlayer(void) override;
 
 	// DATA
 	// =================
@@ -843,6 +853,45 @@ void ExitNonplayer();
 
 // crplayer.cc
 // =============================================================================
+int GetNumberOfPlayers(void);
+TPlayer *GetPlayer(uint32 CharacterID);
+TPlayer *GetPlayer(const char *Name);
+bool IsPlayerOnline(const char *Name);
+int IdentifyPlayer(const char *Name, bool ExactMatch, bool IgnoreGamemasters, TPlayer **OutPlayer);
+void LogoutAllPlayers(void);
+void CloseProcessedRequests(uint32 CharacterID);
+void NotifyBuddies(uint32 CharacterID, const char *Name, bool Login);
+void CreatePlayerList(bool Online);
+void PrintPlayerPositions(void);
+void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con);
+void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con);
+void GetProfessionName(char *Buffer, int Profession, bool Article, bool Capitals);
+void SendExistingRequests(TConnection *Connection);
+
+void SavePlayerPoolSlot(TPlayerData *Slot);
+void FreePlayerPoolSlot(TPlayerData *Slot);
+TPlayerData *GetPlayerPoolSlot(uint32 CharacterID);
+TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait);
+TPlayerData *AttachPlayerPoolSlot(uint32 CharacterID, bool DontWait);
+void AttachPlayerPoolSlot(TPlayerData *Slot, bool DontWait);
+void IncreasePlayerPoolSlotSticky(TPlayerData *Slot);
+void DecreasePlayerPoolSlotSticky(TPlayerData *Slot);
+void DecreasePlayerPoolSlotSticky(uint32 CharacterID);
+void ReleasePlayerPoolSlot(TPlayerData *Slot);
+void SavePlayerPoolSlots(void);
+void InitPlayerPool(void);
+void ExitPlayerPool(void);
+
+int GetPlayerIndexEntryNumber(const char *Name, int Position);
+void InsertPlayerIndex(TPlayerIndexInternalNode *Node,
+		int Position, const char *Name, uint32 CharacterID);
+TPlayerIndexEntry *SearchPlayerIndex(const char *Name);
+bool PlayerExists(const char *Name);
+uint32 GetCharacterID(const char *Name);
+const char *GetCharacterName(const char *Name);
+void InitPlayerIndex(void);
+void ExitPlayerIndex(void);
+
 void InitPlayer(void);
 void ExitPlayer(void);
 

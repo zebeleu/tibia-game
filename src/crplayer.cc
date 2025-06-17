@@ -19,6 +19,355 @@ static store<TPlayerIndexLeafNode, 100> PlayerIndexLeafNodes;
 
 // TPlayer
 // =============================================================================
+TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
+		TCreature(),
+		AttackedPlayers(0, 10, 10),
+		FormerAttackedPlayers(0, 10, 10)
+{
+	this->Type = PLAYER;
+	this->LoseInventory = LOSE_INVENTORY_SOME;
+	this->Profession = PROFESSION_NONE;
+	this->AccountID = 0;
+	this->Guild[0] = 0;
+	this->Rank[0] = 0;
+	this->Title[0] = 0;
+	this->IPAddress[0] = 0;
+	this->Depot = NONE;
+	this->DepotNr = 0;
+	this->DepotSpace = 0;
+	this->ConstructError = NOERROR;
+	this->PlayerData = NULL;
+	this->TradeObject = NONE;
+	this->TradePartner = 0;
+	this->TradeAccepted = false;
+	this->OldState = 0;
+	this->Request = 0;
+	this->RequestTimestamp = 0;
+	this->RequestProcessingGamemaster = 0;
+	this->TutorActivities = 0;
+	this->NumberOfAttackedPlayers = 0;
+	this->Aggressor = false;
+	this->NumberOfFormerAttackedPlayers = 0;
+	this->FormerAggressor = false;
+	this->FormerLogoutRound = 0;
+	this->PartyLeader = 0;
+	this->PartyLeavingRound = 0;
+	this->TalkBufferFullTime = 0;
+	this->MutingEndRound = 0;
+	this->NumberOfMutings = 0;
+
+	memset(this->Rights, 0, sizeof(this->Rights));
+
+	for(int SpellNr = 0;
+			SpellNr < NARRAY(this->SpellList);
+			SpellNr += 1){
+		this->SpellList[SpellNr] = 0;
+	}
+
+	for(int QuestNr = 0;
+			QuestNr < NARRAY(this->QuestValues);
+			QuestNr += 1){
+		this->QuestValues[QuestNr] = 0;
+	}
+
+	for(int ContainerNr = 0;
+			ContainerNr < NARRAY(this->OpenContainer);
+			ContainerNr += 1){
+		this->OpenContainer[ContainerNr] = NONE;
+	}
+
+	STATIC_ASSERT(NARRAY(this->Addressees) == NARRAY(this->AddresseesTimes));
+	for(int AddresseeNr = 0;
+			AddresseeNr < NARRAY(this->Addressees);
+			AddresseeNr += 1){
+		this->Addressees[AddresseeNr] = 0;
+		this->AddresseesTimes[AddresseeNr] = 0;
+	}
+
+	TPlayerData *Slot = AttachPlayerPoolSlot(CharacterID, false);
+	if(Slot == NULL){
+		error("TPlayer::TPlayer: PlayerData-Slot nicht gefunden.\n");
+		this->ConstructError = ERROR;
+		return;
+	}
+
+	SendMails(Slot);
+
+	this->PlayerData = Slot;
+	this->Connection = Connection;
+	strcpy(this->Name, Slot->Name);
+	this->SetID(CharacterID);
+
+	InsertPlayerIndex(&PlayerIndexHead, 0, this->Name, CharacterID);
+	this->LoadData();
+	this->AccountID = Slot->AccountID;
+	strcpy(this->IPAddress, Connection->GetIPAddress());
+
+	STATIC_ASSERT(sizeof(this->Rights) == sizeof(Slot->Rights));
+	memcpy(this->Rights, Slot->Rights, sizeof(this->Rights));
+
+	this->Sex = Slot->Sex;
+	strcpy(this->Guild, Slot->Guild);
+	strcpy(this->Rank, Slot->Rank);
+	strcpy(this->Title, Slot->Title);
+
+	if(Slot->PlayerkillerEnd < (int)time(NULL)){
+		Slot->PlayerkillerEnd = 0;
+	}
+
+	this->CheckOutfit();
+	this->SetInList();
+
+	// NOTE(fusion): Soul regen. Could be some inlined function `CheckSoul`.
+	{
+		TSkill *Soul = this->Skills[SKILL_SOUL];
+		Soul->Max = (this->GetActivePromotion() ? 200 : 100);
+		Soul->Check();
+
+		// TODO(fusion): We're rounding up to an extra regen cycle here but I'm
+		// not sure it is correct.
+		int Timer = Soul->TimerValue();
+		if(Timer >= 15){
+			int Interval = (this->GetActivePromotion() ? 15 : 120);
+			int Cycle = (Timer + Interval - 1) / Interval;
+			int Count = (Timer + Interval - 1) % Interval;
+			this->SetTimer(SKILL_SOUL, Cycle, Count, Interval, -1);
+		}
+	}
+
+	// TODO(fusion): Handle login after death?
+	if(this->Skills[SKILL_HITPOINTS]->Get() <= 0){
+		for(int SkillNr = 0;
+				SkillNr < NARRAY(this->Skills);
+				SkillNr += 1){
+			this->DelTimer(SkillNr);
+			this->Skills[SkillNr]->SetMDAct(0);
+			this->Skills[SkillNr]->DAct = 0;
+		}
+
+		this->Skills[SKILL_HITPOINTS]->Set(this->Skills[SKILL_HITPOINTS]->Max);
+		this->Skills[SKILL_MANA     ]->Set(this->Skills[SKILL_MANA     ]->Max);
+		this->Outfit = this->OrgOutfit;
+		this->posx = this->startx;
+		this->posy = this->starty;
+		this->posz = this->startz;
+	}
+
+	if(Slot->LastLoginTime == 0 && CheckRight(CharacterID, GAMEMASTER_OUTFIT)){
+		Log("game", "Gamemaster-Charakter %s loggt zum ersten Mal ein -> Level 2 setzen.\n", this->Name);
+		this->Skills[SKILL_LEVEL]->Act = 2;
+		this->Skills[SKILL_LEVEL]->Exp = 100;
+		this->Skills[SKILL_LEVEL]->LastLevel = 100;
+		this->Skills[SKILL_LEVEL]->NextLevel = 200;
+	}
+
+	if(CoordinateFlag(this->posx, this->posy, this->posz, BED)){
+		this->Regenerate();
+	}
+
+	uint16 HouseID = GetHouseID(this->posx, this->posy, this->posz);
+	if(HouseID != 0
+			&& !IsInvited(HouseID, this, Slot->LastLogoutTime)
+			&& !CheckRight(CharacterID, ENTER_HOUSES)){
+		GetExitPosition(HouseID, &this->posx, &this->posy, &this->posz);
+	}
+
+	if(!CheckRight(CharacterID, PREMIUM_ACCOUNT)){
+		if(IsPremiumArea(this->startx, this->starty, this->startz)){
+			Log("game", "Spieler %s wird aus PayArea-Stadt ausgebürgert und erhält neue Heimatstadt.\n", this->Name);
+			GetStartPosition(&this->startx, &this->starty, &this->startz, (this->Profession == PROFESSION_NONE));
+		}
+
+		if(IsPremiumArea(this->posx, this->posy, this->posz)){
+			Log("game", "Spieler %s wird aus PayArea geworfen und in seine Heimatstadt gesetzt.\n", this->Name);
+			this->posx = this->startx;
+			this->posy = this->starty;
+			this->posz = this->startz;
+		}
+	}else{
+		Log("game", "Spieler besitzt Premium Account.\n");
+	}
+
+	this->SetOnMap();
+	Connection->EnterGame();
+	SendInitGame(Connection, CharacterID);
+	SendRights(Connection);
+	SendFullScreen(Connection);
+	GraphicalEffect(this->CrObject, EFFECT_ENERGY);
+	this->LoadInventory(Slot->LastLoginTime == 0);
+	this->NotifyChangeInventory();
+	SendAmbiente(Connection);
+	AnnounceChangedCreature(CharacterID, CREATURE_LIGHT_CHANGED);
+	SendPlayerSkills(Connection);
+	this->CheckState();
+	this->SendBuddies();
+
+	if(Slot->LastLoginTime != 0){
+		char TimeString[100];
+		struct tm LastLogin = GetLocalTimeTM(Slot->LastLoginTime);
+		strftime(TimeString, sizeof(TimeString), "%d. %b %Y %X %Z", &LastLogin);
+		SendMessage(Connection, TALK_LOGIN_MESSAGE,
+				"Your last visit in Tibia: %s.", TimeString);
+	}else if(!CheckRight(this->ID, GAMEMASTER_OUTFIT)){
+		Log("game", "Spieler %s loggt zum ersten Mal ein -> Outfitwahl.\n", this->Name);
+		SendMessage(Connection, TALK_LOGIN_MESSAGE,
+				"Welcome to Tibia! Please choose your outfit.");
+		SendOutfit(Connection);
+	}
+
+	Slot->LastLoginTime = time(NULL);
+}
+
+TPlayer::~TPlayer(void){
+	LogoutOrder(this);
+	if(this->ConstructError != NOERROR){
+		this->DelInList();
+		return;
+	}
+
+	ASSERT(this->PlayerData);
+	TPlayerData *Slot = this->PlayerData;
+	Slot->LastLogoutTime = time(NULL);
+	this->SaveData();
+
+	if(!this->IsDead){
+		Log("game", "Spieler %s loggt aus.\n", this->Name);
+		GraphicalEffect(this->posx, this->posy, this->posz, EFFECT_POFF);
+		this->SaveInventory();
+	}else{
+		Log("game", "Spieler %s ist gestorben.\n", this->Name);
+
+		// NOTE(fusion): This is a disaster. We're deleting the slot's inventory
+		// here so `~TCreature` can handle dropping loot and then re-generate it
+		// with `SaveInventory` if `LoseInventory` is not `LOSE_INVENTORY_ALL`,
+		// which makes sense but is poorly executed.
+		delete[] Slot->Inventory;
+		Slot->Inventory = NULL;
+
+		bool ResetCharacter = false;
+		if(this->Profession != PROFESSION_NONE && this->Skills[SKILL_LEVEL]->Get() <= 5){
+			Log("game", "Setze Spieler %s komplett zurück wegen Level.\n", this->Name);
+			ResetCharacter = true;
+		}else if(this->Skills[SKILL_HITPOINTS]->Max <= 0){
+			Log("game", "Setze Spieler %s komplett zurück wegen MaxHitpoints.\n", this->Name);
+			ResetCharacter = true;
+		}
+
+		if(ResetCharacter){
+			Slot->CurrentOutfit = Slot->OriginalOutfit;
+			Slot->startx = 0;
+			Slot->starty = 0;
+			Slot->startz = 0;
+			Slot->posx = 0;
+			Slot->posy = 0;
+			Slot->posz = 0;
+			Slot->Profession = PROFESSION_NONE;
+
+			for(int SpellNr = 0;
+					SpellNr < NARRAY(Slot->SpellList);
+					SpellNr += 1){
+				Slot->SpellList[SpellNr] = 0;
+			}
+
+			for(int QuestNr = 0;
+					QuestNr < NARRAY(Slot->QuestValues);
+					QuestNr += 1){
+				Slot->QuestValues[QuestNr] = 0;
+			}
+
+			// TODO(fusion): This one looks sketchy.
+			for(int SkillNr = 0;
+					SkillNr < NARRAY(Slot->Minimum);
+					SkillNr += 1){
+				Slot->Minimum[SkillNr] = INT_MIN;
+			}
+
+			this->LoseInventory = LOSE_INVENTORY_ALL;
+		}
+
+		if(Slot->PlayerkillerEnd != 0){
+			this->LoseInventory = LOSE_INVENTORY_ALL;
+		}
+
+		if(CheckRight(this->ID, KEEP_INVENTORY)){
+			this->LoseInventory = LOSE_INVENTORY_NONE;
+		}
+	}
+
+	if(CheckRight(this->ID, READ_GAMEMASTER_CHANNEL)){
+		CloseProcessedRequests(this->ID);
+	}
+
+	if(this->Request != 0){
+		if(this->RequestProcessingGamemaster == 0){
+			DeleteGamemasterRequest(this->Name);
+		}else{
+			TCreature *Gamemaster = GetCreature(this->RequestProcessingGamemaster);
+			if(Gamemaster != NULL){
+				if(Gamemaster->Type == PLAYER){
+					SendFinishRequest(Gamemaster->Connection, this->Name);
+				}else{
+					error("GetPlayer: Kreatur ist kein Spieler.\n");
+				}
+			}
+		}
+		this->Request = 0;
+	}
+
+	LeaveAllChannels(this->ID);
+
+	if(this->GetPartyLeader(false) != 0){
+		::LeaveParty(this->ID, true);
+	}
+
+	this->ClearPlayerkillingMarks();
+	this->DelInList();
+
+	Slot->Dirty = true;
+	// TODO(fusion): Something is telling me that `Slot->Sticky` is also poorly managed.
+	DecreasePlayerPoolSlotSticky(Slot);
+	ReleasePlayerPoolSlot(Slot);
+}
+
+void TPlayer::SetInList(void){
+	this->SetInCrList();
+
+	PlayerMutex.down();
+	*PlayerList.at(FirstFreePlayer) = this;
+	FirstFreePlayer += 1;
+	PlayerMutex.up();
+
+	NotifyBuddies(this->ID, this->Name, true);
+	IncrementPlayersOnline();
+	if(this->Profession == PROFESSION_NONE){
+		IncrementNewbiesOnline();
+	}
+}
+
+void TPlayer::DelInList(void){
+	NotifyBuddies(this->ID, this->Name, false);
+
+	for(int Index = 0; Index < FirstFreePlayer; Index += 1){
+		if(*PlayerList.at(Index) == this){
+			// TODO(fusion): This can't be right? If the player at `Index` changes
+			// before entering the critical section, we could end up removing the
+			// wrong player from the list..
+			PlayerMutex.down();
+			FirstFreePlayer -= 1;
+			*PlayerList.at(Index) = *PlayerList.at(FirstFreePlayer);
+			*PlayerList.at(FirstFreePlayer) = NULL;
+			PlayerMutex.up();
+
+			DecrementPlayersOnline();
+			if(this->Profession == PROFESSION_NONE){
+				DecrementNewbiesOnline();
+			}
+
+			break;
+		}
+	}
+}
+
 uint8 TPlayer::GetRealProfession(void){
 	return this->Profession;
 }
@@ -202,8 +551,10 @@ void CloseProcessedRequests(uint32 CharacterID){
 			continue;
 		}
 
-		SendCloseRequest(Player->Connection);
-		Player->Request = 0;
+		if(Player->Request != 0 && Player->RequestProcessingGamemaster == CharacterID){
+			SendCloseRequest(Player->Connection);
+			Player->Request = 0;
+		}
 	}
 }
 
@@ -930,8 +1281,8 @@ void InitPlayerIndex(void){
 	// be hardcoded.
 	uint32 CharacterIDs[10000];
 	char Names[10000][30];
-	TQueryManagerConnection *QueryManager = new TQueryManagerConnection(360007);
-	if(!QueryManager->isConnected()){
+	TQueryManagerConnection QueryManager(360007);
+	if(!QueryManager.isConnected()){
 		error("InitPlayerIndex: Kann nicht zum Query-Manager verbinden.\n");
 		return;
 	}
@@ -939,7 +1290,7 @@ void InitPlayerIndex(void){
 	int MinimumCharacterID = 0;
 	while(true){
 		int NumberOfPlayers;
-		int Ret = QueryManager->loadPlayers(MinimumCharacterID,
+		int Ret = QueryManager.loadPlayers(MinimumCharacterID,
 				&NumberOfPlayers, Names, CharacterIDs);
 		if(Ret != 0){
 			error("InitPlayerIndex: Kann Spielerdaten nicht ermitteln.\n");
@@ -956,8 +1307,6 @@ void InitPlayerIndex(void){
 
 		MinimumCharacterID = CharacterIDs[9999] + 1;
 	}
-
-	delete QueryManager;
 }
 
 void ExitPlayerIndex(void){

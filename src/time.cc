@@ -1,7 +1,5 @@
 #include "common.hh"
 
-#include <time.h>
-
 // IMPORTANT(fusion): `RoundNr` is just the number of seconds since startup which
 // is why `GetRoundAtTime` and `GetRoundForNextMinute` straight up uses it as
 // seconds. It is incremented every 1 second inside `AdvanceGame`.
@@ -12,12 +10,12 @@ uint32 ServerMilliseconds = 0;
 // NOTE(fusion): This isn't strictly required because each server process is
 // single threaded and don't share static memory, which is what the result of
 // the regular `localtime` function uses.
-static struct tm GetLocalTimeTM(time_t timer){
+struct tm GetLocalTimeTM(time_t t){
 	struct tm result;
 #if COMPILER_MSVC
-	localtime_s(&result, &timer);
+	localtime_s(&result, &t);
 #else
-	localtime_r(&timer, &result);
+	localtime_r(&t, &result);
 #endif
 	return result;
 }

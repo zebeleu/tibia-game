@@ -7,7 +7,6 @@
 #include "stubs.hh"
 
 #include <dirent.h>
-#include <time.h>
 
 TRaceData RaceData[MAX_RACES];
 priority_queue<uint32, uint32> ToDoQueue(5000, 1000);
@@ -135,7 +134,7 @@ TCreature::TCreature(void) :
 	this->Direction = 0;
 	this->Radius = INT_MAX;
 	this->IsDead = false;
-	this->LoseInventory = 2;
+	this->LoseInventory = LOSE_INVENTORY_ALL;
 	this->LoggingOut = false;
 	this->LogoutAllowed = false;
 	this->EarliestLogoutRound = 0;
@@ -226,7 +225,7 @@ TCreature::~TCreature(void){
 				Change(Corpse, TEXTSTRING, AddDynamicString(Help));
 			}
 
-			if(this->LoseInventory != 0){ // LOSE_INVENTORY_NONE ?
+			if(this->LoseInventory != LOSE_INVENTORY_NONE){
 				for(int Position = INVENTORY_FIRST;
 						Position <= INVENTORY_LAST;
 						Position += 1){
@@ -235,17 +234,15 @@ TCreature::~TCreature(void){
 						continue;
 					}
 
-					if(this->LoseInventory != 2 // LOSE_INVENTORY_ALL ?
-							&& !Item.getObjectType().getFlag(CONTAINER)
-							&& random(0, 9) != 0){
-						continue;
+					if(this->LoseInventory == LOSE_INVENTORY_ALL
+							|| Item.getObjectType().getFlag(CONTAINER)
+							|| random(0, 9) == 0){
+						::Move(0, Item, Corpse, -1, false, NONE);
 					}
-
-					::Move(0, Item, Corpse, -1, false, NONE);
 				}
 			}
 
-			if(this->Type == PLAYER && this->LoseInventory != 2){ // LOSE_INVENTORY_ALL ?
+			if(this->Type == PLAYER && this->LoseInventory != LOSE_INVENTORY_ALL){
 				((TPlayer*)this)->SaveInventory();
 			}
 		}catch(RESULT r){
@@ -757,7 +754,7 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 					ObjectType AmuletOfLossType = GetNewObjectType(77, 12);
 					if(ObjType == AmuletOfLossType){
 						Log("game", "%s stirbt mit Amulett of Loss.\n", this->Name);
-						this->LoseInventory = 0;
+						this->LoseInventory = LOSE_INVENTORY_NONE;
 						try{
 							Delete(Obj, -1);
 							// TODO(fusion): Shouldn't we break here? We could also
