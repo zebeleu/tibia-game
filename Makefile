@@ -13,10 +13,10 @@ else
 	CFLAGS += -O2
 endif
 
-HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/config.hh $(SRCDIR)/connection.hh $(SRCDIR)/containers.hh $(SRCDIR)/cr.hh $(SRCDIR)/enums.hh $(SRCDIR)/info.hh $(SRCDIR)/magic.hh $(SRCDIR)/map.hh $(SRCDIR)/objects.hh $(SRCDIR)/operate.hh $(SRCDIR)/script.hh $(SRCDIR)/stubs.hh $(SRCDIR)/thread.hh
+HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/config.hh $(SRCDIR)/connection.hh $(SRCDIR)/containers.hh $(SRCDIR)/cr.hh $(SRCDIR)/enums.hh $(SRCDIR)/info.hh $(SRCDIR)/magic.hh $(SRCDIR)/map.hh $(SRCDIR)/moveuse.hh $(SRCDIR)/objects.hh $(SRCDIR)/operate.hh $(SRCDIR)/query.hh $(SRCDIR)/script.hh $(SRCDIR)/stubs.hh $(SRCDIR)/thread.hh
 
-$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/cract.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/crmain.obj $(BUILDDIR)/crplayer.obj $(BUILDDIR)/crskill.obj $(BUILDDIR)/info.obj $(BUILDDIR)/magic.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/moveuse.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/operate.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
-	echo $(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
+$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/cract.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/crmain.obj $(BUILDDIR)/crplayer.obj $(BUILDDIR)/crskill.obj $(BUILDDIR)/info.obj $(BUILDDIR)/magic.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/moveuse.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/operate.obj $(BUILDDIR)/query.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
+	@echo $(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 $(BUILDDIR)/config.obj: $(SRCDIR)/config.cc $(HEADERS)
 	@mkdir -p $(@D)
@@ -67,6 +67,10 @@ $(BUILDDIR)/objects.obj: $(SRCDIR)/objects.cc $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILDDIR)/operate.obj: $(SRCDIR)/operate.cc $(HEADERS)
+	@mkdir -p $(@D)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(BUILDDIR)/query.obj: $(SRCDIR)/query.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 

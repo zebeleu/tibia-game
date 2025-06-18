@@ -1050,8 +1050,8 @@ void ProcessCreatures(void){
 		// and most of the time it is redundant because functions will check if
 		// it's NULL before attempting anything.
 
-		int FoodRegen = Creature->Skills[SKILL_FED]->Get();
-		if(FoodRegen > 0 && (RoundNr % FoodRegen) == 0 && !Creature->IsDead
+		int FoodInterval = Creature->Skills[SKILL_FED]->Get();
+		if(FoodInterval > 0 && (RoundNr % FoodInterval) == 0 && !Creature->IsDead
 				&& !IsProtectionZone(Creature->posx, Creature->posy, Creature->posz)){
 			Creature->Skills[SKILL_HITPOINTS]->Change(1);
 			Creature->Skills[SKILL_MANA]->Change(4);

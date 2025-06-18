@@ -283,6 +283,14 @@ enum LiquidType: int {
 	LIQUID_LEMONADE		= 12,
 };
 
+enum PartyShield: int {
+	PARTY_SHIELD_NONE		= 0,
+	PARTY_SHIELD_HOST		= 1,
+	PARTY_SHIELD_GUEST		= 2,
+	PARTY_SHIELD_MEMBER		= 3,
+	PARTY_SHIELD_LEADER		= 4,
+};
+
 // NOTE(fusion): Not in debug symbols.
 enum PROFESSION: uint8 {
 	PROFESSION_NONE				= 0,
@@ -290,6 +298,7 @@ enum PROFESSION: uint8 {
 	PROFESSION_PALADIN			= 2,
 	PROFESSION_SORCERER			= 3,
 	PROFESSION_DRUID			= 4,
+	PROFESSION_PROMOTED			= 10,
 	PROFESSION_ELITE_KNIGHT		= 11,
 	PROFESSION_ROYAL_PALADIN	= 12,
 	PROFESSION_MASTER_SORCERER	= 13,
@@ -476,6 +485,14 @@ enum Skill: int {
 	SKILL_DRUNKEN			= 20,
 	SKILL_MANASHIELD		= 21,
 	SKILL_SOUL				= 22,
+};
+
+enum Skull: int {
+	SKULL_NONE		= 0,
+	SKULL_YELLOW	= 1,
+	SKULL_GREEN		= 2,
+	SKULL_WHITE		= 3,
+	SKULL_RED		= 4,
 };
 
 // IMPORTANT(fusion): All `DEFAULT_*` values here were renamed from `INVENTORY_*`

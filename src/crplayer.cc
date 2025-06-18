@@ -1,4 +1,5 @@
 #include "cr.hh"
+#include "config.hh"
 #include "info.hh"
 #include "operate.hh"
 #include "query.hh"
@@ -84,35 +85,39 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 		this->AddresseesTimes[AddresseeNr] = 0;
 	}
 
-	TPlayerData *Slot = AttachPlayerPoolSlot(CharacterID, false);
-	if(Slot == NULL){
+	TPlayerData *PlayerData = AttachPlayerPoolSlot(CharacterID, false);
+	if(PlayerData == NULL){
 		error("TPlayer::TPlayer: PlayerData-Slot nicht gefunden.\n");
 		this->ConstructError = ERROR;
 		return;
 	}
 
-	SendMails(Slot);
-
-	this->PlayerData = Slot;
+	SendMails(PlayerData);
+	this->PlayerData = PlayerData;
 	this->Connection = Connection;
-	strcpy(this->Name, Slot->Name);
-	this->SetID(CharacterID);
+	strcpy(this->Name, PlayerData->Name);
 
+	// TODO(fusion): There is a try..catch block somewhere in here that also sets
+	// `this->ConstructorError` but I couldn't figure its scope. It could be the
+	// whole function from this point.
+	//	I couldn't find any functions here with unhandled exceptions so we might
+	// want to keep an eye out.
+	this->SetID(CharacterID);
 	InsertPlayerIndex(&PlayerIndexHead, 0, this->Name, CharacterID);
 	this->LoadData();
-	this->AccountID = Slot->AccountID;
+	this->AccountID = PlayerData->AccountID;
 	strcpy(this->IPAddress, Connection->GetIPAddress());
 
-	STATIC_ASSERT(sizeof(this->Rights) == sizeof(Slot->Rights));
-	memcpy(this->Rights, Slot->Rights, sizeof(this->Rights));
+	STATIC_ASSERT(sizeof(this->Rights) == sizeof(PlayerData->Rights));
+	memcpy(this->Rights, PlayerData->Rights, sizeof(this->Rights));
 
-	this->Sex = Slot->Sex;
-	strcpy(this->Guild, Slot->Guild);
-	strcpy(this->Rank, Slot->Rank);
-	strcpy(this->Title, Slot->Title);
+	this->Sex = PlayerData->Sex;
+	strcpy(this->Guild, PlayerData->Guild);
+	strcpy(this->Rank, PlayerData->Rank);
+	strcpy(this->Title, PlayerData->Title);
 
-	if(Slot->PlayerkillerEnd < (int)time(NULL)){
-		Slot->PlayerkillerEnd = 0;
+	if(PlayerData->PlayerkillerEnd < (int)time(NULL)){
+		PlayerData->PlayerkillerEnd = 0;
 	}
 
 	this->CheckOutfit();
@@ -145,15 +150,15 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 			this->Skills[SkillNr]->DAct = 0;
 		}
 
-		this->Skills[SKILL_HITPOINTS]->Set(this->Skills[SKILL_HITPOINTS]->Max);
-		this->Skills[SKILL_MANA     ]->Set(this->Skills[SKILL_MANA     ]->Max);
+		this->Skills[SKILL_HITPOINTS]->SetMax();
+		this->Skills[SKILL_MANA     ]->SetMax();
 		this->Outfit = this->OrgOutfit;
 		this->posx = this->startx;
 		this->posy = this->starty;
 		this->posz = this->startz;
 	}
 
-	if(Slot->LastLoginTime == 0 && CheckRight(CharacterID, GAMEMASTER_OUTFIT)){
+	if(PlayerData->LastLoginTime == 0 && CheckRight(CharacterID, GAMEMASTER_OUTFIT)){
 		Log("game", "Gamemaster-Charakter %s loggt zum ersten Mal ein -> Level 2 setzen.\n", this->Name);
 		this->Skills[SKILL_LEVEL]->Act = 2;
 		this->Skills[SKILL_LEVEL]->Exp = 100;
@@ -167,7 +172,7 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 
 	uint16 HouseID = GetHouseID(this->posx, this->posy, this->posz);
 	if(HouseID != 0
-			&& !IsInvited(HouseID, this, Slot->LastLogoutTime)
+			&& !IsInvited(HouseID, this, PlayerData->LastLogoutTime)
 			&& !CheckRight(CharacterID, ENTER_HOUSES)){
 		GetExitPosition(HouseID, &this->posx, &this->posy, &this->posz);
 	}
@@ -194,7 +199,7 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 	SendRights(Connection);
 	SendFullScreen(Connection);
 	GraphicalEffect(this->CrObject, EFFECT_ENERGY);
-	this->LoadInventory(Slot->LastLoginTime == 0);
+	this->LoadInventory(PlayerData->LastLoginTime == 0);
 	this->NotifyChangeInventory();
 	SendAmbiente(Connection);
 	AnnounceChangedCreature(CharacterID, CREATURE_LIGHT_CHANGED);
@@ -202,9 +207,9 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 	this->CheckState();
 	this->SendBuddies();
 
-	if(Slot->LastLoginTime != 0){
+	if(PlayerData->LastLoginTime != 0){
 		char TimeString[100];
-		struct tm LastLogin = GetLocalTimeTM(Slot->LastLoginTime);
+		struct tm LastLogin = GetLocalTimeTM(PlayerData->LastLoginTime);
 		strftime(TimeString, sizeof(TimeString), "%d. %b %Y %X %Z", &LastLogin);
 		SendMessage(Connection, TALK_LOGIN_MESSAGE,
 				"Your last visit in Tibia: %s.", TimeString);
@@ -215,7 +220,7 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 		SendOutfit(Connection);
 	}
 
-	Slot->LastLoginTime = time(NULL);
+	PlayerData->LastLoginTime = time(NULL);
 }
 
 TPlayer::~TPlayer(void){
@@ -226,8 +231,8 @@ TPlayer::~TPlayer(void){
 	}
 
 	ASSERT(this->PlayerData);
-	TPlayerData *Slot = this->PlayerData;
-	Slot->LastLogoutTime = time(NULL);
+	TPlayerData *PlayerData = this->PlayerData;
+	PlayerData->LastLogoutTime = time(NULL);
 	this->SaveData();
 
 	if(!this->IsDead){
@@ -237,12 +242,12 @@ TPlayer::~TPlayer(void){
 	}else{
 		Log("game", "Spieler %s ist gestorben.\n", this->Name);
 
-		// NOTE(fusion): This is a disaster. We're deleting the slot's inventory
-		// here so `~TCreature` can handle dropping loot and then re-generate it
-		// with `SaveInventory` if `LoseInventory` is not `LOSE_INVENTORY_ALL`,
-		// which makes sense but is poorly executed.
-		delete[] Slot->Inventory;
-		Slot->Inventory = NULL;
+		// NOTE(fusion): This is a disaster. We're deleting inventory data here
+		// so `~TCreature` can handle dropping loot and then re-generate it with
+		// `SaveInventory` if `LoseInventory` is not `LOSE_INVENTORY_ALL`, which
+		// makes sense but is poorly executed.
+		delete[] PlayerData->Inventory;
+		PlayerData->Inventory = NULL;
 
 		bool ResetCharacter = false;
 		if(this->Profession != PROFESSION_NONE && this->Skills[SKILL_LEVEL]->Get() <= 5){
@@ -254,38 +259,39 @@ TPlayer::~TPlayer(void){
 		}
 
 		if(ResetCharacter){
-			Slot->CurrentOutfit = Slot->OriginalOutfit;
-			Slot->startx = 0;
-			Slot->starty = 0;
-			Slot->startz = 0;
-			Slot->posx = 0;
-			Slot->posy = 0;
-			Slot->posz = 0;
-			Slot->Profession = PROFESSION_NONE;
+			PlayerData->CurrentOutfit = PlayerData->OriginalOutfit;
+			PlayerData->startx = 0;
+			PlayerData->starty = 0;
+			PlayerData->startz = 0;
+			PlayerData->posx = 0;
+			PlayerData->posy = 0;
+			PlayerData->posz = 0;
+			PlayerData->Profession = PROFESSION_NONE;
 
 			for(int SpellNr = 0;
-					SpellNr < NARRAY(Slot->SpellList);
+					SpellNr < NARRAY(PlayerData->SpellList);
 					SpellNr += 1){
-				Slot->SpellList[SpellNr] = 0;
+				PlayerData->SpellList[SpellNr] = 0;
 			}
 
 			for(int QuestNr = 0;
-					QuestNr < NARRAY(Slot->QuestValues);
+					QuestNr < NARRAY(PlayerData->QuestValues);
 					QuestNr += 1){
-				Slot->QuestValues[QuestNr] = 0;
+				PlayerData->QuestValues[QuestNr] = 0;
 			}
 
-			// TODO(fusion): This one looks sketchy.
+			// NOTE(fusion): This is used to reset skills back to default. See
+			// `LoadData`.
 			for(int SkillNr = 0;
-					SkillNr < NARRAY(Slot->Minimum);
+					SkillNr < NARRAY(PlayerData->Minimum);
 					SkillNr += 1){
-				Slot->Minimum[SkillNr] = INT_MIN;
+				PlayerData->Minimum[SkillNr] = INT_MIN;
 			}
 
 			this->LoseInventory = LOSE_INVENTORY_ALL;
 		}
 
-		if(Slot->PlayerkillerEnd != 0){
+		if(PlayerData->PlayerkillerEnd != 0){
 			this->LoseInventory = LOSE_INVENTORY_ALL;
 		}
 
@@ -298,22 +304,7 @@ TPlayer::~TPlayer(void){
 		CloseProcessedRequests(this->ID);
 	}
 
-	if(this->Request != 0){
-		if(this->RequestProcessingGamemaster == 0){
-			DeleteGamemasterRequest(this->Name);
-		}else{
-			TCreature *Gamemaster = GetCreature(this->RequestProcessingGamemaster);
-			if(Gamemaster != NULL){
-				if(Gamemaster->Type == PLAYER){
-					SendFinishRequest(Gamemaster->Connection, this->Name);
-				}else{
-					error("GetPlayer: Kreatur ist kein Spieler.\n");
-				}
-			}
-		}
-		this->Request = 0;
-	}
-
+	this->ClearRequest();
 	LeaveAllChannels(this->ID);
 
 	if(this->GetPartyLeader(false) != 0){
@@ -323,10 +314,99 @@ TPlayer::~TPlayer(void){
 	this->ClearPlayerkillingMarks();
 	this->DelInList();
 
-	Slot->Dirty = true;
-	// TODO(fusion): Something is telling me that `Slot->Sticky` is also poorly managed.
-	DecreasePlayerPoolSlotSticky(Slot);
-	ReleasePlayerPoolSlot(Slot);
+	PlayerData->Dirty = true;
+	// TODO(fusion): Something is telling me that `PlayerData->Sticky` is also poorly managed.
+	DecreasePlayerPoolSlotSticky(PlayerData);
+	ReleasePlayerPoolSlot(PlayerData);
+}
+
+void TPlayer::Death(void){
+	if(CheckRight(this->ID, INVULNERABLE)){
+		error("TPlayer::Death: Aha, so geht das aber nicht!! Goetter kann man nicht toeten!!\n");
+		this->Skills[SKILL_HITPOINTS]->SetMax();
+		return;
+	}
+
+	if(this->Connection != NULL){
+		SendPlayerData(this->Connection);
+		SendMessage(this->Connection, TALK_EVENT_MESSAGE, "You are dead.\n");
+		this->Connection->Die();
+	}
+
+	TCreature::Death();
+
+	if(WorldType == PVP_ENFORCED){
+		this->Combat.DistributeExperiencePoints(this->Skills[SKILL_LEVEL]->Exp / 20);
+	}
+
+	// TODO(fusion): Probably related to blessings?
+	int LossPercent = (this->GetActivePromotion() ? 7 : 10);
+	for(int QuestNr = 101; QuestNr <= 105; QuestNr += 1){
+		if(this->GetQuestValue(QuestNr) != 0){
+			this->SetQuestValue(QuestNr, 0);
+			LossPercent -= 1;
+		}
+	}
+
+	this->Skills[SKILL_LEVEL      ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_MAGIC_LEVEL]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_SHIELDING  ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_DISTANCE   ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_SWORD      ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_CLUB       ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_AXE        ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_FIST       ]->DecreasePercent(LossPercent);
+	this->Skills[SKILL_FISHING    ]->DecreasePercent(LossPercent);
+}
+
+bool TPlayer::MovePossible(int x, int y, int z, bool Execute, bool Jump){
+	bool Result = TCreature::MovePossible(x, y, z, Execute, Jump);
+	if(Result && Execute){
+		if(this->EarliestProtectionZoneRound > RoundNr
+				&& IsProtectionZone(x, y, z)
+				&& !IsProtectionZone(this->posx, this->posy, this->posz)){
+			throw ENTERPROTECTIONZONE;
+		}
+
+		uint16 HouseID = GetHouseID(x, y, z);
+		if(HouseID != 0
+				&& !IsInvited(HouseID, this, INT_MAX)
+				&& !CheckRight(this->ID, ENTER_HOUSES)){
+			throw NOTINVITED;
+		}
+	}
+	return Result;
+}
+
+void TPlayer::DamageStimulus(uint32 AttackerID, int Damage, int DamageType){
+	if(!this->IsDead){
+		this->BlockLogout(60, false);
+	}
+}
+
+void TPlayer::IdleStimulus(void){
+	if(this->Combat.AttackDest != 0){
+		try{
+			this->ToDoAttack();
+			this->ToDoStart();
+		}catch(RESULT r){
+			this->ToDoClear();
+			if(r != NOERROR){
+				if(r != NOWAY){
+					SendResult(this->Connection, r);
+				}
+
+				this->ToDoWait(1000);
+				this->ToDoStart();
+			}
+		}
+	}
+}
+
+void TPlayer::AttackStimulus(uint32 AttackerID){
+	if(!this->IsDead){
+		this->BlockLogout(60, false);
+	}
 }
 
 void TPlayer::SetInList(void){
@@ -368,14 +448,666 @@ void TPlayer::DelInList(void){
 	}
 }
 
+void TPlayer::ClearRequest(void){
+	if(this->Request != 0){
+		if(this->RequestProcessingGamemaster != 0){
+			TCreature *Gamemaster = GetPlayer(this->RequestProcessingGamemaster);
+			if(Gamemaster != NULL){
+				SendFinishRequest(Gamemaster->Connection, this->Name);
+			}
+		}else{
+			DeleteGamemasterRequest(this->Name);
+		}
+
+		this->Request = 0;
+		this->RequestTimestamp = 0;
+		this->RequestProcessingGamemaster = 0;
+	}
+}
+
+void TPlayer::ClearConnection(void){
+	this->Connection = NULL;
+	this->ClearRequest();
+}
+
+void TPlayer::LoadData(void){
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::LoadData: PlayerData ist NULL.\n");
+		return;
+	}
+
+	this->Race = PlayerData->Race;
+	this->OrgOutfit = PlayerData->OriginalOutfit;
+	this->Outfit = PlayerData->CurrentOutfit;
+
+	GetStartPosition(&this->startx, &this->starty, &this->startz, true);
+	this->posx = this->startx;
+	this->posy = this->starty;
+	this->posz = this->startz;
+	this->Direction = DIRECTION_SOUTH;
+
+	if(PlayerData->startx != 0){
+		this->startx = PlayerData->startx;
+		this->starty = PlayerData->starty;
+		this->startz = PlayerData->startz;
+	}
+
+	if(PlayerData->posx != 0){
+		this->posx = PlayerData->posx;
+		this->posy = PlayerData->posy;
+		this->posz = PlayerData->posz;
+	}
+
+	this->Profession = PlayerData->Profession;
+	this->EarliestYellRound = PlayerData->EarliestYellRound;
+	this->EarliestTradeChannelRound = PlayerData->EarliestTradeChannelRound;
+	this->EarliestSpellTime = PlayerData->EarliestSpellTime;
+	this->EarliestMultiuseTime = PlayerData->EarliestMultiuseTime;
+	this->TalkBufferFullTime = PlayerData->TalkBufferFullTime;
+	this->MutingEndRound = PlayerData->MutingEndRound;
+	this->NumberOfMutings = PlayerData->NumberOfMutings;
+
+
+	STATIC_ASSERT(NARRAY(this->SpellList) == NARRAY(PlayerData->SpellList));
+	for(int SpellNr = 0;
+			SpellNr < NARRAY(this->SpellList);
+			SpellNr += 1){
+		this->SpellList[SpellNr] = PlayerData->SpellList[SpellNr];
+	}
+
+	STATIC_ASSERT(NARRAY(this->QuestValues) == NARRAY(PlayerData->QuestValues));
+	for(int QuestNr = 0;
+			QuestNr < NARRAY(this->QuestValues);
+			QuestNr += 1){
+		this->QuestValues[QuestNr] = PlayerData->QuestValues[QuestNr];
+	}
+
+	// NOTE(fusion): `Minimum` is set to `INT_MIN` to skip loading a skill, and
+	// stick with the race's default.
+	this->SetSkills(PlayerData->Race);
+	STATIC_ASSERT(NARRAY(this->Skills) == NARRAY(PlayerData->Actual));
+	for(int SkillNr = 0;
+			SkillNr < NARRAY(this->Skills);
+			SkillNr += 1){
+		if(PlayerData->Minimum[SkillNr] == INT_MIN){
+			continue;
+		}
+
+		this->Skills[SkillNr]->Load(
+				PlayerData->Actual[SkillNr],
+				PlayerData->Maximum[SkillNr],
+				PlayerData->Minimum[SkillNr],
+				PlayerData->DeltaAct[SkillNr],
+				PlayerData->MagicDeltaAct[SkillNr],
+				PlayerData->Cycle[SkillNr],
+				PlayerData->MaxCycle[SkillNr],
+				PlayerData->Count[SkillNr],
+				PlayerData->MaxCount[SkillNr],
+				PlayerData->AddLevel[SkillNr],
+				PlayerData->Experience[SkillNr],
+				PlayerData->FactorPercent[SkillNr],
+				PlayerData->NextLevel[SkillNr],
+				PlayerData->Delta[SkillNr]);
+	}
+}
+
+void TPlayer::SaveData(void){
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::SaveData: PlayerData ist NULL.\n");
+		return;
+	}
+
+	PlayerData->OriginalOutfit = this->OrgOutfit;
+	PlayerData->CurrentOutfit = this->Outfit;
+
+	PlayerData->startx = this->startx;
+	PlayerData->starty = this->starty;
+	PlayerData->startz = this->startz;
+	PlayerData->posx = this->posx;
+	PlayerData->posy = this->posy;
+	PlayerData->posz = this->posz;
+
+	PlayerData->Profession = this->Profession;
+	PlayerData->EarliestYellRound = this->EarliestYellRound;
+	PlayerData->EarliestTradeChannelRound = this->EarliestTradeChannelRound;
+	PlayerData->EarliestSpellTime = this->EarliestSpellTime;
+	PlayerData->EarliestMultiuseTime = this->EarliestMultiuseTime;
+	PlayerData->TalkBufferFullTime = this->TalkBufferFullTime;
+	PlayerData->MutingEndRound = this->MutingEndRound;
+	PlayerData->NumberOfMutings = this->NumberOfMutings;
+
+	STATIC_ASSERT(NARRAY(this->SpellList) == NARRAY(PlayerData->SpellList));
+	for(int SpellNr = 0;
+			SpellNr < NARRAY(this->SpellList);
+			SpellNr += 1){
+		PlayerData->SpellList[SpellNr] = this->SpellList[SpellNr];
+	}
+
+	STATIC_ASSERT(NARRAY(this->QuestValues) == NARRAY(PlayerData->QuestValues));
+	for(int QuestNr = 0;
+			QuestNr < NARRAY(this->QuestValues);
+			QuestNr += 1){
+		PlayerData->QuestValues[QuestNr] = this->QuestValues[QuestNr];
+	}
+
+	STATIC_ASSERT(NARRAY(this->Skills) == NARRAY(PlayerData->Actual));
+	for(int SkillNr = 0;
+			SkillNr < NARRAY(this->Skills);
+			SkillNr += 1){
+		// TODO(fusion): Is this even possible? I've seen a few checks here and
+		// here but it seems all skills are created in TCreature's constructor.
+		if(this->Skills[SkillNr] == NULL){
+			PlayerData->Minimum[SkillNr] = INT_MIN;
+			continue;
+		}
+
+		this->Skills[SkillNr]->Save(
+				&PlayerData->Actual[SkillNr],
+				&PlayerData->Maximum[SkillNr],
+				&PlayerData->Minimum[SkillNr],
+				&PlayerData->DeltaAct[SkillNr],
+				&PlayerData->MagicDeltaAct[SkillNr],
+				&PlayerData->Cycle[SkillNr],
+				&PlayerData->MaxCycle[SkillNr],
+				&PlayerData->Count[SkillNr],
+				&PlayerData->MaxCount[SkillNr],
+				&PlayerData->AddLevel[SkillNr],
+				&PlayerData->Experience[SkillNr],
+				&PlayerData->FactorPercent[SkillNr],
+				&PlayerData->NextLevel[SkillNr],
+				&PlayerData->Delta[SkillNr]);
+	}
+}
+
+void TPlayer::LoadInventory(bool SetStandardInventory){
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::LoadInventory: PlayerData ist NULL.\n");
+		return;
+	}
+
+	if(PlayerData->Inventory != NULL){
+		try{
+			TReadBuffer ReadBuffer(PlayerData->Inventory, PlayerData->InventorySize);
+			while(true){
+				int Position = (int)ReadBuffer.readByte();
+				if(Position == 0xFF){
+					break;
+				}
+
+				LoadObjects(&ReadBuffer, GetBodyContainer(this->ID, Position));
+				Object BodyObj = GetBodyObject(this->ID, Position);
+				if(BodyObj != NONE){
+					SendSetInventory(this->Connection, Position, BodyObj);
+				}
+			}
+		}catch(const char *str){
+			error("TPlayer::LoadInventory: Kann Inventory von Spieler %s nicht lesen.\n", this->Name);
+			error("# Fehler: %s\n", str);
+		}
+	}else if(SetStandardInventory
+			&& this->Profession == PROFESSION_NONE
+			&& !CheckRight(this->ID, ZERO_CAPACITY)){
+		try{
+			Create(GetBodyContainer(this->ID, INVENTORY_RIGHTHAND),
+					GetSpecialObject(DEFAULT_RIGHTHAND), 0);
+			Create(GetBodyContainer(this->ID, INVENTORY_LEFTHAND),
+					GetSpecialObject(DEFAULT_LEFTHAND), 0);
+			if(this->Sex == 1){
+				Create(GetBodyContainer(this->ID, INVENTORY_LEFTHAND),
+						GetSpecialObject(DEFAULT_BODY_MALE), 0);
+			}else{
+				Create(GetBodyContainer(this->ID, INVENTORY_LEFTHAND),
+						GetSpecialObject(DEFAULT_BODY_FEMALE), 0);
+			}
+
+			Object Bag = Create(GetBodyContainer(this->ID, INVENTORY_BAG),
+								GetSpecialObject(DEFAULT_CONTAINER), 0);
+			Create(Bag, GetSpecialObject(DEFAULT_FOOD), 1);
+		}catch(RESULT r){
+			error("TPlayer::LoadInventory: Exception %d beim Erstellen des Standard-Inventorys.\n", r);
+		}
+	}
+}
+
+void TPlayer::SaveInventory(void){
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::SaveInventory: PlayerData ist NULL.\n");
+		return;
+	}
+
+	// TODO(fusion): Set `PlayerData->Dirty`?
+	delete[] PlayerData->Inventory;
+	PlayerData->Inventory = NULL;
+	PlayerData->InventorySize = 0;
+	if(this->CrObject == NONE){
+		return;
+	}
+
+	try{
+		TDynamicWriteBuffer HelpBuffer(KB(16));
+		for(int Position = INVENTORY_FIRST;
+				Position <= INVENTORY_LAST;
+				Position += 1){
+			Object Obj = GetBodyObject(this->ID, Position);
+			if(Obj.exists()){
+				HelpBuffer.writeByte((uint8)Position);
+				SaveObjects(Obj, &HelpBuffer, false);
+			}
+		}
+
+		if(HelpBuffer.Position > 0){
+			HelpBuffer.writeByte(0xFF);
+
+			int InventorySize = HelpBuffer.Position;
+			PlayerData->Inventory = new uint8[InventorySize];
+			PlayerData->InventorySize = InventorySize;
+			memcpy(PlayerData->Inventory, HelpBuffer.Data, InventorySize);
+		}
+	}catch(const char *str){
+		error("TPlayer::SaveInventory: Kann Inventory von Spieler %s nicht schreiben.\n", this->Name);
+		error("# Fehler: %s\n", str);
+	}
+}
+
+void TPlayer::StartCoordinates(void){
+	GetStartPosition(&this->startx, &this->starty, &this->startz, true);
+}
+
+void TPlayer::TakeOver(TConnection *Connection){
+	Log("game", "Spieler %s übernimmt Verbindung.\n", this->Name);
+
+	this->LoggingOut = false;
+	this->LogoutAllowed = false;
+	this->Connection = Connection;
+	Connection->EnterGame();
+
+	TPlayerData *PlayerData = GetPlayerPoolSlot(this->ID);
+	if(PlayerData == NULL){
+		error("TPlayer::TakeOver: PlayerData-Slot nicht gefunden.\n");
+		return;
+	}
+
+	if(PlayerData->Locked != getpid()){
+		error("TPlayer::TakeOver: PlayerData-Slot ist nicht korrekt gesperrt (%d).\n", PlayerData->Locked);
+	}
+
+	if(PlayerData->Sticky > 1){
+		DecreasePlayerPoolSlotSticky(PlayerData);
+	}else{
+		error("TPlayer::TakeOver: Falscher Sticky-Wert %d.\n", PlayerData->Sticky);
+	}
+
+	strcpy(this->Name, PlayerData->Name);
+	InsertPlayerIndex(&PlayerIndexHead, 0, this->Name, this->ID);
+	strcpy(this->IPAddress, Connection->GetIPAddress());
+	memcpy(this->Rights, PlayerData->Rights, sizeof(this->Rights));
+	this->Sex = PlayerData->Sex;
+	strcpy(this->Guild, PlayerData->Guild);
+	strcpy(this->Rank, PlayerData->Rank);
+	strcpy(this->Title, PlayerData->Title);
+	this->OldState = 0;
+
+	this->CheckOutfit();
+	this->ClearRequest();
+	this->Combat.StopAttack(0);
+	LeaveAllChannels(this->ID);
+	this->CloseAllContainers();
+	this->RejectTrade();
+
+	if(CheckRight(this->ID, READ_GAMEMASTER_CHANNEL)){
+		CloseProcessedRequests(this->ID);
+	}
+
+	SendInitGame(Connection, this->ID);
+	SendRights(Connection);
+	SendFullScreen(Connection);
+	SendBodyInventory(Connection, this->ID);
+	SendAmbiente(Connection);
+	SendPlayerData(Connection);
+	SendPlayerSkills(Connection);
+	this->CheckState();
+	this->SendBuddies();
+}
+
+void TPlayer::SetOpenContainer(int ContainerNr, Object Con){
+	if(ContainerNr < 0 || ContainerNr >= NARRAY(this->OpenContainer)){
+		error("TPlayer::SetOpenContainer: Ungültige Fensternummer %d.\n", ContainerNr);
+		return;
+	}
+
+	if(Con != NONE && (!Con.exists() || !Con.getObjectType().getFlag(CONTAINER))){
+		error("TPlayer::SetOpenContainer: Container existiert nicht.\n");
+		return;
+	}
+
+	this->OpenContainer[ContainerNr] = Con;
+}
+
+Object TPlayer::GetOpenContainer(int ContainerNr){
+	if(ContainerNr < 0 || ContainerNr >= NARRAY(this->OpenContainer)){
+		error("TPlayer::GetOpenContainer: Ungültige Fensternummer %d.\n", ContainerNr);
+		return NONE;
+	}
+
+	return this->OpenContainer[ContainerNr];
+}
+
+void TPlayer::CloseAllContainers(void){
+	for(int ContainerNr = 0;
+			ContainerNr < NARRAY(this->OpenContainer);
+			ContainerNr += 1){
+		Object Con = this->GetOpenContainer(ContainerNr);
+		if(Con != NONE){
+			this->SetOpenContainer(ContainerNr, NONE);
+			SendCloseContainer(this->Connection, ContainerNr);
+		}
+	}
+}
+
+Object TPlayer::InspectTrade(bool OwnOffer, int Position){
+	Object Obj = this->TradeObject;
+	if(Obj == NONE){
+		return NONE;
+	}
+
+	if(!OwnOffer){
+		if(this->TradePartner == 0){
+			return NONE;
+		}
+
+		TPlayer *Partner = GetPlayer(this->TradePartner);
+		if(Partner == NULL
+				|| Partner->TradeObject == NONE
+				|| Partner->TradePartner != this->ID){
+			return NONE;
+		}
+
+		Obj = Partner->TradeObject;
+	}
+
+	while(Obj != NONE && Position > 0){
+		int ObjCount = CountObjects(Obj);
+		if(Position < ObjCount){
+			Obj = GetFirstContainerObject(Obj);
+			Position -= 1;
+		}else{
+			Obj = Obj.getNextObject();
+			Position -= ObjCount;
+		}
+	}
+
+	return Obj;
+}
+
+void TPlayer::AcceptTrade(void){
+	if(this->TradeObject == NONE){
+		return;
+	}
+
+	TPlayer *Partner = GetPlayer(this->TradePartner);
+	if(Partner == NULL
+			|| Partner->TradeObject == NONE
+			|| Partner->TradePartner != this->ID){
+		return;
+	}
+
+	this->TradeAccepted = true;
+	if(!Partner->TradeAccepted){
+		return;
+	}
+
+	TPlayer *Player[2]		= { this, Partner };
+	Object Dest[2]			= { NONE, NONE };
+	Object Obj[2]			= { this->TradeObject, Partner->TradeObject };
+	ObjectType ObjType[2]	= { Obj[0].getObjectType(), Obj[1].getObjectType() };
+	for(int i = 0; i < 2; i += 1){
+		int Cur = i;
+		int Other = 1 - i;
+
+		try{
+			if(!ObjectAccessible(Player[Cur]->ID, Obj[Cur], 1)){
+				throw NOTACCESSIBLE;
+			}
+
+			if(ObjType[Cur].getFlag(UNMOVE)){
+				throw NOTMOVABLE;
+			}
+
+			if(!ObjType[Cur].getFlag(TAKE)){
+				throw NOTTAKABLE;
+			}
+
+			if(CheckRight(Player[Other]->ID, ZERO_CAPACITY)){
+				throw TOOHEAVY;
+			}
+
+			if(!CheckRight(Player[Other]->ID, UNLIMITED_CAPACITY)){
+				TSkill *CarryStrength = Player[Other]->Skills[SKILL_CARRY_STRENGTH];
+				if(CarryStrength == NULL){
+					error("TPlayer::AcceptTrade: Skill CARRYSTRENGTH existiert nicht.\n");
+					throw ERROR;
+				}
+
+				// NOTE(fusion): Check if the other player has enough carry strength,
+				// considering the object that will be added and the object that may
+				// be removed.
+				int MaxWeight = CarryStrength->Get() * 100;
+				int FinalWeight = GetInventoryWeight(Player[Other]->ID)
+								+ GetCompleteWeight(Obj[Cur]);
+				if(GetObjectCreatureID(Obj[Other]) == Player[Other]->ID){
+					FinalWeight -= GetCompleteWeight(Obj[Other]);
+				}
+
+				if(FinalWeight > MaxWeight){
+					throw TOOHEAVY;
+				}
+			}
+
+			// NOTE(fusion): We're looking for the object's destination on the
+			// other player's inventory. It is similar to `CreateAtCreature` but
+			// not quite. This should probably be its own function.
+			bool CheckContainers = ObjType[Cur].getFlag(MOVEMENTEVENT);
+			for(int j = 0; j < 2; j += 1){
+				for(int Position = INVENTORY_FIRST;
+						Position <= INVENTORY_LAST;
+						Position += 1){
+					// TODO(fusion): It was only a matter of time until one of these showed up.
+					try{
+						Object BodyObj = GetBodyObject(Player[Other]->ID, Position);
+						if(CheckContainers){
+							if(BodyObj != NONE && BodyObj != Obj[Other]
+									&& BodyObj.getObjectType().getFlag(CONTAINER)){
+								// NOTE(fusion): Check if the container has enough capacity,
+								// considering the object that will be added and the object
+								// that may be removed.
+								int MaxCount = BodyObj.getObjectType().getAttribute(CAPACITY);
+								int FinalCount = CountObjectsInContainer(BodyObj) + 1;
+								if(Obj[Other].getContainer() == BodyObj){
+									FinalCount -= 1;
+								}
+
+								if(FinalCount > MaxCount){
+									throw CONTAINERFULL;
+								}
+
+								Dest[Other] = BodyObj;
+								break;
+							}
+						}else{
+							if(BodyObj == NONE){
+								Object BodyCon = GetBodyContainer(Player[Other]->ID, Position);
+								CheckInventoryPlace(ObjType[Cur], BodyCon, Obj[Other]);
+								Dest[Other] = BodyCon;
+								break;
+							}
+						}
+					}catch(RESULT r){
+						// no-op
+					}
+				}
+
+				if(Dest[Other] != NONE){
+					break;
+				}
+
+				CheckContainers = !CheckContainers;
+			}
+
+			if(Dest[Other] == NONE){
+				throw NOROOM;
+			}
+		}catch(RESULT r){
+			if(r == TOOHEAVY || r == NOROOM){
+				SendResult(Player[Other]->Connection, r);
+			}else{
+				SendResult(Player[Cur]->Connection, r);
+			}
+
+			Player[Cur]->TradeObject = NONE;
+			Player[Other]->TradeObject = NONE;
+			SendCloseTrade(Player[Cur]->Connection);
+			SendCloseTrade(Player[Other]->Connection);
+			return;
+		}
+	}
+
+	this->TradeObject = NONE;
+	Partner->TradeObject = NONE;
+	SendCloseTrade(this->Connection);
+	SendCloseTrade(Partner->Connection);
+
+	// TODO(fusion): I feel this could be problematic.
+	::Move(0, Obj[0], GetMapContainer(Player[1]->CrObject), -1, true, NONE);
+	::Move(0, Obj[1], GetMapContainer(Player[0]->CrObject), -1, true, NONE);
+	::Move(0, Obj[0], Dest[1], -1, true, NONE);
+	::Move(0, Obj[1], Dest[0], -1, true, NONE);
+}
+
+void TPlayer::RejectTrade(void){
+	if(this->TradeObject != NONE){
+		this->TradeObject = NONE;
+		TPlayer *Partner = GetPlayer(this->TradePartner);
+		if(Partner != NULL
+				&& Partner->TradeObject != NONE
+				&& Partner->TradePartner == this->ID){
+			Partner->TradeObject = NONE;
+			SendCloseTrade(Partner->Connection);
+			SendMessage(Partner->Connection, TALK_FAILURE_MESSAGE, "Trade cancelled.");
+		}
+	}
+}
+
+void TPlayer::ClearProfession(void){
+	if(this->Profession != PROFESSION_NONE){
+		this->Profession = PROFESSION_NONE;
+		this->Combat.CheckCombatValues();
+		IncrementNewbiesOnline();
+	}
+}
+
+void TPlayer::SetProfession(uint8 Profession){
+	if(Profession == PROFESSION_PROMOTED){
+		if(this->Profession == PROFESSION_NONE){
+			error("TPlayer::SetProfession: Spieler hat noch keinen Beruf für Veredelung.\n");
+			return;
+		}
+
+		if(this->Profession >= PROFESSION_PROMOTED){
+			error("TPlayer::SetProfession: Spieler hat seinen Beruf schon veredelt.\n");
+			return;
+		}
+
+		this->Profession += PROFESSION_PROMOTED;
+		this->Combat.CheckCombatValues();
+
+		// TODO(fusion): This is similar to the TPlayer's constructor. It is
+		// problably some `CheckSoul` inlined function?
+		{
+			TSkill *Soul = this->Skills[SKILL_SOUL];
+			Soul->Max = 200;
+
+			int Timer = Soul->TimerValue();
+			if(Timer >= 15){
+				int Cycle = (Timer + 14) / 15;
+				int Count = (Timer + 14) % 15;
+				this->SetTimer(SKILL_SOUL, Cycle, Count, 15, -1);
+			}
+		}
+
+		return;
+	}
+
+	if(this->Profession != PROFESSION_NONE){
+		error("TPlayer::SetProfession: Player '%s' hat bereits einen Beruf!\n", this->Name);
+		return;
+	}
+
+	if(Profession == PROFESSION_KNIGHT){
+		this->Skills[SKILL_HITPOINTS     ]->AddLevel = 15;
+		this->Skills[SKILL_MANA          ]->AddLevel = 5;
+		this->Skills[SKILL_CARRY_STRENGTH]->AddLevel = 25;
+		this->Skills[SKILL_MAGIC_LEVEL   ]->ChangeSkill(3000, 1600);
+		this->Skills[SKILL_SHIELDING     ]->ChangeSkill(1100, 100);
+		this->Skills[SKILL_DISTANCE      ]->ChangeSkill(1400, 30);
+		this->Skills[SKILL_SWORD         ]->ChangeSkill(1100, 50);
+		this->Skills[SKILL_CLUB          ]->ChangeSkill(1100, 50);
+		this->Skills[SKILL_AXE           ]->ChangeSkill(1100, 50);
+		this->Skills[SKILL_FIST          ]->ChangeSkill(1100, 50);
+	}else if(Profession == PROFESSION_PALADIN){
+		this->Skills[SKILL_HITPOINTS     ]->AddLevel = 10;
+		this->Skills[SKILL_MANA          ]->AddLevel = 15;
+		this->Skills[SKILL_CARRY_STRENGTH]->AddLevel = 20;
+		this->Skills[SKILL_MAGIC_LEVEL   ]->ChangeSkill(1400, 1600);
+		this->Skills[SKILL_SHIELDING     ]->ChangeSkill(1100, 100);
+		this->Skills[SKILL_DISTANCE      ]->ChangeSkill(1100, 30);
+		this->Skills[SKILL_SWORD         ]->ChangeSkill(1200, 50);
+		this->Skills[SKILL_CLUB          ]->ChangeSkill(1200, 50);
+		this->Skills[SKILL_AXE           ]->ChangeSkill(1200, 50);
+		this->Skills[SKILL_FIST          ]->ChangeSkill(1200, 50);
+	}else if(Profession == PROFESSION_SORCERER){
+		this->Skills[SKILL_HITPOINTS     ]->AddLevel = 5;
+		this->Skills[SKILL_MANA          ]->AddLevel = 30;
+		this->Skills[SKILL_CARRY_STRENGTH]->AddLevel = 10;
+		this->Skills[SKILL_MAGIC_LEVEL   ]->ChangeSkill(1100, 1600);
+		this->Skills[SKILL_SHIELDING     ]->ChangeSkill(1500, 100);
+		this->Skills[SKILL_DISTANCE      ]->ChangeSkill(2000, 30);
+		this->Skills[SKILL_SWORD         ]->ChangeSkill(2000, 50);
+		this->Skills[SKILL_CLUB          ]->ChangeSkill(2000, 50);
+		this->Skills[SKILL_AXE           ]->ChangeSkill(2000, 50);
+		this->Skills[SKILL_FIST          ]->ChangeSkill(1500, 50);
+	}else if(Profession == PROFESSION_DRUID){
+		this->Skills[SKILL_HITPOINTS     ]->AddLevel = 5;
+		this->Skills[SKILL_MANA          ]->AddLevel = 30;
+		this->Skills[SKILL_CARRY_STRENGTH]->AddLevel = 10;
+		this->Skills[SKILL_MAGIC_LEVEL   ]->ChangeSkill(1100, 1600);
+		this->Skills[SKILL_SHIELDING     ]->ChangeSkill(1500, 100);
+		this->Skills[SKILL_DISTANCE      ]->ChangeSkill(1800, 30);
+		this->Skills[SKILL_SWORD         ]->ChangeSkill(1800, 50);
+		this->Skills[SKILL_CLUB          ]->ChangeSkill(1800, 50);
+		this->Skills[SKILL_AXE           ]->ChangeSkill(1800, 50);
+		this->Skills[SKILL_FIST          ]->ChangeSkill(1500, 50);
+	}else{
+		error("TPlayer::SetProfession: Beruf %d existiert nicht!\n", Profession);
+		return;
+	}
+
+	this->Profession = Profession;
+	this->Combat.CheckCombatValues();
+	DecrementNewbiesOnline();
+}
+
 uint8 TPlayer::GetRealProfession(void){
 	return this->Profession;
 }
 
 uint8 TPlayer::GetEffectiveProfession(void){
 	uint8 Profession = this->Profession;
-	if(Profession >= 10){
-		Profession -= 10;
+	if(Profession >= PROFESSION_PROMOTED){
+		Profession -= PROFESSION_PROMOTED;
 	}
 	return Profession;
 }
@@ -383,7 +1115,7 @@ uint8 TPlayer::GetEffectiveProfession(void){
 uint8 TPlayer::GetActiveProfession(void){
 	uint8 Profession;
 	if(CheckRight(this->ID, PREMIUM_ACCOUNT)){
-		Profession = this->Profession;
+		Profession = this->GetRealProfession();
 	}else{
 		Profession = this->GetEffectiveProfession();
 	}
@@ -392,7 +1124,88 @@ uint8 TPlayer::GetActiveProfession(void){
 
 bool TPlayer::GetActivePromotion(void){
 	return CheckRight(this->ID, PREMIUM_ACCOUNT)
-		&& this->Profession >= 10;
+		&& this->Profession >= PROFESSION_PROMOTED;
+}
+
+bool TPlayer::SpellKnown(int SpellNr){
+	if(SpellNr < 0 || SpellNr >= NARRAY(this->SpellList)){
+		error("TPlayer::SpellKnown: Ungültige Spruchnummer %d.\n", SpellNr);
+		return false;
+	}
+
+	return this->SpellList[SpellNr] != 0;
+}
+
+void TPlayer::LearnSpell(int SpellNr){
+	if(SpellNr < 0 || SpellNr >= NARRAY(this->SpellList)){
+		error("TPlayer::LearnSpell: Ungültige Spruchnummer %d.\n", SpellNr);
+		return;
+	}
+
+	if(this->SpellList[SpellNr] != 0){
+		error("TPlayer::LearnSpell: Der Spieler kennt den Spruch schon.\n");
+		return;
+	}
+
+	this->SpellList[SpellNr] = 1;
+}
+
+int TPlayer::GetQuestValue(int QuestNr){
+	if(QuestNr < 0 || QuestNr >= NARRAY(this->QuestValues)){
+		error("TPlayer::GetQuestValue: Ungültige Nummer %d.\n", QuestNr);
+		return 0;
+	}
+
+	print(3, "Wert der Questvariablen %d von %s: %d.\n",
+			QuestNr, this->Name, this->QuestValues[QuestNr]);
+	return this->QuestValues[QuestNr];
+}
+
+void TPlayer::SetQuestValue(int QuestNr, int Value){
+	if(QuestNr < 0 || QuestNr >= NARRAY(this->QuestValues)){
+		error("TPlayer::SetQuestValue: Ungültige Nummer %d.\n", QuestNr);
+		return;
+	}
+
+	print(3, "Neuer Wert für Questvariable %d von %s: %d.\n",
+			QuestNr, this->Name, Value);
+	this->QuestValues[QuestNr] = Value;
+}
+
+void TPlayer::CheckOutfit(void){
+	if(CheckRight(this->ID, GAMEMASTER_OUTFIT)){
+		if(this->OrgOutfit.OutfitID == 75){
+			return;
+		}
+
+		this->OrgOutfit.OutfitID = 75;
+		this->OrgOutfit.Colors[0] = 0;
+		this->OrgOutfit.Colors[1] = 0;
+		this->OrgOutfit.Colors[2] = 0;
+		this->OrgOutfit.Colors[3] = 0;
+	}else if(this->Sex == 1){
+		if(this->OrgOutfit.OutfitID >= 128 && this->OrgOutfit.OutfitID <= 134){
+			return;
+		}
+
+		this->OrgOutfit.OutfitID = 128;
+		this->OrgOutfit.Colors[0] = 78;
+		this->OrgOutfit.Colors[1] = 69;
+		this->OrgOutfit.Colors[2] = 58;
+		this->OrgOutfit.Colors[3] = 76;
+	}else{
+		if(this->OrgOutfit.OutfitID >= 136 && this->OrgOutfit.OutfitID <= 142){
+			return;
+		}
+
+		this->OrgOutfit.OutfitID = 136;
+		this->OrgOutfit.Colors[0] = 78;
+		this->OrgOutfit.Colors[1] = 69;
+		this->OrgOutfit.Colors[2] = 58;
+		this->OrgOutfit.Colors[3] = 76;
+	}
+
+	this->Outfit = this->OrgOutfit;
 }
 
 void TPlayer::CheckState(void){
@@ -438,6 +1251,510 @@ void TPlayer::CheckState(void){
 			this->OldState = State;
 		}
 	}
+}
+
+void TPlayer::AddBuddy(const char *Name){
+	if(Name == NULL){
+		error("TPlayer::AddBuddy: Name ist NULL.\n");
+		return;
+	}
+
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::AddBuddy: PlayerData ist NULL.\n");
+		return;
+	}
+
+	if(PlayerData->Buddies >= 100){
+		SendMessage(this->Connection, TALK_FAILURE_MESSAGE,
+				"You cannot add more buddies.");
+		return;
+	}
+
+	if(PlayerData->Buddies >= 20
+			&& !CheckRight(this->ID, PREMIUM_ACCOUNT)
+			&& !CheckRight(this->ID, READ_GAMEMASTER_CHANNEL)){
+		SendMessage(this->Connection, TALK_FAILURE_MESSAGE,
+				"You cannot add more buddies.");
+		return;
+	}
+
+	TPlayer *Buddy = NULL;
+	uint32 BuddyID = 0;
+	char BuddyName[30] = {};
+	bool Online = false;
+	if(IdentifyPlayer(Name, true, true, &Buddy) == 0){
+		BuddyID = Buddy->ID;
+		strcpy(BuddyName, Buddy->Name);
+		Online = true;
+	}else{
+		BuddyID = GetCharacterID(Name);
+		if(BuddyID == 0){
+			SendResult(this->Connection, PLAYERNOTEXISTING);
+			return;
+		}
+		strcpy(BuddyName, GetCharacterName(Name));
+		Online = false;
+	}
+
+	for(int i = 0; i < PlayerData->Buddies; i += 1){
+		if(PlayerData->Buddy[i] == BuddyID){
+			SendMessage(this->Connection, TALK_FAILURE_MESSAGE,
+					"This player is already in your list.");
+			return;
+		}
+	}
+
+	PlayerData->Buddy[PlayerData->Buddies] = BuddyID;
+	strcpy(PlayerData->BuddyName[PlayerData->Buddies], BuddyName);
+	PlayerData->Buddies += 1;
+
+	Online = Online && (!CheckRight(BuddyID, NO_STATISTICS)
+			|| CheckRight(this->ID, READ_GAMEMASTER_CHANNEL));
+	SendBuddyData(this->Connection, BuddyID, BuddyName, Online);
+	AddBuddyOrder(this, BuddyID);
+}
+
+void TPlayer::RemoveBuddy(uint32 CharacterID){
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::RemoveBuddy: PlayerData ist NULL.\n");
+		return;
+	}
+
+	int BuddyIndex = 0;
+	while(BuddyIndex < PlayerData->Buddies){
+		if(PlayerData->Buddy[BuddyIndex] == CharacterID){
+			break;
+		}
+		BuddyIndex += 1;
+	}
+
+	if(BuddyIndex < PlayerData->Buddies){
+		// NOTE(fusion): A little swap and pop action.
+		PlayerData->Buddies -= 1;
+		PlayerData->Buddy[BuddyIndex] = PlayerData->Buddy[PlayerData->Buddies];
+		strcpy(PlayerData->BuddyName[BuddyIndex], PlayerData->BuddyName[PlayerData->Buddies]);
+		RemoveBuddyOrder(this, CharacterID);
+	}
+}
+
+void TPlayer::SendBuddies(void){
+	TPlayerData *PlayerData = this->PlayerData;
+	if(PlayerData == NULL){
+		error("TPlayer::SendBuddies: PlayerData ist NULL.\n");
+		return;
+	}
+
+	bool ReadGamemasterChannel = CheckRight(this->ID, READ_GAMEMASTER_CHANNEL);
+	for(int i = 0; i < PlayerData->Buddies; i += 1){
+		bool Online = false;
+		uint32 BuddyID = PlayerData->Buddy[i];
+		const char *BuddyName = PlayerData->BuddyName[i];
+		TPlayer *Buddy = GetPlayer(BuddyID);
+		if(Buddy != NULL){
+			Online = ReadGamemasterChannel || !CheckRight(BuddyID, NO_STATISTICS);
+			BuddyName = Buddy->Name;
+		}
+		SendBuddyData(this->Connection, BuddyID, BuddyName, Online);
+	}
+}
+
+void TPlayer::Regenerate(void){
+	// TODO(fusion): This is probably some inlined function that searches for an
+	// object with an specific flag on a field.
+	Object Bed = GetFirstObject(this->posx, this->posy, this->posz);
+	while(Bed != NONE){
+		if(Bed.getObjectType().getFlag(BED)){
+			break;
+		}
+		Bed = Bed.getNextObject();
+	}
+
+	if(Bed == NONE){
+		error("TPlayer::Regenerate: Bett nicht gefunden.\n");
+		return;
+	}
+
+	if(!Bed.getObjectType().getFlag(TEXT)){
+		error("TPlayer::Regenerate: Bett trägt keinen Text.\n");
+		return;
+	}
+
+	uint32 Text = Bed.getAttribute(TEXTSTRING);
+	if(Text == 0 || stricmp(GetDynamicString(Text), this->Name) != 0){
+		return;
+	}
+
+	int OfflineTime = 0;
+	if(this->PlayerData != NULL && this->PlayerData->LastLogoutTime != 0){
+		OfflineTime = (int)(time(NULL) - this->PlayerData->LastLogoutTime);
+	}
+
+	int FoodTime = this->Skills[SKILL_FED]->TimerValue();
+	int Regen = std::min<int>(FoodTime / 3, OfflineTime / 15);
+	if(Regen > 0){
+		this->Skills[SKILL_HITPOINTS]->Change(Regen / 4);
+		this->Skills[SKILL_MANA     ]->Change(Regen);
+		this->SetTimer(SKILL_FED, (FoodTime - Regen * 3), 0, 0, -1);
+	}
+
+	if(OfflineTime > 900){
+		this->Skills[SKILL_SOUL]->Change(OfflineTime / 900);
+	}
+
+	try{
+		UseObjects(0, Bed, Bed);
+	}catch(RESULT r){
+		error("TPlayer::Regenerate: Exception %d beim Aufräumen des Bettes.\n", r);
+	}
+}
+
+bool TPlayer::IsAttacker(uint32 VictimID, bool CheckFormer){
+	for(int i = 0; i < this->NumberOfAttackedPlayers; i += 1){
+		if(*this->AttackedPlayers.at(i) == VictimID){
+			return true;
+		}
+	}
+
+	if(CheckFormer && (this->FormerLogoutRound + 5) >= RoundNr){
+		for(int i = 0; i < this->NumberOfFormerAttackedPlayers; i += 1){
+			if(*this->FormerAttackedPlayers.at(i) == VictimID){
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool TPlayer::IsAggressor(bool CheckFormer){
+	return this->Aggressor
+		|| (CheckFormer && this->FormerAggressor
+			&& (this->FormerLogoutRound + 5) >= RoundNr);
+}
+
+bool TPlayer::IsAttackJustified(uint32 VictimID){
+	TPlayer *Victim = GetPlayer(VictimID);
+	if(Victim == NULL){
+		error("TPlayer::IsAttackJustified: Opfer existiert nicht.\n");
+		return true;
+	}
+
+	if(WorldType != PVP_ENFORCED // TODO(fusion): Probably `WorldType == NORMAL` ?
+			&& Victim->PlayerData != NULL
+			&& Victim->PlayerData->PlayerkillerEnd == 0){
+		if(Victim->IsAggressor(true)){
+			return true;
+		}
+
+		if(Victim->GetPartyLeader(true) != 0
+		&& Victim->GetPartyLeader(true) == this->GetPartyLeader(true)){
+			return true;
+		}
+
+		return Victim->IsAttacker(this->ID, true);
+	}
+
+	return true;
+}
+
+void TPlayer::RecordAttack(uint32 VictimID){
+	if(WorldType != NORMAL || VictimID == this->ID){
+		return;
+	}
+
+	TPlayer *Victim = GetPlayer(VictimID);
+	if(Victim == NULL){
+		error("TPlayer::RecordAttack: Opfer existiert nicht.\n");
+		return;
+	}
+
+	if(!Victim->IsAttacker(this->ID, true) && !this->IsAttacker(VictimID, false)
+			&& (Victim->GetPartyLeader(true) == 0
+				|| Victim->GetPartyLeader(true) != this->GetPartyLeader(true))){
+		*this->AttackedPlayers.at(this->NumberOfAttackedPlayers) = VictimID;
+		this->NumberOfAttackedPlayers += 1;
+		print(3, "Spieler %s ist Angreifer für Spieler %s.\n", this->Name, Victim->Name);
+		if(Victim->Connection != NULL
+		&& Victim->Connection->KnownCreature(this->ID, false) == KNOWNCREATURE_UPTODATE){
+			SendCreatureSkull(Victim->Connection, this->ID);
+		}
+	}
+
+	if(!this->IsAttackJustified(VictimID) && !this->Aggressor){
+		this->Aggressor = true;
+		print(3, "Spieler %s ist Aggressor.\n", this->Name);
+		AnnounceChangedCreature(this->ID, CREATURE_SKULL_CHANGED);
+	}
+}
+
+void TPlayer::RecordMurder(uint32 VictimID){
+	if(WorldType != NORMAL || VictimID == this->ID
+			|| this->IsAttackJustified(VictimID)){
+		return;
+	}
+
+	TPlayer *Victim = GetPlayer(VictimID);
+	if(Victim == NULL){
+		error("TPlayer::RecordMurder: Opfer existiert nicht.\n");
+		return;
+	}
+
+	print(3, "Ungerechtfertigter Mord von %s an %s.\n", this->Name, Victim->Name);
+
+	int Now = (int)time(NULL);
+
+	// TODO(fusion): It's just annoying that we check `PlayerData` in some places
+	// but not others.
+	ASSERT(this->PlayerData != NULL);
+	TPlayerData *PlayerData = this->PlayerData;
+	for(int i = 1; i < NARRAY(PlayerData->MurderTimestamps); i += 1){
+		PlayerData->MurderTimestamps[i - 1] = PlayerData->MurderTimestamps[i];
+	}
+	PlayerData->MurderTimestamps[NARRAY(PlayerData->MurderTimestamps) - 1] = Now;
+	SendMessage(this->Connection, TALK_ADMIN_MESSAGE,
+			"Warning! The murder of %s was not justified.", Victim->Name);
+
+	int Playerkilling = this->CheckPlayerkilling(Now);
+	if(Playerkilling != 0){
+		int OldPlayerkillerEnd = PlayerData->PlayerkillerEnd;
+		PlayerData->PlayerkillerEnd = Now + 2592000; // 30 days
+		if(OldPlayerkillerEnd == 0){
+			print(3, "Spieler %s ist Playerkiller.\n", this->Name);
+			AnnounceChangedCreature(this->ID, CREATURE_SKULL_CHANGED);
+		}
+
+		if(Playerkilling == 2){
+			// TODO(fusion): This might be an inlined function that calls `PunishmentOrder`?
+			PunishmentOrder(NULL, this->Name, this->IPAddress, 28, 2,
+					"Exceeding the limit of unjustified kills by 100%.",
+					0, NULL, 0, false);
+		}
+	}
+}
+
+int TPlayer::CheckPlayerkilling(int Now){
+	int LastDay = 0;
+	int LastWeek = 0;
+	int LastMonth = 0;
+
+	ASSERT(this->PlayerData != NULL);
+	TPlayerData *PlayerData = this->PlayerData;
+	for(int i = 0; i < NARRAY(PlayerData->MurderTimestamps); i += 1){
+		int Timestamp = PlayerData->MurderTimestamps[i];
+		if(Timestamp == 0){
+			continue;
+		}
+
+		if((Now - Timestamp) < 86000){
+			LastDay += 1;
+		}
+
+		if((Now - Timestamp) < 604800){
+			LastWeek += 1;
+		}
+
+		if((Now - Timestamp) < 2592000){
+			LastMonth += 1;
+		}
+	}
+
+	if(LastDay >= 6 || LastWeek >= 10 || LastMonth >= 20){
+		return 2; // EXCESSIVE_KILLING ?
+	}else if(LastDay >= 3 || LastWeek >= 5 || LastMonth >= 10){
+		return 1; // PLAYERKILLER ?
+	}else{
+		return 0;
+	}
+}
+
+void TPlayer::ClearAttacker(uint32 VictimID){
+	int AttackedIndex = 0;
+	while(AttackedIndex < this->NumberOfAttackedPlayers){
+		if(*this->AttackedPlayers.at(AttackedIndex) == VictimID){
+			break;
+		}
+		AttackedIndex += 1;
+	}
+
+	if(AttackedIndex >= this->NumberOfAttackedPlayers){
+		return;
+	}
+
+	// NOTE(fusion): A little swap and pop action.
+	this->NumberOfAttackedPlayers -= 1;
+	*this->AttackedPlayers.at(AttackedIndex) = *this->AttackedPlayers.at(this->NumberOfAttackedPlayers);
+
+	TPlayer *Victim = GetPlayer(VictimID);
+	if(Victim != NULL
+			&& Victim->Connection != NULL
+			&& Victim->Connection->KnownCreature(this->ID, false) == KNOWNCREATURE_UPTODATE){
+		SendCreatureSkull(Victim->Connection, this->ID);
+	}
+}
+
+void TPlayer::ClearPlayerkillingMarks(void){
+	print(3, "Lösche Markierungen von Spieler %s.\n", this->Name);
+
+	for(int i = 0; i < this->NumberOfAttackedPlayers; i += 1){
+		*this->FormerAttackedPlayers.at(i) = *this->AttackedPlayers.at(i);
+	}
+
+	this->NumberOfFormerAttackedPlayers = this->NumberOfAttackedPlayers;
+	this->NumberOfAttackedPlayers = 0;
+	this->FormerAggressor = this->Aggressor;
+	this->FormerLogoutRound = RoundNr;
+
+	if(this->Aggressor){
+		this->Aggressor = false;
+		print(3, "Spieler %s ist kein Aggressor mehr.\n", this->Name);
+		AnnounceChangedCreature(this->ID, CREATURE_SKULL_CHANGED);
+	}else{
+		for(int i = 0; i < this->NumberOfFormerAttackedPlayers; i += 1){
+			TPlayer *Victim = GetPlayer(*this->FormerAttackedPlayers.at(i));
+			if(Victim != NULL){
+				print(3, "Spieler %s ist kein Angreifer mehr für Spieler %s.\n", this->Name, Victim->Name);
+				if(Victim->Connection != NULL
+				&& Victim->Connection->KnownCreature(this->ID, false) == KNOWNCREATURE_UPTODATE){
+					SendCreatureSkull(Victim->Connection, this->ID);
+				}
+			}
+		}
+	}
+
+	for(int i = 0; i < FirstFreePlayer; i += 1){
+		TPlayer *Player = *PlayerList.at(i);
+		if(Player != NULL){
+			Player->ClearAttacker(this->ID);
+		}else{
+			error("TPlayer::ClearPlayerkillingMarks: Spieler %d existiert nicht.\n", i);
+		}
+	}
+}
+
+int TPlayer::GetPlayerkillingMark(TPlayer *Observer){
+	if(WorldType == NORMAL){
+		if(Observer == NULL){
+			error("TPlayer::GetPlayerkillingMark: Beobachter existiert nicht.\n");
+			return SKULL_NONE;
+		}
+
+		ASSERT(this->PlayerData);
+		if(this->PlayerData->PlayerkillerEnd != 0){
+			return SKULL_RED;
+		}
+
+		if(this->Aggressor){
+			return SKULL_WHITE;
+		}
+
+		if(this->GetPartyLeader(false) != 0
+		&& this->GetPartyLeader(false) == Observer->GetPartyLeader(false)){
+			return SKULL_GREEN;
+		}
+
+		if(this->IsAttacker(Observer->ID, false)){
+			return SKULL_YELLOW;
+		}
+	}
+
+	return SKULL_NONE;
+}
+
+uint32 TPlayer::GetPartyLeader(bool CheckFormer){
+	if(this->PartyLeavingRound == 0 || (CheckFormer && (this->PartyLeavingRound + 5) >= RoundNr)){
+		return this->PartyLeader;
+	}else{
+		return 0;
+	}
+}
+
+void TPlayer::JoinParty(uint32 LeaderID){
+	this->PartyLeavingRound = 0;
+	this->PartyLeader = LeaderID;
+}
+
+void TPlayer::LeaveParty(void){
+	this->PartyLeavingRound = RoundNr;
+}
+
+int TPlayer::GetPartyMark(TPlayer *Observer){
+	if(Observer == NULL){
+		error("TPlayer::GetPartyMark: Beobachter existiert nicht.\n");
+		return PARTY_SHIELD_NONE;
+	}
+
+	if(Observer->GetPartyLeader(false) == this->ID){
+		return PARTY_SHIELD_LEADER;
+	}
+
+	if(this->GetPartyLeader(false) != 0
+	&& this->GetPartyLeader(false) == Observer->GetPartyLeader(false)){
+		return PARTY_SHIELD_MEMBER;
+	}
+
+	if(Observer->GetPartyLeader(false) == Observer->ID
+			&& IsInvitedToParty(this->ID, Observer->ID)){
+		return PARTY_SHIELD_GUEST;
+	}
+
+	if(this->GetPartyLeader(false) == this->ID
+			&& IsInvitedToParty(Observer->ID, this->ID)){
+		return PARTY_SHIELD_HOST;
+	}
+
+	return PARTY_SHIELD_NONE; // PARTY_NONE
+}
+
+int TPlayer::RecordTalk(void){
+	int Muting = 0;
+	if(this->TalkBufferFullTime > ServerMilliseconds){
+		if(this->TalkBufferFullTime > (ServerMilliseconds + 7500)){
+			this->NumberOfMutings += 1;
+			Muting = (this->NumberOfMutings * this->NumberOfMutings) * 5;
+			this->MutingEndRound = RoundNr + (uint32)Muting;
+		}else{
+			this->TalkBufferFullTime += 2500;
+		}
+	}else{
+		this->TalkBufferFullTime = ServerMilliseconds + 2500;
+	}
+	return Muting;
+}
+
+int TPlayer::RecordMessage(uint32 AddresseeID){
+	STATIC_ASSERT(NARRAY(this->Addressees) == NARRAY(this->AddresseesTimes));
+	int AddresseeNr = -1;
+	for(int i = 0; i < NARRAY(this->Addressees); i += 1){
+		if(this->Addressees[i] == AddresseeID){
+			AddresseeNr = i;
+			break;
+		}
+
+		if(this->Addressees[i] == 0 || RoundNr > (this->AddresseesTimes[i] + 600)){
+			AddresseeNr = i;
+		}
+	}
+
+	int Muting = 0;
+	if(AddresseeNr == -1){
+		this->NumberOfMutings += 1;
+		Muting = (this->NumberOfMutings * this->NumberOfMutings) * 5;
+		this->MutingEndRound = RoundNr + (uint32)Muting;
+	}else{
+		this->Addressees[AddresseeNr] = AddresseeID;
+		this->AddresseesTimes[AddresseeNr] = RoundNr;
+	}
+	return Muting;
+}
+
+int TPlayer::CheckForMuting(void){
+	int Muting = 0;
+	if(this->MutingEndRound > RoundNr){
+		Muting = (int)(this->MutingEndRound - RoundNr);
+	}
+	return Muting;
 }
 
 // Player Utility
@@ -689,18 +2006,20 @@ void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	}
 
 	PlayerData->Dirty = true;
-	if(PlayerData->Depot[DepotNr] != NULL){
-		delete PlayerData->Depot[DepotNr];
-		PlayerData->Depot[DepotNr] = NULL;
-	}
+	delete[] PlayerData->Depot[DepotNr];
+	PlayerData->Depot[DepotNr] = NULL;
+	PlayerData->DepotSize[DepotNr] = 0;
 
 	try{
 		TDynamicWriteBuffer HelpBuffer(KB(16));
 		SaveObjects(GetFirstContainerObject(Con), &HelpBuffer, false);
 
-		PlayerData->Depot[DepotNr] = new uint8[HelpBuffer.Size];
-		PlayerData->DepotSize[DepotNr] = HelpBuffer.Size;
-		memcpy(PlayerData->Depot[DepotNr], HelpBuffer.Data, HelpBuffer.Size);
+		if(HelpBuffer.Position > 0){
+			int DepotSize = HelpBuffer.Position;
+			PlayerData->Depot[DepotNr] = new uint8[DepotSize];
+			PlayerData->DepotSize[DepotNr] = DepotSize;
+			memcpy(PlayerData->Depot[DepotNr], HelpBuffer.Data, DepotSize);
+		}
 	}catch(const char *str){
 		error("SaveDepot: Kann Depot nicht schreiben (%s).\n", str);
 		PlayerData->Depot[DepotNr] = NULL;

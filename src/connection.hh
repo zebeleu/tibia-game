@@ -20,6 +20,8 @@ struct TConnection {
 	bool IsVisible(int x, int y, int z);
 	void EnterGame(void);
 	const char *GetIPAddress(void);
+	void Die(void);
+	KNOWNCREATURESTATE KnownCreature(uint32 CreatureID, bool UpdateFollows);
 
 	// DATA
 	// =================

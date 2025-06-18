@@ -29,7 +29,11 @@ int TSkill::Get(void){
 int TSkill::GetProgress(void){
 	int Result = 0;
 	if(this->NextLevel > this->LastLevel){
-		Result = (this->Exp - this->LastLevel) * 100 / (this->NextLevel - this->LastLevel);
+		// NOTE(fusion): Use 64-bit integers to avoid overflows.
+		int64 Result64 = (int64)(this->Exp - this->LastLevel) * 100
+							/ (int64)(this->NextLevel - this->LastLevel);
+
+		Result = (int)Result64;
 
 		// TODO(fusion): This feels too much for reporting a mostly *impossible* error.
 		if(Result < 0 || Result > 100){
@@ -62,6 +66,16 @@ void TSkill::Change(int Amount){
 	if(this->Act > this->Max){
 		this->Act = this->Max;
 	}
+}
+
+void TSkill::SetMax(void){
+	this->Set(this->Max);
+}
+
+void TSkill::DecreasePercent(int Percent){
+	// NOTE(fusion): Use 64-bit integers to avoid overflows.
+	int64 Amount64 = ((int64)this->Exp * (int64)Percent) / 100;
+	this->Decrease((int)Amount64);
 }
 
 void TSkill::SetMDAct(int MDAct){

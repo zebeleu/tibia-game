@@ -7,6 +7,7 @@
 #include "cr.hh"
 #include "magic.hh"
 #include "map.hh"
+#include "operate.hh"
 
 // IMPORTANT(fusion): These function definitions exist to test compilation. They're
 // not yet implemented and will cause the linker to fail with unresolved symbols.
@@ -15,6 +16,8 @@ typedef void TRefreshSectorFunction(int SectorX, int SectorY, int SectorZ, const
 typedef void TSendMailsFunction(TPlayerData *PlayerData);
 
 extern void AbortWriter(void);
+extern void AddBuddyOrder(TCreature *Creature, uint32 CharacterID);
+extern void RemoveBuddyOrder(TCreature *Creature, uint32 BuddyID);
 extern void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
@@ -46,6 +49,10 @@ extern void ProcessConnections(void);
 extern void ProcessMonsterhomes(void);
 extern void ProcessReaderThreadReplies(TRefreshSectorFunction *RefreshSector, TSendMailsFunction *SendMails);
 extern void ProcessWriterThreadReplies(void);
+extern void PunishmentOrder(TCreature *Creature, const char *Name, const char *IPAddress,
+					int Reason, int Action, const char *Comment, int NumberOfStatements,
+					vector<TReportedStatement> *ReportedStatements, uint32 StatementID,
+					bool IPBanishment);
 extern void ReceiveData(void);
 extern void SavePlayerData(TPlayerData *Slot);
 extern bool LoadPlayerData(TPlayerData *Slot);
@@ -53,6 +60,7 @@ extern bool PlayerDataExists(uint32 CharacterID);
 extern void SavePlayerDataOrder(void);
 extern void SendAll(void);
 extern void SendAmbiente(TConnection *Connection);
+extern void SendBodyInventory(TConnection *Connection, uint32 CreatureID);
 extern void SendBuddyData(TConnection *Connection, uint32 CharacterID, const char *Name, bool Online);
 extern void SendBuddyStatus(TConnection *Connection, uint32 CharacterID, bool Online);
 extern void SendClearTarget(TConnection *Connection);

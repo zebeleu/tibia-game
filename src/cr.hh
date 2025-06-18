@@ -184,6 +184,8 @@ struct TSkill{
 	int GetProgress(void);
 	void Check(void);
 	void Change(int Amount);
+	void SetMax(void);
+	void DecreasePercent(int Percent);
 	void SetMDAct(int MDAct);
 	void Load(int Act, int Max, int Min, int DAct, int MDAct,
 			int Cycle, int MaxCycle, int Count, int MaxCount, int AddLevel,
@@ -716,45 +718,61 @@ struct TPlayer: TCreature {
 	TPlayer(TConnection *Connection, uint32 CharacterID);
 	void SetInList(void);
 	void DelInList(void);
-
-//==
-
-	// TODO(fusion): Eventually sort these out when we implement player functions.
+	void ClearRequest(void);
+	void ClearConnection(void);
+	void LoadData(void);
+	void SaveData(void);
+	void LoadInventory(bool SetStandardInventory);
+	void SaveInventory(void);
+	void StartCoordinates(void);
+	void TakeOver(TConnection *Connection);
+	void SetOpenContainer(int ContainerNr, Object Con);
+	Object GetOpenContainer(int ContainerNr);
+	void CloseAllContainers(void);
+	Object InspectTrade(bool OwnOffer, int Position);
+	void AcceptTrade(void);
+	void RejectTrade(void);
+	void ClearProfession(void);
+	void SetProfession(uint8 Profession);
 	uint8 GetRealProfession(void);
 	uint8 GetEffectiveProfession(void);
 	uint8 GetActiveProfession(void);
 	bool GetActivePromotion(void);
-	void ClearProfession(void);
-	void SetProfession(uint8 Profession);
-	int GetQuestValue(int Number);
-	void SetQuestValue(int Number, int Value);
-	void JoinParty(uint32 Leader);
-	void LeaveParty(void);
-	uint32 GetPartyLeader(bool CheckFormer);
 	bool SpellKnown(int SpellNr);
-	bool IsAttackJustified(uint32 Victim);
-	void RecordAttack(uint32 Victim);
-	void RecordMurder(uint32 Victim);
-	void CheckState(void);
-	void ClearPlayerkillingMarks(void);
-	void SaveInventory(void);
-	Object GetOpenContainer(int ContainerNr);
-	void SetOpenContainer(int ContainerNr, Object Con);
-	void RejectTrade(void);
-	Object InspectTrade(bool OwnOffer, int Position);
-	int CheckForMuting(void);
-	int RecordTalk(void);
-	int RecordMessage(uint32 Addressee);
-	void LoadData(void);
-	void SaveData(void);
+	void LearnSpell(int SpellNr);
+	int GetQuestValue(int QuestNr);
+	void SetQuestValue(int QuestNr, int Value);
 	void CheckOutfit(void);
-	void Regenerate(void);
-	void LoadInventory(bool SetDefaultInventory);
+	void CheckState(void);
+	void AddBuddy(const char *Name);
+	void RemoveBuddy(uint32 CharacterID);
 	void SendBuddies(void);
+	void Regenerate(void);
+	bool IsAttacker(uint32 VictimID, bool CheckFormer);
+	bool IsAggressor(bool CheckFormer);
+	bool IsAttackJustified(uint32 VictimID);
+	void RecordAttack(uint32 VictimID);
+	void RecordMurder(uint32 VictimID);
+	int CheckPlayerkilling(int Now);
+	void ClearAttacker(uint32 VictimID);
+	void ClearPlayerkillingMarks(void);
+	int GetPlayerkillingMark(TPlayer *Observer);
+	uint32 GetPartyLeader(bool CheckFormer);
+	void JoinParty(uint32 LeaderID);
+	void LeaveParty(void);
+	int GetPartyMark(TPlayer *Observer);
+	int RecordTalk(void);
+	int RecordMessage(uint32 AddresseeID);
+	int CheckForMuting(void);
 
 	// VIRTUAL FUNCTIONS
 	// =================
 	~TPlayer(void) override;
+	void Death(void) override;
+	bool MovePossible(int x, int y, int z, bool Execute, bool Jump) override;
+	void DamageStimulus(uint32 AttackerID, int Damage, int DamageType) override;
+	void IdleStimulus(void) override;
+	void AttackStimulus(uint32 AttackerID) override;
 
 	// DATA
 	// =================
