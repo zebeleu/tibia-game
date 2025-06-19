@@ -3,7 +3,7 @@
 
 #include "common.hh"
 #include "enums.hh"
-#include "connection.hh"
+#include "connections.hh"
 #include "cr.hh"
 #include "magic.hh"
 #include "map.hh"
@@ -36,12 +36,9 @@ extern void InitLog(const char *ProtocolName);
 extern bool IsInvited(uint16 HouseID, TPlayer *Player, int TimeStamp);
 extern void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest);
 extern void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames, int *KilledPlayers, int *KilledCreatures);
-extern bool LagDetected(void);
 extern void LoadSectorOrder(int SectorX, int SectorY, int SectorZ);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutOrder(TPlayer *Player);
-extern void NetLoadCheck(void);
-extern void NetLoadSummary(void);
 extern void PrepareHouseCleanup(void);
 extern void FinishHouseCleanup(void);
 extern void PlayerlistOrder(int NumberOfPlayers, char *PlayerNames, int *PlayerLevels, int *PlayerProfessions);

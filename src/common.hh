@@ -150,7 +150,7 @@ void GetAmbiente(int *Brightness, int *Color);
 uint32 GetRoundAtTime(int Hour, int Minute);
 uint32 GetRoundForNextMinute(void);
 
-// util.cc
+// utils.cc
 // =============================================================================
 typedef void TErrorFunction(const char *Text);
 typedef void TPrintFunction(int Level, const char *Text);

@@ -1,5 +1,5 @@
-#ifndef TIBIA_THREAD_HH_
-#define TIBIA_THREAD_HH_ 1
+#ifndef TIBIA_THREADS_HH_
+#define TIBIA_THREADS_HH_ 1
 
 #include "common.hh"
 #include <pthread.h>
@@ -30,4 +30,4 @@ struct Semaphore {
 	pthread_cond_t condition;
 };
 
-#endif //TIBIA_THREAD_HH_
+#endif //TIBIA_THREADS_HH_

@@ -13,10 +13,14 @@ else
 	CFLAGS += -O2
 endif
 
-HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/config.hh $(SRCDIR)/connection.hh $(SRCDIR)/containers.hh $(SRCDIR)/cr.hh $(SRCDIR)/enums.hh $(SRCDIR)/info.hh $(SRCDIR)/magic.hh $(SRCDIR)/map.hh $(SRCDIR)/moveuse.hh $(SRCDIR)/objects.hh $(SRCDIR)/operate.hh $(SRCDIR)/query.hh $(SRCDIR)/script.hh $(SRCDIR)/stubs.hh $(SRCDIR)/thread.hh
+HEADERS = $(SRCDIR)/common.hh $(SRCDIR)/communication.hh $(SRCDIR)/config.hh $(SRCDIR)/connections.hh $(SRCDIR)/containers.hh $(SRCDIR)/cr.hh $(SRCDIR)/crypto.hh $(SRCDIR)/enums.hh $(SRCDIR)/info.hh $(SRCDIR)/magic.hh $(SRCDIR)/map.hh $(SRCDIR)/moveuse.hh $(SRCDIR)/objects.hh $(SRCDIR)/operate.hh $(SRCDIR)/query.hh $(SRCDIR)/script.hh $(SRCDIR)/stubs.hh $(SRCDIR)/threads.hh
 
-$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/config.obj $(BUILDDIR)/cract.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/crmain.obj $(BUILDDIR)/crplayer.obj $(BUILDDIR)/crskill.obj $(BUILDDIR)/info.obj $(BUILDDIR)/magic.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/moveuse.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/operate.obj $(BUILDDIR)/query.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/thread.obj $(BUILDDIR)/time.obj $(BUILDDIR)/util.obj
+$(BUILDDIR)/$(OUTPUTEXE): $(BUILDDIR)/communication.obj $(BUILDDIR)/config.obj $(BUILDDIR)/cract.obj $(BUILDDIR)/crcombat.obj $(BUILDDIR)/crmain.obj $(BUILDDIR)/crplayer.obj $(BUILDDIR)/crskill.obj $(BUILDDIR)/crypto.obj $(BUILDDIR)/info.obj $(BUILDDIR)/magic.obj $(BUILDDIR)/main.obj $(BUILDDIR)/map.obj $(BUILDDIR)/moveuse.obj $(BUILDDIR)/objects.obj $(BUILDDIR)/operate.obj $(BUILDDIR)/query.obj $(BUILDDIR)/script.obj $(BUILDDIR)/shm.obj $(BUILDDIR)/strings.obj $(BUILDDIR)/threads.obj $(BUILDDIR)/time.obj $(BUILDDIR)/utils.obj
 	@echo $(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
+
+$(BUILDDIR)/communication.obj: $(SRCDIR)/communication.cc $(HEADERS)
+	@mkdir -p $(@D)
+	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILDDIR)/config.obj: $(SRCDIR)/config.cc $(HEADERS)
 	@mkdir -p $(@D)
@@ -39,6 +43,10 @@ $(BUILDDIR)/crplayer.obj: $(SRCDIR)/crplayer.cc $(HEADERS)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BUILDDIR)/crskill.obj: $(SRCDIR)/crskill.cc $(HEADERS)
+	@mkdir -p $(@D)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(BUILDDIR)/crypto.obj: $(SRCDIR)/crypto.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
@@ -86,7 +94,7 @@ $(BUILDDIR)/strings.obj: $(SRCDIR)/strings.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(BUILDDIR)/thread.obj: $(SRCDIR)/thread.cc $(HEADERS)
+$(BUILDDIR)/threads.obj: $(SRCDIR)/threads.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
@@ -94,7 +102,7 @@ $(BUILDDIR)/time.obj: $(SRCDIR)/time.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(BUILDDIR)/util.obj: $(SRCDIR)/util.cc $(HEADERS)
+$(BUILDDIR)/utils.obj: $(SRCDIR)/utils.cc $(HEADERS)
 	@mkdir -p $(@D)
 	$(CC) -c $(CFLAGS) -o $@ $<
 

@@ -2,6 +2,7 @@
 #define TIBIA_CONNECTION_HH_ 1
 
 #include "common.hh"
+#include "crypto.hh"
 #include "enums.hh"
 
 struct TConnection;
@@ -22,6 +23,16 @@ struct TConnection {
 	const char *GetIPAddress(void);
 	void Die(void);
 	KNOWNCREATURESTATE KnownCreature(uint32 CreatureID, bool UpdateFollows);
+	int GetSocket(void);
+	void EmergencyPing(void);
+
+	// TODO(fusion): Maybe rename this later?
+	bool Live(void) const {
+		return this->State == CONNECTION_LOGIN
+			|| this->State == CONNECTION_GAME
+			|| this->State == CONNECTION_DEAD
+			|| this->State == CONNECTION_LOGOUT;
+	}
 
 	// DATA
 	// =================
@@ -45,7 +56,7 @@ struct TConnection {
 	pid_t PID;
 	int Socket;
 	char IPAddress[16];
-	// TXTEASymmetricKey SymmetricKey;		// TODO
+	TXTEASymmetricKey SymmetricKey;
 	bool ConnectionIsOk;
 	bool ClosingIsDelayed;
 	uint8 field23_0x4852;

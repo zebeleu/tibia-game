@@ -2,7 +2,7 @@
 #define TIBIA_QUERY_HH_ 1
 
 #include "common.hh"
-#include "thread.hh"
+#include "threads.hh"
 
 struct TQueryManagerConnection{
 	TQueryManagerConnection(int QueryBufferSize);
@@ -28,6 +28,10 @@ struct TQueryManagerConnection{
 };
 
 struct TQueryManagerConnectionPool{
+	TQueryManagerConnectionPool(int Connections);
+
+	// DATA
+	// =================
 	int NumberOfConnections;
 	TQueryManagerConnection *QueryManagerConnection;
 	bool *QueryManagerConnectionFree;

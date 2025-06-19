@@ -1,4 +1,5 @@
 #include "cr.hh"
+#include "communication.hh"
 #include "config.hh"
 #include "enums.hh"
 #include "info.hh"

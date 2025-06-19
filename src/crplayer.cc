@@ -3,7 +3,7 @@
 #include "info.hh"
 #include "operate.hh"
 #include "query.hh"
-#include "thread.hh"
+#include "threads.hh"
 
 #include "stubs.hh"
 

@@ -1,7 +1,7 @@
 #include "common.hh"
 #include "config.hh"
 #include "enums.hh"
-#include "thread.hh"
+#include "threads.hh"
 
 #include "stubs.hh"
 

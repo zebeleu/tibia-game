@@ -218,7 +218,7 @@ void ExitStrings(void){
 // String Utility
 // =============================================================================
 // TODO(fusion): I'm not sure why we have these separate from the other string
-// utility defined in `util.cc`. We should probably just move them all here.
+// utility defined in `utils.cc`. We should probably just move them all here.
 
 bool IsCountable(const char *s){
 	if(strncmp(s, "some ", 5) == 0){

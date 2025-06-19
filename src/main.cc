@@ -1,4 +1,5 @@
 #include "common.hh"
+#include "communication.hh"
 #include "config.hh"
 #include "info.hh"
 #include "map.hh"
@@ -327,23 +328,7 @@ static void AdvanceGame(int Delay){
 			OldAmbiente = Brightness;
 			TConnection *Connection = GetFirstConnection();
 			while(Connection != NULL){
-				// TODO(fusion): This is probably an inlined function that checks
-				// whether the connection is still going. The exact decompiled condition
-				// was `Connection->State - CONDITION_LOGIN < 4` but I think that's
-				// just a compiler optimization that wouldn't work properly on the
-				// decompiled version. That comparison in the disassembly is unsigned
-				// (`JBE`) but the enum is signed which would probably generate an
-				// invalid signed comparison (`JLE`).
-				//
-				//	MOV EAX, dword ptr [Connection + Connection->State]
-				//	SUB EAX, 0x3
-				//	CMP EAX, 0x3
-				//	JBE ... -> SendAmbiente(Connection)
-				//
-				if(Connection->State == CONNECTION_LOGIN
-				|| Connection->State == CONNECTION_GAME
-				|| Connection->State == CONNECTION_DEAD
-				|| Connection->State == CONNECTION_LOGOUT){
+				if(Connection->Live()){
 					SendAmbiente(Connection);
 				}
 				Connection = GetNextConnection();

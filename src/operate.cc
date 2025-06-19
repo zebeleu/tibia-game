@@ -2393,12 +2393,7 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 		uint32 StatementID = LogCommunication(CreatureID, Mode, 0, Text);
 		TConnection *Connection = GetFirstConnection();
 		while(Connection != NULL){
-			// TODO(fusion): Same as `AdvanceGame`. Definitely some inlined
-			// function to check whether the connection is in a valid state.
-			if(Connection->State == CONNECTION_LOGIN
-					|| Connection->State == CONNECTION_GAME
-					|| Connection->State == CONNECTION_DEAD
-					|| Connection->State == CONNECTION_LOGOUT){
+			if(Connection->Live()){
 				SendTalk(Connection,
 						LogListener(StatementID, Connection->GetPlayer()),
 						Creature->Name, Mode, Text, 0);
@@ -2409,11 +2404,7 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 	}else if(Mode == TALK_ANONYMOUS_BROADCAST){
 		TConnection *Connection = GetFirstConnection();
 		while(Connection != NULL){
-			// TODO(fusion): Same as above.
-			if(Connection->State == CONNECTION_LOGIN
-					|| Connection->State == CONNECTION_GAME
-					|| Connection->State == CONNECTION_DEAD
-					|| Connection->State == CONNECTION_LOGOUT){
+			if(Connection->Live()){
 				SendMessage(Connection, TALK_ADMIN_MESSAGE, Text);
 			}
 

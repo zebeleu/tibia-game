@@ -20,7 +20,8 @@ I didn't dive into how exceptions are handled, but it seems that the ones relate
 ## Synchronization
 I'm not sure whether synchronization is done properly. The implementation of the first few `crplayer.cc` functions left me with a taste of race conditions although integer loads on x86 are generally atomic.
 
-I'm also under the impression that `getpid()` is used for retrieving the current thread id, so we'll have to wait and see how things unfold outside the main thread.
+## Threading
+After some initial dive into `communication.cc`, it has become clear that the original codebase relied on `LinuxThreads` which, among its quirks, assigns different PIDs to different threads, explaining the usage of `getpid()`. It also seems it could lack automatically managed thread stacks which explains `CommunicationThreadStacks`.
 
 ## Estimate
 The decompiled file has ~115K lines of C. If we take ~15K lines to be rubbish, this can be round to ~100K. Considering a low estimate of 200 lines per day, the whole process could take up to 500 days which is quite a bit but not impossible. Now considering a high estimate of 1K lines per day, it could take 100 days which is also quite a bit.

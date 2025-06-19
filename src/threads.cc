@@ -1,4 +1,4 @@
-#include "thread.hh"
+#include "threads.hh"
 
 struct TThreadStarter {
 	ThreadFunction *Function;

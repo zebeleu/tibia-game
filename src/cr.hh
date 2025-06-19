@@ -2,7 +2,7 @@
 #define TIBIA_CREATURE_HH_ 1
 
 #include "common.hh"
-#include "connection.hh"
+#include "connections.hh"
 #include "containers.hh"
 #include "enums.hh"
 #include "map.hh"

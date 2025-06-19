@@ -1,9 +1,4 @@
 
-struct TXTEASymmetricKey {
-    int (**_vptr.TXTEASymmetricKey)(...); // VTABLE?
-    uchar m_SymmetricKey[16];
-};
-
 struct TDatabasePoolConnection {
     TDatabaseConnectionPool *DatabaseConnectionPool;
     TDatabaseConnection *DatabaseConnection;
@@ -58,15 +53,6 @@ struct THouse {
     struct vector<THouseGuest> Guest;
     int Guests;
     int Help;
-};
-
-struct TWaitinglistEntry {
-    struct TWaitinglistEntry *Next;
-    char Name[30];
-    ulong NextTry;
-    bool FreeAccount;
-    bool Newbie;
-    bool Sleeping;
 };
 
 struct TDelayedMail {
@@ -223,42 +209,4 @@ struct TReaderThreadReply {
     int SectorZ;
     uchar *Data;
     int Size;
-};
-
-// NOTE(fusion): Probably bigint structures for RSA decoding.
-struct vlong_flex_unit {
-    uint n;
-    uint *a;
-    uint z;
-};
-
-struct vlong {
-    int (**_vptr.vlong)(...);
-    struct vlong_value *value;
-    int negative;
-};
-
-struct vlong_value {
-    struct vlong_flex_unit super_vlong_flex_unit;
-    uint share;
-};
-
-struct vlong_montgomery {
-    struct vlong R;
-    struct vlong R1;
-    struct vlong m;
-    struct vlong n1;
-    struct vlong T;
-    struct vlong k;
-    uint N;
-};
-
-// NOTE(fusion): Oh yes.
-struct TRSAPrivateKey {
-    int (**_vptr.TRSAPrivateKey)(...);
-    struct vlong m_PrimeP;
-    struct vlong m_PrimeQ;
-    struct vlong m_U;
-    struct vlong m_DP;
-    struct vlong m_DQ;
 };
