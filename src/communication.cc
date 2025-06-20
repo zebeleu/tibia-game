@@ -899,10 +899,7 @@ TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
 bool HandleLogin(TConnection *Connection){
 	// TODO(fusion): Exception handling keeps getting crazier.
 
-	// TODO(fusion): We should probably use the size of the actual packet here.
-	TReadBuffer InputBuffer(Connection->InData + 2,
-				sizeof(Connection->InData) - 2);
-
+	TReadBuffer InputBuffer(Connection->InData, Connection->InDataSize);
 	try{
 		uint8 Command = InputBuffer.readByte();
 		if(Command != 10){
@@ -1084,8 +1081,8 @@ bool HandleLogin(TConnection *Connection){
 		ReleasePlayerPoolSlot(Slot);
 	}
 
-	// TODO(fusion): I'm not sure what the actual fuck is going on here. Do we
-	// rewrite the packet for the main thread to re-interpret it?
+	// NOTE(fusion): Rewrite packet in a different format, ready for the main
+	// thread to interpret.
 	TWriteBuffer WriteBuffer(Connection->InData + 2,
 					sizeof(Connection->InData) - 2);
 	try{
@@ -1136,7 +1133,7 @@ bool ReceiveCommand(TConnection *Connection){
 		// have a few helper functions to assist with buffer reading.
 		int Size = ((uint16)Help[0] | ((uint16)Help[1] << 8));
 
-		if(Size == 0 || Size >= (int)sizeof(Connection->InData)){
+		if(Size == 0 || Size > (int)sizeof(Connection->InData)){
 			// TODO(fusion): We should definitely close the connection here.
 			// Nevertheless, the original handling of this edge case was just
 			// terrible, reading from the socket recklessly until at least `Size`
@@ -1147,56 +1144,56 @@ bool ReceiveCommand(TConnection *Connection){
 			return DrainSocket(Connection, Size);
 		}
 
-		if(Connection->State == CONNECTION_CONNECTED){
-			BytesRead = ReadFromSocket(Connection, &Connection->InData[2], Size);
-			if(BytesRead < 0){
-				// NOTE(fusion): The original function would try to use `SendLoginMessage`
-				// which doesn't make sense since we didn't do the encryption handshake yet.
-				return false;
+		BytesRead = ReadFromSocket(Connection, &Connection->InData[0], Size);
+		if(BytesRead < 0){
+			// NOTE(fusion): It doesn't make sense to call `SendLoginMessage` before
+			// the key exchange has completed, which happens after login.
+			if(Connection->State != CONNECTION_CONNECTED){
+				SendLoginMessage(Connection, 20,
+					"Internal error, closing connection.", -1);
 			}
+			return false;
+		}
 
-			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
+		NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
 
+		// NOTE(fusion): It doesn't make sense to continue if we didn't receive
+		// the whole packet. We're already using TCP which doesn't drop data so
+		// it would only compound into more errors.
+		if(BytesRead != Size){
+			return false;
+		}
+
+		if(Connection->State == CONNECTION_CONNECTED){
 			alarm(0); // TODO(fusion): Not sure why.
+			Connection->InDataSize = Size;
 			if(!HandleLogin(Connection)){
 				return false;
 			}
 		}else{
-			BytesRead = ReadFromSocket(Connection, &Connection->InData[0], Size);
-			if(BytesRead < 0){
-				SendLoginMessage(Connection, 20,
-					"Internal error, closing connection.", -1);
-				return false;
-			}
-
-			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
-
-			// TODO(fusion): How come we don't close the connection if we didn't
-			// read the whole packet?
-			if(BytesRead != Size){
-				continue;
-			}
-
-			// TODO(fusion): Or if the packet size is invalid?
+			// NOTE(fusion): It doesn't make sense to continue if the client didn't
+			// correctly size its packet.
 			if((Size % 8) != 0){
 				print(3, "Ungültige Paketlänge %d für verschlüsseltes Paket von %s.\n",
 						Size, Connection->GetName());
-				continue;
+				return false;
 			}
 
 			for(int i = 0; i < Size; i += 8){
 				Connection->SymmetricKey.decrypt(&Connection->InData[i]);
 			}
 
-			// NOTE(fusion): Or if the plain text size is invalid?
+			// NOTE(fusion): It doesn't make sense to continue if the client didn't
+			// correctly size its payload.
 			int PlainSize = ((uint16)Connection->InData[0])
 					| ((uint16)Connection->InData[1] << 8);
-			if(PlainSize == 0 || PlainSize > Size){
+			if(PlainSize == 0 || (PlainSize + 2) > Size){
 				print(3, "Nutzdaten (%d Bytes) von Paket an Socket %d zu groß oder leer.\n",
 						PlainSize, Connection->GetSocket());
-				continue;
+				return false;
 			}
 
+			Connection->InDataSize = PlainSize;
 			if(!CallGameThread(Connection)){
 				return false;
 			}
