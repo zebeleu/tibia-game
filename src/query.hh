@@ -37,6 +37,8 @@ struct TQueryManagerConnection{
 
 struct TQueryManagerConnectionPool{
 	TQueryManagerConnectionPool(int Connections);
+	void init(void);
+	void exit(void);
 
 	// DATA
 	// =================

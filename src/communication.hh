@@ -20,11 +20,12 @@ void ReleaseCommunicationThreadStack(int StackNumber);
 void InitCommunicationThreadStacks(void);
 void ExitCommunicationThreadStacks(void);
 
-void InitLoadHistory(void);
 bool LagDetected(void);
 void NetLoad(int Amount, bool Send);
 void NetLoadSummary(void);
 void NetLoadCheck(void);
+void InitLoadHistory(void);
+void ExitLoadHistory(void);
 
 bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size);
 bool SendLoginMessage(TConnection *Connection, int Type, const char *Message, int WaitingTime);
@@ -44,5 +45,16 @@ TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
 		uint32 AccountID, const char *PlayerPassword, bool GamemasterClient);
 bool HandleLogin(TConnection *Connection);
 bool ReceiveCommand(TConnection *Connection);
+
+void IncrementActiveConnections(void);
+void DecrementActiveConnections(void);
+void CommunicationThread(int Socket);
+int HandleConnection(void *Data);
+bool OpenSocket(void);
+int AcceptorThreadLoop(void *Unused);
+
+void CheckThreadlibVersion(void);
+void InitCommunication(void);
+void ExitCommunication(void);
 
 #endif //TIBIA_COMMUNICATION_HH_

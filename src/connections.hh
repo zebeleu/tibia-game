@@ -27,6 +27,10 @@ struct TConnection {
 	void EmergencyPing(void);
 	void Login(void);
 	const char *GetName(void);
+	void Connect(int Socket);
+	void Close(bool Delay);
+	void Free(void);
+	pid_t GetPID(void);
 
 	// TODO(fusion): Maybe rename this later?
 	bool Live(void) const {

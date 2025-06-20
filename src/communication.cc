@@ -8,8 +8,12 @@
 
 #include "stubs.hh"
 
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <netinet/in.h>
 #include <poll.h>
 #include <signal.h>
+#include <sys/socket.h>
 
 // NOTE(fusion): We seem to add this value of 48 every time `NetLoad` is called,
 // and I assume it is to account for IPv4 (20 bytes) and TCP (20 bytes) headers
@@ -18,7 +22,17 @@
 #define PACKET_AVERAGE_SIZE_OVERHEAD 48
 
 #define MAX_COMMUNICATION_THREADS 1100
-#define THREAD_OWN_STACK_SIZE ((int)KB(64))
+#define COMMUNICATION_THREAD_STACK_SIZE ((int)KB(64))
+
+static const char RSA_PRIME_P[] =
+		"1201758001370723323398753778257470257713354828752713123415294815"
+		"0506251412291888866940292054989907714155267326586216043845592229"
+		"084368540020196135619327879";
+
+static const char RSA_PRIME_Q[] =
+		"1189892136861686835188050824611210139447876026576932541274639840"
+		"5473436969889506919017477758618276066588858607419440134394668095"
+		"105156501566867770737187273";
 
 static int TERMINALVERSION[3] = {770, 770, 770};
 static int TCPSocket;
@@ -42,7 +56,7 @@ static TWaitinglistEntry *WaitinglistHead;
 
 static Semaphore CommunicationThreadMutex(1);
 static bool UseOwnStacks;
-static uint8 CommunicationThreadStacks[MAX_COMMUNICATION_THREADS][THREAD_OWN_STACK_SIZE];
+static uint8 CommunicationThreadStacks[MAX_COMMUNICATION_THREADS][COMMUNICATION_THREAD_STACK_SIZE];
 static pid_t LastUsingCommunicationThread[MAX_COMMUNICATION_THREADS];
 static int FreeCommunicationThreadStacks[MAX_COMMUNICATION_THREADS];
 static int NumberOfFreeCommunicationThreadStacks;
@@ -104,9 +118,9 @@ void ExitCommunicationThreadStacks(void){
 		}
 
 		int HighestStackAddress = -1;
-		int LowestStackAddress = THREAD_OWN_STACK_SIZE;
+		int LowestStackAddress = COMMUNICATION_THREAD_STACK_SIZE;
 		for(int i = 0; i < MAX_COMMUNICATION_THREADS; i += 1){
-			for(int Addr = 0; Addr < THREAD_OWN_STACK_SIZE; Addr += 1){
+			for(int Addr = 0; Addr < COMMUNICATION_THREAD_STACK_SIZE; Addr += 1){
 				if(CommunicationThreadStacks[i][Addr] != 0xAA){
 					if(Addr < LowestStackAddress){
 						LowestStackAddress = Addr;
@@ -121,7 +135,7 @@ void ExitCommunicationThreadStacks(void){
 
 		// NOTE(fusion): It seems we want to track whether the stack size is
 		// too small but I'd argue the method is not very robust.
-		if((HighestStackAddress - LowestStackAddress) > (THREAD_OWN_STACK_SIZE / 2)){
+		if((HighestStackAddress - LowestStackAddress) > (COMMUNICATION_THREAD_STACK_SIZE / 2)){
 			error("Maximale Stack-Ausdehnung: %d..%d\n", LowestStackAddress, HighestStackAddress);
 		}
 	}
@@ -129,19 +143,6 @@ void ExitCommunicationThreadStacks(void){
 
 // Load History
 // =============================================================================
-void InitLoadHistory(void){
-	for(int i = 0; i < NARRAY(LoadHistory); i += 1){
-		LoadHistory[i] = 0;
-	}
-	LoadHistoryPointer = 0;
-	TotalLoad = 0;
-	TotalSend = 0;
-	TotalRecv = 0;
-	LagEnd = 0;
-	EarliestFreeAccountAdmissionRound = 0;
-	InitLog("netload");
-}
-
 bool LagDetected(void){
 	return RoundNr <= LagEnd;
 }
@@ -230,6 +231,23 @@ void NetLoadCheck(void){
 			}
 		}
 	}
+}
+
+void InitLoadHistory(void){
+	for(int i = 0; i < NARRAY(LoadHistory); i += 1){
+		LoadHistory[i] = 0;
+	}
+	LoadHistoryPointer = 0;
+	TotalLoad = 0;
+	TotalSend = 0;
+	TotalRecv = 0;
+	LagEnd = 0;
+	EarliestFreeAccountAdmissionRound = 0;
+	InitLog("netload");
+}
+
+void ExitLoadHistory(void){
+	// no-op
 }
 
 // Connection Output
@@ -1120,13 +1138,24 @@ bool ReceiveCommand(TConnection *Connection){
 		uint8 Help[2];
 		int BytesRead = ReadFromSocket(Connection, Help, 2);
 		if(BytesRead == 0){
+			// NOTE(fusion): Peer has closed the connection and there was no
+			// more data to read.
 			return false;
 		}else if(BytesRead < 0){
+			// NOTE(fusion): There was either no data to be read or a connection
+			// error. Since we can't differ, let the connection be closed elsewhere
+			// in case of errors. This is the only path that will not cause the
+			// connection to be closed, aside from successfully reading a packet.
 			return true;
-		}else if(BytesRead == 1){
-			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + 1, false);
+		}
+
+		// NOTE(fusion): It doesn't make sense to continue if we couldn't read
+		// the packet's length completely. We're already using TCP which doesn't
+		// drop data so it would only compound into more errors.
+		if(BytesRead != 2){
+			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
 			print(3, "Zu wenig Daten an Socket %d.\n", BytesRead);
-			return true;
+			return false;
 		}
 
 		// TODO(fusion): Size is encoded as a little endian uint16. We should
@@ -1165,7 +1194,7 @@ bool ReceiveCommand(TConnection *Connection){
 		}
 
 		if(Connection->State == CONNECTION_CONNECTED){
-			alarm(0); // TODO(fusion): Not sure why.
+			alarm(0);
 			Connection->InDataSize = Size;
 			if(!HandleLogin(Connection)){
 				return false;
@@ -1200,6 +1229,331 @@ bool ReceiveCommand(TConnection *Connection){
 		}
 	}
 
+	// NOTE(fusion): We set `SigIOPending` here to signal that there could be more
+	// packets already queued up, so `CommunicationThread` can attempt to read them
+	// without waiting for another `SIGIO`.
+	//	The only way to know there is no more data on a socket's receive buffer is
+	// when `read` returns `EAGAIN` which is handled when `ReadFromSocket` returns
+	// a negative value.
 	Connection->SigIOPending = true;
 	return true;
+}
+
+// Communication Thread
+// =============================================================================
+void IncrementActiveConnections(void){
+	CommunicationThreadMutex.down();
+	ActiveConnections += 1;
+	CommunicationThreadMutex.up();
+}
+
+void DecrementActiveConnections(void){
+	CommunicationThreadMutex.down();
+	ActiveConnections += 1;
+	CommunicationThreadMutex.up();
+}
+
+void CommunicationThread(int Socket){
+	TConnection *Connection = AssignFreeConnection();
+	if(Connection == NULL){
+		print(2, "Keine Verbindung mehr frei.\n");
+		if(close(Socket) == -1){
+			error("CommunicationThread: Fehler %d beim Schließen der Socket (1).\n", errno);
+		}
+		return;
+	}
+
+	Connection->Connect(Socket);
+	Connection->WaitingForACK = false;
+	if(fcntl(Socket, F_SETOWN, getpid()) == -1){
+		error("CommunicationThread: F_SETOWN fehlgeschlagen für Socket %d.\n", Socket);
+		if(close(Socket) == -1){
+			error("CommunicationThread: Fehler %d beim Schließen der Socket (2).\n", errno);
+		}
+		Connection->Free();
+		return;
+	}
+
+	if(fcntl(Socket, F_SETFL, (O_NONBLOCK | O_ASYNC)) == -1){
+		error("ConnectionThread: F_SETFL fehlgeschlagen für Socket %d.\n", Socket);
+		if(close(Socket) == -1){
+			error("CommunicationThread: Fehler %d beim Schließen der Socket (3).\n", errno);
+		}
+		Connection->Free();
+		return;
+	}
+
+	sigset_t SignalSet;
+	sigfillset(&SignalSet);
+	sigprocmask(SIG_SETMASK, &SignalSet, NULL);
+	alarm(5);
+
+	if(!ReceiveCommand(Connection)){
+		Connection->Close(true);
+	}
+
+	Connection->SigIOPending = false;
+	while(GameRunning() && Connection->ConnectionIsOk){
+		int Signal;
+		sigwait(&SignalSet, &Signal);
+		switch(Signal){
+			case SIGHUP:
+			case SIGPIPE:{
+				Connection->Close(false);
+				break;
+			}
+
+			case SIGUSR1:
+			case SIGIO:{
+				if(Signal == SIGIO || Connection->SigIOPending){
+					if(!Connection->WaitingForACK){
+						Connection->SigIOPending = false;
+						if(!ReceiveCommand(Connection)){
+							Connection->Close(true);
+						}
+					}else{
+						Connection->SigIOPending = true;
+					}
+				}
+				break;
+			}
+
+			case SIGUSR2:{
+				if(!SendData(Connection)){
+					Connection->Close(false);
+				}
+				break;
+			}
+
+			case SIGALRM:{
+				// NOTE(fusion): Login deadline.
+				if(Connection->State == CONNECTION_CONNECTED){
+					print(2, "Login-TimeOut für Socket %d.\n", Socket);
+					Connection->Close(false);
+				}
+				break;
+			}
+
+			default:{
+				// no-op
+				break;
+			}
+		}
+	}
+
+	while(Connection->Live()){
+		DelayThread(1, 0);
+	}
+
+	// TODO(fusion): Is this done to allow for queued data to be sent, almost
+	// like `SO_LINGER`?
+	if(Connection->ClosingIsDelayed){
+		DelayThread(2, 0);
+	}
+
+	if(close(Socket) == -1){
+		error("CommunicationThread: Fehler %d beim Schließen der Socket (4).\n", errno);
+	}
+
+	Connection->Free();
+}
+
+int HandleConnection(void *Data){
+	int Socket		= (uint16)((uintptr)Data);
+	int StackNumber	= (uint16)((uintptr)Data >> 16);
+
+	if(UseOwnStacks){
+		AttachCommunicationThreadStack(StackNumber);
+	}
+
+	CommunicationThread(Socket);
+	DecrementActiveConnections();
+
+	if(UseOwnStacks){
+		ReleaseCommunicationThreadStack(StackNumber);
+	}
+
+	return 0;
+}
+
+// Acceptor Thread
+// =============================================================================
+bool OpenSocket(void){
+	print(1, "Starte Game-Server...\n");
+	print(1, "Pid %d - horche an Port %d\n", getpid(), GamePort);
+	TCPSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if(TCPSocket == -1){
+		error("LaunchServer: Kann Socket nicht öffnen.\n");
+		return false;
+	}
+
+	struct linger linger = {};
+	linger.l_onoff = 0;
+	linger.l_linger = 0;
+	if(setsockopt(TCPSocket, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger)) == -1){
+		error("LaunchServer: Socket wurde nicht auf LINGER=0 gesetzt.\n");
+		return false;
+	}
+
+	int reuseaddr = 1;
+	if(setsockopt(TCPSocket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) == -1){
+		error("LaunchServer: Fehler %d bei setsockopt.\n", errno);
+		return false;
+	}
+
+	struct sockaddr_in ServerAddress = {};
+	ServerAddress.sin_family = AF_INET;
+	ServerAddress.sin_port = htons(GamePort);
+	ServerAddress.sin_addr.s_addr = inet_addr(GameAddress);
+	if(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(struct sockaddr_in)) == -1){
+		error("LaunchServer: Fehler %d bei bind.\n", errno);
+		print(1, "Bind Error Again -> Begin FloodBind :(\n");
+		while(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(struct sockaddr_in)) == -1){
+			DelayThread(1, 0);
+		}
+	}
+
+	if(listen(TCPSocket, 512) == -1){
+		error("LaunchServer: Fehler %d bei listen.\n", errno);
+		return false;
+	}
+
+	return true;
+}
+
+int AcceptorThreadLoop(void *Unused){
+	AcceptorThreadPID = getpid();
+	print(1, "Warte auf Clients...\n");
+	while(GameRunning()){
+		struct sockaddr_in RemoteAddr = {};
+		socklen_t RemoteAddrLen = sizeof(RemoteAddr);
+		int Socket = accept(TCPSocket, (struct sockaddr*)&RemoteAddr, &RemoteAddrLen);
+		if(Socket == -1){
+			error("AcceptorThreadLoop: Fehler %d beim Accept.\n", errno);
+			continue;
+		}
+
+		if(UseOwnStacks){
+			int StackNumber;
+			void *Stack;
+			GetCommunicationThreadStack(&StackNumber, &Stack);
+			if(Stack == NULL){
+				print(3,"Kein Stack-Bereich mehr frei.\n");
+				if(close(Socket) == -1){
+					error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (1).\n", errno);
+				}
+			}else{
+				IncrementActiveConnections();
+				void *Argument = (void*)(((uintptr)Socket & 0xFFFF)
+								| (((uintptr)StackNumber & 0xFFFF) << 16));
+				ThreadHandle ConnectionThread = StartThread(HandleConnection,
+						Argument, Stack, COMMUNICATION_THREAD_STACK_SIZE, true);
+				if(ConnectionThread == INVALID_THREAD_HANDLE){
+					DecrementActiveConnections();
+					ReleaseCommunicationThreadStack(StackNumber);
+					if(close(Socket) == -1){
+						error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (2).\n", errno);
+					}
+				}
+			}
+		}else{
+			if(ActiveConnections >= MAX_COMMUNICATION_THREADS){
+				print(3,"Keine Verbindung mehr frei.\n");
+				if(close(Socket) == -1){
+					error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (3).\n", errno);
+				}
+			}else{
+				IncrementActiveConnections();
+				void *Argument = (void*)((uintptr)Socket & 0xFFFF);
+				ThreadHandle ConnectionThread = StartThread(HandleConnection,
+						Argument, COMMUNICATION_THREAD_STACK_SIZE, true);
+				if(ConnectionThread == INVALID_THREAD_HANDLE){
+					print(3, "Kann neuen Thread nicht anlegen.\n");
+					DecrementActiveConnections();
+					if(close(Socket) == -1){
+						error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (4).\n", errno);
+					}
+				}
+			}
+		}
+	}
+
+	AcceptorThreadPID = 0;
+	if(ActiveConnections > 0){
+		print(3, "Warte auf Beendigung von %d Communication-Threads...\n", ActiveConnections);
+		while(ActiveConnections > 0){
+			DelayThread(1, 0);
+		}
+	}
+
+	return 0;
+}
+
+// Initialization
+// =============================================================================
+void CheckThreadlibVersion(void){
+	// TODO(fusion): We'll probably remove `OwnStacks` support anyway but it
+	// seems to be using this file `/etc/image-release` as an heuristic to
+	// enable it. Not sure what this file is about.
+	UseOwnStacks = FileExists("/etc/image-release");
+	if(UseOwnStacks){
+		print(2, "Verwende eigene Stacks.\n");
+	}else{
+		print(2, "Verwende verkleinerte Bibliotheks-Stacks.\n");
+	}
+}
+
+void InitCommunication(void){
+	CheckThreadlibVersion();
+	InitCommunicationThreadStacks();
+	InitLoadHistory();
+
+	WaitinglistHead = NULL;
+	TCPSocket = -1;
+	AcceptorThread = INVALID_THREAD_HANDLE;
+	AcceptorThreadPID = 0;
+	ActiveConnections = 0;
+	QueryManagerConnectionPool.init();
+	PrivateKey.init(RSA_PRIME_P, RSA_PRIME_Q);
+
+	OpenSocket();
+	if(TCPSocket == -1){
+		throw "cannot open socket";
+	}
+
+	AcceptorThread = StartThread(AcceptorThreadLoop, NULL, false);
+	if(AcceptorThread == INVALID_THREAD_HANDLE){
+		throw "cannot start acceptor thread";
+	}
+}
+
+void ExitCommunication(void){
+	print(3, "Beende alle Verbindungen...\n");
+	TConnection *Connection = GetFirstConnection();
+	while(Connection != NULL){
+		kill(Connection->GetPID(), SIGHUP);
+		Connection = GetNextConnection();
+	}
+
+	ProcessConnections();
+	print(3, "Alle Verbindungen beendet.\n");
+
+	if(TCPSocket != -1){
+		if(close(TCPSocket) == -1){
+			error("ExitCommunication: Fehler %d beim Schließen der Socket.\n", errno);
+		}
+		TCPSocket = -1;
+	}
+
+	if(AcceptorThread != INVALID_THREAD_HANDLE){
+		if(AcceptorThreadPID != 0){
+			kill(AcceptorThreadPID, SIGHUP);
+		}
+		JoinThread(AcceptorThread);
+		AcceptorThread = INVALID_THREAD_HANDLE;
+	}
+
+	QueryManagerConnectionPool.exit();
+	ExitLoadHistory();
+	ExitCommunicationThreadStacks();
 }

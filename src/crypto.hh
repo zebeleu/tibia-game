@@ -33,6 +33,7 @@ struct vlong_montgomery{
 struct TRSAPrivateKey{
 	TRSAPrivateKey(void);
 	~TRSAPrivateKey(void);
+	void init(const char *PrimeP, const char *PrimeQ);
 	void decrypt(uint8 *Data); // single 128 bytes block
 
 	// DATA
