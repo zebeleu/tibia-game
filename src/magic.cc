@@ -2566,7 +2566,7 @@ void ChangeData(TCreature *Actor, const char *Param){
 			GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
 		}else{
 			SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
-					"You can\'t change %s in this way.", GetName(Obj));
+					"You can't change %s in this way.", GetName(Obj));
 		}
 	}
 }

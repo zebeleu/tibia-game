@@ -25,6 +25,8 @@ struct TConnection {
 	KNOWNCREATURESTATE KnownCreature(uint32 CreatureID, bool UpdateFollows);
 	int GetSocket(void);
 	void EmergencyPing(void);
+	void Login(void);
+	const char *GetName(void);
 
 	// TODO(fusion): Maybe rename this later?
 	bool Live(void) const {

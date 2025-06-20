@@ -8,12 +8,19 @@
 
 #include "stubs.hh"
 
+#include <poll.h>
 #include <signal.h>
+
+// NOTE(fusion): We seem to add this value of 48 every time `NetLoad` is called,
+// and I assume it is to account for IPv4 (20 bytes) and TCP (20 bytes) headers
+// although there are still 8 bytes on the table that I'm not sure where are
+// comming from.
+#define PACKET_AVERAGE_SIZE_OVERHEAD 48
 
 #define MAX_COMMUNICATION_THREADS 1100
 #define THREAD_OWN_STACK_SIZE ((int)KB(64))
 
-static int TERMINAL_VERSION[3] = {770, 770, 770};
+static int TERMINALVERSION[3] = {770, 770, 770};
 static int TCPSocket;
 static ThreadHandle AcceptorThread;
 static pid_t AcceptorThreadPID;
@@ -202,7 +209,7 @@ void NetLoadCheck(void){
 			// coincidence.
 			int FreeAccountAdmissionDelay = 60;
 			if(PremiumPlayerBuffer != 0){
-				FreeAccountAdmissionDelay = (PlayersOnline + PremiumPlayerBuffer * 2 - MaxPlayers);
+				FreeAccountAdmissionDelay = (PlayersOnline - (MaxPlayers - PremiumPlayerBuffer * 2));
 				FreeAccountAdmissionDelay = (FreeAccountAdmissionDelay * 30) / PremiumPlayerBuffer;
 				if(FreeAccountAdmissionDelay < 0){
 					FreeAccountAdmissionDelay = 0;
@@ -225,12 +232,13 @@ void NetLoadCheck(void){
 	}
 }
 
-// Communication Handling
+// Connection Output
 // =============================================================================
 bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size){
-	// TODO(fusion): I think `Size` refers to the payload but `Buffer` also has
-	// room for writing the packet's length at the beginning and enough room for
-	// padding (supposedly).
+	// IMPORTANT(fusion): The caller must ensure `Buffer` have two extra bytes
+	// at the beginning and enough room at the end to properly add padding for
+	// XTEA encryption when needed. `Size` refers to the payload size which
+	// starts after the first two extra bytes. See note in `SendData`.
 
 	while((Size % 8) != 0){
 		Buffer[Size + 2] = rand_r(&Connection->RandomSeed);
@@ -253,15 +261,11 @@ bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size){
 			BytesToWrite -= ret;
 			WritePtr += ret;
 		}else if(ret == 0){
-			// TODO(fusion): Can this even happen?
+			// TODO(fusion): Can this even happen without an error?
 			error("WriteToSocket: Fehler %d beim Senden an Socket %d.\n",
 					errno, Connection->GetSocket());
 			return false;
-		}else{
-			if(errno == EINTR){
-				continue;
-			}
-
+		}else if(errno != EINTR){
 			if(errno != EAGAIN || Attempts <= 0){
 				if(errno == ECONNRESET || errno == EPIPE || errno == EAGAIN){
 					Log("game", "Verbindung an Socket %d zusammengebrochen.\n",
@@ -278,18 +282,18 @@ bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size){
 		}
 	}
 
-	// TODO(fusion): Do we add 50 extra bytes to account for TCP segment headers?
-	// This does make sense If we assume packets are split into ~2.5 segments on
-	// average, with each segment header being 20 bytes.
-	NetLoad(Size + 50, true);
+	NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + Size + 2, true);
 	return true;
 }
 
-bool SendLoginMessage(TConnection *Connection, int Type, char *Message, int WaitingTime){
+bool SendLoginMessage(TConnection *Connection, int Type, const char *Message, int WaitingTime){
+	// TODO(fusion): Why do we return true on invalid parameters?
+
 	// TODO(fusion):
 	//	LOGIN_MESSAGE_ERROR = 20
 	//	LOGIN_MESSAGE_? = 21
 	//	LOGIN_MESSAGE_WAITING_LIST = 22
+
 	if(Type != 20 && Type != 21 && Type != 22){
 		error("SendLoginMessage: Ungültiger Meldungstyp %d.\n", Type);
 		return true;
@@ -310,15 +314,9 @@ bool SendLoginMessage(TConnection *Connection, int Type, char *Message, int Wait
 		return true;
 	}
 
-	// TODO(fusion): Writing output messages should have more robust helpers
-	// to avoid all sorts of memory bugs but since we're only doing it in two
-	// places from what I've seen, I'm not actually gonna bother (for now at
-	// least).
-
-	// NOTE(fusion): We make sure we leave two extra bytes at the beginning so
-	// `WriteToSocket` can write the packet size. We also make sure that the
-	// remainder of the buffer has a size that is multiple of 8 so `WriteToSocket`
-	// can add any necessary padding for XTEA encryption without overflowing it.
+	// IMPORTANT(fusion): This is doing the same thing as `SendData` but in a
+	// smaller scale and building the packet directly instead of using the
+	// connection's write buffer.
 	uint8 Data[302]; // 2 + 300
 	TWriteBuffer WriteBuffer(Data + 2, sizeof(Data) - 2);
 	WriteBuffer.writeWord(0);
@@ -332,4 +330,879 @@ bool SendLoginMessage(TConnection *Connection, int Type, char *Message, int Wait
 	WriteBuffer.Position = 0;
 	WriteBuffer.writeWord((uint16)(Size - 2));
 	return WriteToSocket(Connection, Data, Size);
+}
+
+bool SendData(TConnection *Connection){
+	if(Connection == NULL){
+		error("SendData: Verbindung ist NULL.\n");
+		return false;
+	}
+
+	//
+	// IMPORTANT(fusion): The final packet will have this layout:
+	//	PLAIN:
+	//		0 .. 2 => Encrypted Size
+	//	ENCRYPTED:
+	//		2 .. 4 => Data Size
+	//		4 ..   => Data + Padding
+	//
+	//	The ENCRYPTED size needs to be a multiple of 8 for XTEA encryption and
+	// `WriteToSocket` will add padding to ensure it is. This also requires us
+	// to ensure the passed buffer has enough room for it, so we don't write out
+	// of bounds.
+	//
+
+	int DataSize = Connection->NextToCommit - Connection->NextToSend;
+	int EncryptedSize = (DataSize + 2);
+	int EncryptedSizeAligned = (EncryptedSize + 7) & ~7;
+	int PacketSize = EncryptedSizeAligned + 2;
+
+	// TODO(fusion): The maximum size of a packet depends on the size of
+	// `Connection->OutData` and I don't think we'd have a problem with
+	// having a constant size buffer on the stack here although with such
+	// a small stack size (64KB with our own stacks) it could become a
+	// problem.
+	uint8 *Buffer = (uint8*)alloca(PacketSize);
+	TWriteBuffer WriteBuffer(Buffer, PacketSize);
+	WriteBuffer.writeWord(0);
+	WriteBuffer.writeWord((uint16)DataSize);
+
+	// NOTE(fusion): `Connection->OutData` is a ring buffer so we need to check
+	// if the data we're currently sending is wrapping around, in which case we'd
+	// need to copy two separate regions instead of a single contiguous one.
+	constexpr int OutDataSize = sizeof(Connection->OutData);
+	int DataStart = Connection->NextToSend % OutDataSize;
+	int DataEnd = DataStart + DataSize;
+	if(DataEnd < OutDataSize){
+		WriteBuffer.writeBytes(&Connection->OutData[DataStart], DataSize);
+	}else{
+		WriteBuffer.writeBytes(&Connection->OutData[DataStart], OutDataSize - DataStart);
+		WriteBuffer.writeBytes(&Connection->OutData[0],         DataEnd - OutDataSize);
+	}
+
+	bool Result = WriteToSocket(Connection, Buffer, DataSize);
+	if(Result){
+		Connection->NextToSend += DataSize;
+	}
+	return Result;
+}
+
+bool SendData(TConnection *Connection, const uint8 *Data, int Size){
+	if(Connection == NULL){
+		error("SendData: Connection ist NULL.\n");
+		return false;
+	}
+
+	// TODO(fusion): Why are we returning true for invalid parameters?
+	if(Data == NULL){
+		error("SendData: Data ist NULL.\n");
+		return true;
+	}
+
+	// TODO(fusion): Why do we leave extra two bytes unassigned at the beginning?
+	// `SendData` should already take care of building the packet properly so this
+	// is something else or a bug, if this function is even used.
+	memcpy(&Connection->OutData[2], Data, Size);
+	Connection->NextToSend = 0;
+	Connection->NextToCommit = Size + 2;
+	return SendData(Connection);
+}
+
+// Waiting List
+// =============================================================================
+bool GetWaitinglistEntry(const char *Name, int *NextTry, bool *FreeAccount, bool *Newbie){
+	bool Result = false;
+	CommunicationThreadMutex.down();
+	TWaitinglistEntry *Entry = WaitinglistHead;
+	while(Entry != NULL){
+		if(stricmp(Entry->Name, Name) == 0){
+			break;
+		}
+		Entry = Entry->Next;
+	}
+
+	if(Entry != NULL){
+		*NextTry = Entry->NextTry;
+		*FreeAccount = Entry->FreeAccount;
+		*Newbie = Entry->Newbie;
+		Result = true;
+	}
+	CommunicationThreadMutex.up();
+	return Result;
+}
+
+void InsertWaitinglistEntry(const char *Name, uint32 NextTry, bool FreeAccount, bool Newbie){
+	bool NewEntry = false;
+	CommunicationThreadMutex.down();
+	TWaitinglistEntry *Prev = NULL;
+	TWaitinglistEntry *Entry = WaitinglistHead;
+	while(Entry != NULL){
+		if(stricmp(Entry->Name, Name) == 0){
+			break;
+		}
+		Prev = Entry;
+		Entry = Entry->Next;
+	}
+
+	if(Entry == NULL){
+		Entry = Waitinglist.getFreeItem();
+		Entry->Next = NULL;
+		strcpy(Entry->Name, Name);
+		Entry->NextTry = NextTry;
+		Entry->FreeAccount = FreeAccount;
+		Entry->Newbie = Newbie;
+		Entry->Sleeping = false;
+		if(Prev != NULL){
+			Prev->Next = Entry;
+		}else{
+			WaitinglistHead = Entry;
+		}
+		NewEntry = true;
+	}else{
+		Entry->NextTry = NextTry;
+		Entry->FreeAccount = FreeAccount;
+		Entry->Newbie = Newbie;
+	}
+	CommunicationThreadMutex.up();
+
+	if(NewEntry){
+		Log("queue", "Füge %s in die Warteschlange ein.\n", Name);
+	}
+}
+
+void DeleteWaitinglistEntry(const char *Name){
+	CommunicationThreadMutex.down();
+	TWaitinglistEntry *Prev = NULL;
+	TWaitinglistEntry *Entry = WaitinglistHead;
+	while(Entry != NULL){
+		if(stricmp(Entry->Name, Name) == 0){
+			break;
+		}
+		Prev = Entry;
+		Entry = Entry->Next;
+	}
+
+	if(Entry != NULL){
+		if(Prev != NULL){
+			Prev->Next = Entry->Next;
+		}else{
+			WaitinglistHead = Entry->Next;
+		}
+		Waitinglist.putFreeItem(Entry);
+	}
+	CommunicationThreadMutex.up();
+}
+
+int GetWaitinglistPosition(const char *Name, bool FreeAccount, bool Newbie){
+	int FreeNewbies = 0;
+	int FreeVeterans = 0;
+	int PremiumNewbies = 0;
+	int PremiumVeterans = 0;
+
+	CommunicationThreadMutex.down();
+	// NOTE(fusion): Remove inactive entries from the start of the list.
+	while(WaitinglistHead != NULL && RoundNr > (WaitinglistHead->NextTry + 60)){
+		TWaitinglistEntry *Next = WaitinglistHead->Next;
+		Waitinglist.putFreeItem(WaitinglistHead);
+		WaitinglistHead = Next;
+	}
+
+	// NOTE(fusion): Count players up until we find the player's entry or reach
+	// the end of the queue.
+	TWaitinglistEntry *Entry = WaitinglistHead;
+	while(Entry != NULL){
+		if(stricmp(Entry->Name, Name) == 0){
+			break;
+		}
+
+		if(!Entry->Sleeping){
+			if(RoundNr > (Entry->NextTry + 5)){
+				Entry->Sleeping = true;
+			}else if(Entry->FreeAccount){
+				if(Entry->Newbie){
+					FreeNewbies += 1;
+				}else{
+					FreeVeterans += 1;
+				}
+			}else{
+				if(Entry->Newbie){
+					PremiumNewbies += 1;
+				}else{
+					PremiumVeterans += 1;
+				}
+			}
+		}
+
+		Entry = Entry->Next;
+	}
+	CommunicationThreadMutex.up();
+
+	int Result = 1;
+	if(FreeAccount){
+		Result += PremiumVeterans + FreeVeterans;
+		if(Newbie){
+			Result += PremiumNewbies + FreeNewbies;
+		}else if(GetNewbiesOnline() < (MaxNewbies - PremiumNewbieBuffer)){
+			Result += FreeNewbies;
+		}
+	}else{
+		Result += PremiumVeterans;
+		if(Newbie || GetNewbiesOnline() < MaxNewbies){
+			Result += PremiumNewbies;
+		}
+	}
+	return Result;
+}
+
+int CheckWaitingTime(const char *Name, TConnection *Connection, bool FreeAccount, bool Newbie){
+	int WaitingTime = 0;
+	const char *Reason = NULL;
+	int Position = GetWaitinglistPosition(Name, FreeAccount, Newbie);
+	int PlayersOnline = GetPlayersOnline();
+	int NewbiesOnline = GetNewbiesOnline();
+	if((PlayersOnline + Position) > GetOrderBufferSpace()){
+		print(3, "Order-Puffer ist fast voll.\n");
+		Reason = "The server is overloaded.";
+		WaitingTime = (Position / 2) + 10;
+	}else if(FreeAccount){
+		if(EarliestFreeAccountAdmissionRound > RoundNr){
+			print(3, "Keine FreeAccounts zugelassen nach MassKick.\n");
+			Reason = "The server is overloaded.\n"
+					"Only players with premium accounts\n"
+					"are admitted at the moment.";
+			WaitingTime = (int)(EarliestFreeAccountAdmissionRound - RoundNr);
+			WaitingTime += Position / 2;
+		}else if((PlayersOnline + Position) > (MaxPlayers - PremiumPlayerBuffer)){
+			print(3, "Kein Platz mehr für FreeAccounts.\n");
+			Reason = "Too many players online.\n"
+					"Only players with premium accounts\n"
+					"are admitted at the moment.";
+			WaitingTime = Position / 2 + 5;
+		}else if(Newbie && (NewbiesOnline + Position) > (MaxNewbies - PremiumNewbieBuffer)){
+			print(3, "Kein Platz mehr für Newbies mit FreeAccount.\n");
+			Reason = "There are too many players online\n"
+					"on the beginners' island, Rookgaard.\n"
+					"Only players with premium accounts\n"
+					"are admitted at the moment.";
+			WaitingTime = Position / 2 + 5;
+		}
+	}else{
+		if((PlayersOnline + Position) > MaxPlayers){
+			print(3, "Zu viele Spieler online.\n");
+			Reason = "There are too many players online.";
+			WaitingTime = Position / 2 + 3;
+		}else if(Newbie && (NewbiesOnline + Position) > MaxNewbies){
+			print(3, "Kein Platz mehr für Newbies.\n");
+			Reason = "There are too many players online\n"
+					"on the beginners' island, Rookgaard.";
+			WaitingTime = Position / 2 + 3;
+		}
+	}
+
+	if(WaitingTime > 240){
+		WaitingTime = 240;
+	}
+
+	if(WaitingTime > 0){
+		char Message[250];
+		snprintf(Message, sizeof(Message),
+				"%s\n\nYou are at place %d on the waiting list.",
+				Reason, Position);
+		SendLoginMessage(Connection, 22, Message, WaitingTime);
+	}
+
+	return WaitingTime;
+}
+
+// Connection Input
+// =============================================================================
+int ReadFromSocket(TConnection *Connection, uint8 *Buffer, int Size){
+	int Attempts = 50;
+	int BytesToRead = Size;
+	uint8 *ReadPtr = Buffer;
+	while(BytesToRead > 0){
+		int BytesRead = (int)read(Connection->GetSocket(), ReadPtr, BytesToRead);
+		if(BytesRead > 0){
+			BytesToRead -= BytesRead;
+			ReadPtr += BytesRead;
+		}else if(BytesRead == 0){
+			// NOTE(fusion): TCP FIN with no more data to read.
+			break;
+		}else if(errno != EINTR){
+			if(errno != EAGAIN || BytesToRead == Size || Attempts <= 0){
+				return -1;
+			}
+			DelayThread(0, 100000);
+			Attempts -= 1;
+		}
+	}
+	return Size - BytesToRead;
+}
+
+bool DrainSocket(TConnection *Connection, int Size){
+	uint8 DiscardBuffer[KB(2)];
+	while(Size > 0){
+		int BytesToRead = std::min<int>(Size, sizeof(DiscardBuffer));
+		int BytesRead = ReadFromSocket(Connection, DiscardBuffer, BytesToRead);
+		if(BytesRead <= 0){
+			return false;
+		}
+		Size -= BytesRead;
+		NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
+	}
+	return true;
+}
+
+bool CallGameThread(TConnection *Connection){
+	if(GameRunning()){
+		Connection->WaitingForACK = true;
+		if(kill(GetGameThreadPID(), SIGUSR1) != 0){
+			error("CallGameThread: Can't send SIGUSR1 to pid %d\n", GetGameThreadPID());
+			SendLoginMessage(Connection, 20,
+					"The server is not online.\nPlease try again later.", -1);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool CheckConnection(TConnection *Connection){
+	// TODO(fusion): Check if there is no input data?
+	struct pollfd pollfd = {};
+	pollfd.fd = Connection->GetSocket();
+	pollfd.events = POLLIN;
+	return poll(&pollfd, 1, 0) >= 0
+		&& (pollfd.revents & POLLIN) == 0;
+}
+
+// NOTE(fusion): `PlayerName` is an input and output parameter. It will contain
+// the correct player name with upper and lower case letters if the player is
+// actually logged in.
+TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
+		uint32 AccountID, const char *PlayerPassword, bool GamemasterClient){
+	TQueryManagerPoolConnection QueryManagerConnection(&QueryManagerConnectionPool);
+	if(!QueryManagerConnection){
+		error("PerformRegistration: Kann Verbindung zum Query-Manager nicht herstellen.\n");
+		SendLoginMessage(Connection, 20, "Internal error, closing connection.", -1);
+		return NULL;
+	}
+
+	if(!CheckConnection(Connection)){
+		return NULL;
+	}
+
+	// TODO(fusion): What a disaster. The size of these arrays are are hardcoded
+	// and should be declared constants somewhere.
+	uint32 CharacterID;
+	int Sex;
+	char Guild[31];				// MAX_NAME_LENGTH ?
+	char Rank[31];				// MAX_NAME_LENGTH ?
+	char Title[31];				// MAX_NAME_LENGTH ?
+	int NumberOfBuddies;
+	uint32 BuddyIDs[100];		// MAX_BUDDIES ?
+	char BuddyNames[100][30];	// MAX_BUDDIES, MAX_NAME_LENGTH ?
+	uint8 Rights[12];			// MAX_RIGHT_BYTES ?
+	bool PremiumAccountActivated;
+	int Status = QueryManagerConnection->loginGame(AccountID, PlayerName,
+			PlayerPassword, Connection->GetIPAddress(), PrivateWorld, false,
+			GamemasterClient, &CharacterID, &Sex, Guild, Rank, Title,
+			&NumberOfBuddies, BuddyIDs, BuddyNames, Rights,
+			&PremiumAccountActivated);
+	switch(Status){
+		case 0:{
+			// NOTE(fusion): Login successful.
+			break;
+		}
+
+		case 1:{
+			print(3, "Spieler existiert nicht.\n");
+			SendLoginMessage(Connection, 20,
+					"Character doesn't exist.\n"
+					"Create a new character on the Tibia website\n"
+					"at \"www.tibia.com\".", -1);
+			return NULL;
+		}
+
+		case 2:{
+			print(3, "Spieler wurde gelöscht.\n");
+			SendLoginMessage(Connection, 20,
+					"Character doesn't exist.\n"
+					"Create a new character on the Tibia website.", -1);
+			return NULL;
+		}
+
+		case 3:{
+			print(3, "Spieler lebt nicht auf dieser Welt.\n");
+			SendLoginMessage(Connection, 20,
+					"Character doesn't live on this world.\n"
+					"Please login on the right world.", -1);
+			return NULL;
+		}
+
+		case 4:{
+			print(3, "Spieler ist nicht eingeladen.\n");
+			SendLoginMessage(Connection, 20,
+					"This world is private and you have not been invited to play on it.", -1);
+			return NULL;
+		}
+
+		case 6:{
+			Log("game", "Falsches Paßwort für Spieler %s; Login von %s.\n",
+					PlayerName, Connection->GetIPAddress());
+			SendLoginMessage(Connection, 20,
+					"Accountnumber or password is not correct.", -1);
+			return NULL;
+		}
+
+		case 7:{
+			Log("game", "Spieler %s blockiert; Login von %s.\n",
+					PlayerName, Connection->GetIPAddress());
+			SendLoginMessage(Connection, 20,
+					"Account disabled for five minutes. Please wait.", -1);
+			return NULL;
+		}
+
+		case 8:{
+			Log("game", "Account von Spieler %s wurde gelöscht.\n", PlayerName);
+			SendLoginMessage(Connection, 20,
+					"Accountnumber or password is not correct.", -1);
+			return NULL;
+		}
+
+		case 9:{
+			Log("game", "IP-Adresse %s für Spieler %s blockiert.\n",
+					Connection->GetIPAddress(), PlayerName);
+			SendLoginMessage(Connection, 20,
+					"IP address blocked for 30 minutes. Please wait.", -1);
+			return NULL;
+		}
+
+		case 10:{
+			print(3, "Account ist verbannt.\n");
+			SendLoginMessage(Connection, 20,
+					"Your account is banished.", -1);
+			return NULL;
+		}
+
+		case 11:{
+			print(3, "Character muss umbenannt werden.\n");
+			SendLoginMessage(Connection, 20,
+					"Your character is banished because of his/her name.", -1);
+			return NULL;
+		}
+
+		case 12:{
+			print(3, "IP-Adresse ist gesperrt.\n");
+			SendLoginMessage(Connection, 20,
+					"Your IP address is banished.", -1);
+			return NULL;
+		}
+
+		case 13:{
+			print(3, "Schon andere Charaktere desselben Accounts eingeloggt.\n");
+			SendLoginMessage(Connection, 20,
+					"You may only login with one character\n"
+					"of your account at the same time.", -1);
+			return NULL;
+		}
+
+		case 14:{
+			print(3, "Login mit Gamemaster-Client auf Nicht-Gamemaster-Account.\n");
+			SendLoginMessage(Connection, 20,
+					"You may only login with a Gamemaster account.", -1);
+			return NULL;
+		}
+
+		case 15:{
+			print(3, "Falsche Accountnummer %u für %s.\n", AccountID, PlayerName);
+			SendLoginMessage(Connection, 20,
+					"Login failed due to corrupt data.", -1);
+			return NULL;
+		}
+
+		case -1:{
+			SendLoginMessage(Connection, 20, "Internal error, closing connection.", -1);
+			return NULL;
+		}
+
+		default:{
+			error("PerformRegistration: Unbekannter Rückgabewert vom QueryManager.\n");
+			SendLoginMessage(Connection, 20, "Internal error, closing connection.", -1);
+			return NULL;
+		}
+	}
+
+	// TODO(fusion): Again?
+	if(!CheckConnection(Connection)){
+		QueryManagerConnection->decrementIsOnline(CharacterID);
+		return NULL;
+	}
+
+	if(AccountID == 0){
+		error("PerformRegistration: Spieler %s wurde noch keinem Account zugewiesen.\n", PlayerName);
+		SendLoginMessage(Connection, 20,
+				"Character is not assigned to an account.\n"
+				"Perform this on the Tibia website\n"
+				"at \"www.tibia.com\".", -1);
+		return NULL;
+	}
+
+	// TODO(fusion): We were also adding a null terminator to `PlayerName` here
+	// for whatever reason. I assume it is a compiler artifact because we already
+	// use it in the condition block just above so...
+	// PlayerName[29] = 0;
+
+	if(PremiumAccountActivated){
+		SendLoginMessage(Connection, 21,
+				"Your Premium Account is now activated.\n"
+				"Have a lot of fun in Tibia.", -1);
+	}
+
+	Log("game", "Spieler %s loggt ein an Socket %d von %s.\n",
+			PlayerName, Connection->GetSocket(), Connection->GetIPAddress());
+
+	TPlayerData *PlayerData = AssignPlayerPoolSlot(CharacterID, true);
+	if(PlayerData == NULL){
+		error("PerformRegistration: Kann keinen Slot für Spielerdaten zuweisen.\n");
+		QueryManagerConnection->decrementIsOnline(CharacterID);
+		SendLoginMessage(Connection, 20,
+				"There are too many players online.\n"
+				"Please try again later.", -1);
+		return NULL;
+	}
+
+	bool Locked = PlayerData->Locked == getpid();
+
+	// TODO(fusion): How come this isn't a race condition? Perhaps these are
+	// constant and can only change when loaded from the database?
+	if(Locked || PlayerData->AccountID == 0){
+		PlayerData->AccountID = AccountID;
+		PlayerData->Sex = Sex;
+		strcpy(PlayerData->Name, PlayerName);
+		memcpy(PlayerData->Rights, Rights, sizeof(Rights));
+		strcpy(PlayerData->Guild, Guild);
+		strcpy(PlayerData->Rank, Rank);
+		strcpy(PlayerData->Title, Title);
+	}
+
+	if(Locked && PlayerData->Buddies == 0){
+		PlayerData->Buddies = NumberOfBuddies;
+		for(int i = 0; i < NumberOfBuddies; i += 1){
+			PlayerData->Buddy[i] = BuddyIDs[i];
+			strcpy(PlayerData->BuddyName[i], BuddyNames[i]);
+		}
+	}
+
+	return PlayerData;
+}
+
+bool HandleLogin(TConnection *Connection){
+	// TODO(fusion): Exception handling keeps getting crazier.
+
+	// TODO(fusion): We should probably use the size of the actual packet here.
+	TReadBuffer InputBuffer(Connection->InData + 2,
+				sizeof(Connection->InData) - 2);
+
+	try{
+		uint8 Command = InputBuffer.readByte();
+		if(Command != 10){
+			print(3, "Ungültiges Init-Kommando %d.\n", Command);
+			return false;
+		}
+	}catch(const char *str){
+		error("HandleLogin: Fehler beim Auslesen des Kommandos (%s).\n", str);
+		return false;
+	}
+
+	int TerminalType;
+	int TerminalVersion;
+	bool GamemasterClient;
+	uint32 AccountID;
+	char PlayerName[30];
+	char PlayerPassword[30];
+	try{
+		uint8 AssymmetricData[128];
+		InputBuffer.readBytes(AssymmetricData, 128);
+		RSAMutex.down();
+		try{
+			PrivateKey.decrypt(AssymmetricData);
+		}catch(const char *str){
+			RSAMutex.up();
+			error("HandleLogin: Fehler beim Entschlüsseln (%s).\n", str);
+			SendLoginMessage(Connection, 20,
+					"Login failed due to corrupt data.",-1);
+			return false;
+		}
+		RSAMutex.up();
+
+		TReadBuffer ReadBuffer(AssymmetricData, 128);
+		ReadBuffer.readByte();
+		Connection->SymmetricKey.init(&ReadBuffer);
+		TerminalType = (int)ReadBuffer.readWord();
+		TerminalVersion = (int)ReadBuffer.readWord();
+		GamemasterClient = ReadBuffer.readByte() != 0;
+		AccountID = ReadBuffer.readQuad();
+		ReadBuffer.readString(PlayerName, sizeof(PlayerName));
+		ReadBuffer.readString(PlayerPassword, sizeof(PlayerPassword));
+	}catch(const char *str){
+		print(3, "Fehler beim Auslesen der Login-Daten (%s).\n", str);
+		SendLoginMessage(Connection, 20,
+				"Login failed due to corrupt data.",-1);
+		return false;
+	}
+
+	if(PlayerName[0] == 0){
+		SendLoginMessage(Connection, 20,
+				"You must enter a character name.", -1);
+		return false;
+	}
+
+	if(TerminalType < 0 || TerminalType >= NARRAY(TERMINALVERSION)
+			|| TERMINALVERSION[TerminalType] != TerminalVersion){
+		SendLoginMessage(Connection, 20,
+				"Your terminal version is too old.\n"
+				"Please get a new version at\n"
+				"http://www.tibia.com.", -1);
+		return false;
+	}
+
+	if(!GameRunning()){
+		SendLoginMessage(Connection, 20,
+				"The server is not online.\n"
+				"Please try again later.", -1);
+		return false;
+	}
+
+	if(GameStarting()){
+		SendLoginMessage(Connection, 20,
+				"The game is just starting.\n"
+				"Please try again later.", -1);
+		return false;
+	}
+
+	if(GameEnding()){
+		SendLoginMessage(Connection, 20,
+				"The game is just going down.\n"
+				"Please try again later.", -1);
+		return false;
+	}
+
+	// NOTE(fusion): Check waitlist entry.
+	bool WasInWaitingList = false;
+	while(true){
+		uint32 NextTry;
+		bool FreeAccount;
+		bool Newbie;
+		if(!GetWaitinglistEntry(PlayerName, &NextTry, &FreeAccount, &Newbie)){
+			print(3, "Spieler nicht auf Warteliste.\n");
+			break;
+		}
+
+		print(3, "Spieler auf Warteliste.\n");
+		if(NextTry > RoundNr){
+			int WaitingTime = (int)(NextTry - RoundNr);
+			Log("queue", "%s meldet sich %d Sekunden zu früh an.\n",
+					PlayerName, WaitingTime);
+			SendLoginMessage(Connection, 22,
+					"It's not your turn yet.", WaitingTime);
+			return false;
+		}
+
+		if(RoundNr > (NextTry + 60)){
+			Log("queue", "%s meldet sich %d Sekunden zu spät an.\n",
+					PlayerName, (RoundNr - NextTry));
+			DeleteWaitinglistEntry(PlayerName);
+			continue;
+		}
+
+		int WaitingTime = CheckWaitingTime(PlayerName, Connection, FreeAccount, Newbie);
+		if(WaitingTime > 0){
+			NextTry = RoundNr + (uint32)WaitingTime;
+			InsertWaitinglistEntry(PlayerName, NextTry, FreeAccount, Newbie);
+			return false;
+		}
+
+		DeleteWaitinglistEntry(PlayerName);
+		WasInWaitingList = true;
+		break;
+	}
+
+	TPlayerData *Slot = PerformRegistration(Connection,
+			PlayerName, AccountID, PlayerPassword, GamemasterClient);
+	if(Slot == NULL){
+		return false;
+	}
+
+	bool SlotLocked = Slot->Locked == getpid();
+
+	// NOTE(fusion): These checks would have been already made if the player was
+	// in the waiting list so they'd be redundant.
+	if(!WasInWaitingList){
+		bool BlockLogin = false;
+		bool FreeAccount = !CheckBit(Slot->Rights, PREMIUM_ACCOUNT);
+		bool Newbie = Slot->Profession == PROFESSION_NONE
+				&& !CheckBit(Slot->Rights, NO_LOGOUT_BLOCK);
+
+		bool PremiumOnly = (MaxPlayers == PremiumPlayerBuffer)
+				|| (Newbie && MaxNewbies == PremiumNewbieBuffer);
+		if(!BlockLogin && FreeAccount && PremiumOnly){
+			SendLoginMessage(Connection, 20,
+					"Only players with premium accounts\n"
+					"are allowed to enter this world.", -1);
+			BlockLogin = true;
+		}
+
+		if(!BlockLogin && !IsPlayerOnline(PlayerName)){
+			int WaitingTime = CheckWaitingTime(PlayerName, Connection, FreeAccount, Newbie);
+			if(WaitingTime > 0){
+				uint32 NextTry = RoundNr + (uint32)WaitingTime;
+				InsertWaitinglistEntry(PlayerName, NextTry, FreeAccount, Newbie);
+				BlockLogin = true;
+			}
+		}
+
+		if(BlockLogin){
+			// TODO(fusion): This is probably an inlined function.
+			TQueryManagerPoolConnection QueryManagerConnection(&QueryManagerConnectionPool);
+			if(QueryManagerConnection){
+				QueryManagerConnection->decrementIsOnline(Slot->CharacterID);
+			}else{
+				error("HandleLogin: Kann Verbindung zum Query-Manager nicht herstellen.\n");
+			}
+
+			if(SlotLocked){
+				ReleasePlayerPoolSlot(Slot);
+			}else{
+				DecreasePlayerPoolSlotSticky(Slot);
+			}
+			return false;
+		}
+	}
+
+	if(SlotLocked){
+		IncreasePlayerPoolSlotSticky(Slot);
+		ReleasePlayerPoolSlot(Slot);
+	}
+
+	// TODO(fusion): I'm not sure what the actual fuck is going on here. Do we
+	// rewrite the packet for the main thread to re-interpret it?
+	TWriteBuffer WriteBuffer(Connection->InData + 2,
+					sizeof(Connection->InData) - 2);
+	try{
+		WriteBuffer.writeByte(11);
+		WriteBuffer.writeWord((int)TerminalType);
+		WriteBuffer.writeWord((int)TerminalVersion);
+		WriteBuffer.writeQuad(Slot->CharacterID);
+	}catch(const char *str){
+		error("HandleLogin: Fehler beim Zusammenbauen des Login-Pakets (%s).\n", str);
+		SendLoginMessage(Connection, 20,
+				"Internal error, closing connection.",-1);
+		return false;
+	}
+
+	Connection->NextToSend = 0;
+	Connection->NextToCommit = 0;
+	Connection->InDataSize = WriteBuffer.Position;
+	Connection->NextToWrite = 0;
+
+	Connection->Login();
+	return CallGameThread(Connection);
+}
+
+bool ReceiveCommand(TConnection *Connection){
+	// IMPORTANT(fusion): The return value of this function is used to determine
+	// whether the connection should be closed. Returning true will maintain it
+	// open. It is a weird convention but w/e.
+
+	if(Connection == NULL){
+		error("ReceiveCommand: Connection ist NULL.\n");
+		return false;
+	}
+
+	while(!Connection->WaitingForACK){
+		uint8 Help[2];
+		int BytesRead = ReadFromSocket(Connection, Help, 2);
+		if(BytesRead == 0){
+			return false;
+		}else if(BytesRead < 0){
+			return true;
+		}else if(BytesRead == 1){
+			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + 1, false);
+			print(3, "Zu wenig Daten an Socket %d.\n", BytesRead);
+			return true;
+		}
+
+		// TODO(fusion): Size is encoded as a little endian uint16. We should
+		// have a few helper functions to assist with buffer reading.
+		int Size = ((uint16)Help[0] | ((uint16)Help[1] << 8));
+
+		if(Size == 0 || Size >= (int)sizeof(Connection->InData)){
+			// TODO(fusion): We should definitely close the connection here.
+			// Nevertheless, the original handling of this edge case was just
+			// terrible, reading from the socket recklessly until at least `Size`
+			// bytes were discarded. I replaced it with a small helper function
+			// function `DrainSocket`.
+			print(3, "Paket an Socket %d zu groß oder leer, wird verworfen (%d Bytes)\n",
+					Connection->GetSocket(), Size);
+			return DrainSocket(Connection, Size);
+		}
+
+		if(Connection->State == CONNECTION_CONNECTED){
+			BytesRead = ReadFromSocket(Connection, &Connection->InData[2], Size);
+			if(BytesRead < 0){
+				// NOTE(fusion): The original function would try to use `SendLoginMessage`
+				// which doesn't make sense since we didn't do the encryption handshake yet.
+				return false;
+			}
+
+			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
+
+			alarm(0); // TODO(fusion): Not sure why.
+			if(!HandleLogin(Connection)){
+				return false;
+			}
+		}else{
+			BytesRead = ReadFromSocket(Connection, &Connection->InData[0], Size);
+			if(BytesRead < 0){
+				SendLoginMessage(Connection, 20,
+					"Internal error, closing connection.", -1);
+				return false;
+			}
+
+			NetLoad(PACKET_AVERAGE_SIZE_OVERHEAD + BytesRead, false);
+
+			// TODO(fusion): How come we don't close the connection if we didn't
+			// read the whole packet?
+			if(BytesRead != Size){
+				continue;
+			}
+
+			// TODO(fusion): Or if the packet size is invalid?
+			if((Size % 8) != 0){
+				print(3, "Ungültige Paketlänge %d für verschlüsseltes Paket von %s.\n",
+						Size, Connection->GetName());
+				continue;
+			}
+
+			for(int i = 0; i < Size; i += 8){
+				Connection->SymmetricKey.decrypt(&Connection->InData[i]);
+			}
+
+			// NOTE(fusion): Or if the plain text size is invalid?
+			int PlainSize = ((uint16)Connection->InData[0])
+					| ((uint16)Connection->InData[1] << 8);
+			if(PlainSize == 0 || PlainSize > Size){
+				print(3, "Nutzdaten (%d Bytes) von Paket an Socket %d zu groß oder leer.\n",
+						PlainSize, Connection->GetSocket());
+				continue;
+			}
+
+			if(!CallGameThread(Connection)){
+				return false;
+			}
+		}
+	}
+
+	Connection->SigIOPending = true;
+	return true;
 }

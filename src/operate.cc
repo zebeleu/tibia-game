@@ -2061,7 +2061,7 @@ void Look(uint32 CreatureID, Object Obj){
 				strcat(Description, Temp);
 			}
 
-			strcat(Description, ". It\'s an \"");
+			strcat(Description, ". It's an \"");
 			strcat(Description, Help);
 			strcat(Description, "\"-spell");
 
@@ -2087,7 +2087,7 @@ void Look(uint32 CreatureID, Object Obj){
 				// TODO(fusion): Make `GetHouseOwner` return "Nobody" when there
 				// is no owner name.
 				snprintf(Help, sizeof(Help),
-						". It belongs to house \'%s\'. %s owns this house",
+						". It belongs to house '%s'. %s owns this house",
 						GetHouseName(HouseID), GetHouseOwner(HouseID));
 				strcat(Description, Help);
 			}else{
@@ -3452,7 +3452,7 @@ const char *GetChannelName(int ChannelID, uint32 CharacterID){
 		case 7: return "Help";
 		default:{
 			if(ChannelID > 7){
-				snprintf(ChannelName, sizeof(ChannelName), "%s\'s Channel",
+				snprintf(ChannelName, sizeof(ChannelName), "%s's Channel",
 						Channel.at(ChannelID)->ModeratorName);
 				return ChannelName;
 			}else{
@@ -4109,7 +4109,7 @@ void JoinParty(uint32 GuestID, uint32 HostID){
 
 	Guest->JoinParty(HostID);
 	SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
-			"You have joined %s\'s party.", Host->Name);
+			"You have joined %s's party.", Host->Name);
 	for(int i = 0; i < P->Members; i += 1){
 		uint32 MemberID = *P->Member.at(i);
 		SendCreatureParty(Guest->Connection, MemberID);

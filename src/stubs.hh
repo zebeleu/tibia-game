@@ -30,6 +30,7 @@ extern void DeleteGamemasterRequest(const char *Name);
 extern void GetExitPosition(uint16 HouseID, int *x, int *y, int *z);
 extern TConnection *GetFirstConnection(void);
 extern TConnection *GetNextConnection(void);
+extern int GetOrderBufferSpace(void);
 extern const char *GetHouseName(uint16 HouseID);
 extern const char *GetHouseOwner(uint16 HouseID);
 extern void InitLog(const char *ProtocolName);
