@@ -219,8 +219,8 @@ static void InitAll(void){
 		//InitLog("game");
 		srand(time(NULL));
 		InitSignalHandler();
-		//InitConnections();
-		//InitCommunication();
+		InitConnections();
+		InitCommunication();
 		InitStrings();
 		//InitWriter();
 		//InitReader();
@@ -254,8 +254,8 @@ static void ExitAll(void){
 	//ExitReader();
 	//ExitWriter();
 	ExitStrings();
-	//ExitCommunication();
-	//ExitConnections();
+	ExitCommunication();
+	ExitConnections();
 	ExitSignalHandler();
 	ExitSHM();
 }

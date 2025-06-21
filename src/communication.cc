@@ -1366,7 +1366,18 @@ int HandleConnection(void *Data){
 		AttachCommunicationThreadStack(StackNumber);
 	}
 
-	CommunicationThread(Socket);
+	try{
+		CommunicationThread(Socket);
+	}catch(RESULT r){
+		error("HandleConnection: Nicht abgefangene Exception %d.\n", r);
+	}catch(const char *str){
+		error("HandleConnection: Nicht abgefangene Exception \"%s\".\n", str);
+	}catch(const std::exception &e){
+		error("HandleConnection: Nicht abgefangene Exception %s.\n", e.what());
+	}catch(...){
+		error("HandleConnection: Nicht abgefangene Exception unbekannten Typs.\n");
+	}
+
 	DecrementActiveConnections();
 
 	if(UseOwnStacks){
@@ -1390,13 +1401,13 @@ bool OpenSocket(void){
 	struct linger linger = {};
 	linger.l_onoff = 0;
 	linger.l_linger = 0;
-	if(setsockopt(TCPSocket, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger)) == -1){
+	if(setsockopt(TCPSocket, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger)) == -1){
 		error("LaunchServer: Socket wurde nicht auf LINGER=0 gesetzt.\n");
 		return false;
 	}
 
 	int reuseaddr = 1;
-	if(setsockopt(TCPSocket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) == -1){
+	if(setsockopt(TCPSocket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) == -1){
 		error("LaunchServer: Fehler %d bei setsockopt.\n", errno);
 		return false;
 	}
@@ -1405,10 +1416,10 @@ bool OpenSocket(void){
 	ServerAddress.sin_family = AF_INET;
 	ServerAddress.sin_port = htons(GamePort);
 	ServerAddress.sin_addr.s_addr = inet_addr(GameAddress);
-	if(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(struct sockaddr_in)) == -1){
+	if(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(ServerAddress)) == -1){
 		error("LaunchServer: Fehler %d bei bind.\n", errno);
 		print(1, "Bind Error Again -> Begin FloodBind :(\n");
-		while(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(struct sockaddr_in)) == -1){
+		while(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(ServerAddress)) == -1){
 			DelayThread(1, 0);
 		}
 	}
@@ -1433,48 +1444,57 @@ int AcceptorThreadLoop(void *Unused){
 			continue;
 		}
 
-		if(UseOwnStacks){
-			int StackNumber;
-			void *Stack;
-			GetCommunicationThreadStack(&StackNumber, &Stack);
-			if(Stack == NULL){
-				print(3,"Kein Stack-Bereich mehr frei.\n");
-				if(close(Socket) == -1){
-					error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (1).\n", errno);
+		// TODO(fusion): I don't think anything in here can throw any exception.
+		try{
+			if(UseOwnStacks){
+				int StackNumber;
+				void *Stack;
+				GetCommunicationThreadStack(&StackNumber, &Stack);
+				if(Stack == NULL){
+					print(3,"Kein Stack-Bereich mehr frei.\n");
+					if(close(Socket) == -1){
+						error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (1).\n", errno);
+					}
+				}else{
+					IncrementActiveConnections();
+					void *Argument = (void*)(((uintptr)Socket & 0xFFFF)
+									| (((uintptr)StackNumber & 0xFFFF) << 16));
+					ThreadHandle ConnectionThread = StartThread(HandleConnection,
+							Argument, Stack, COMMUNICATION_THREAD_STACK_SIZE, true);
+					if(ConnectionThread == INVALID_THREAD_HANDLE){
+						DecrementActiveConnections();
+						ReleaseCommunicationThreadStack(StackNumber);
+						if(close(Socket) == -1){
+							error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (2).\n", errno);
+						}
+					}
 				}
 			}else{
-				IncrementActiveConnections();
-				void *Argument = (void*)(((uintptr)Socket & 0xFFFF)
-								| (((uintptr)StackNumber & 0xFFFF) << 16));
-				ThreadHandle ConnectionThread = StartThread(HandleConnection,
-						Argument, Stack, COMMUNICATION_THREAD_STACK_SIZE, true);
-				if(ConnectionThread == INVALID_THREAD_HANDLE){
-					DecrementActiveConnections();
-					ReleaseCommunicationThreadStack(StackNumber);
+				if(ActiveConnections >= MAX_COMMUNICATION_THREADS){
+					print(3,"Keine Verbindung mehr frei.\n");
 					if(close(Socket) == -1){
-						error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (2).\n", errno);
+						error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (3).\n", errno);
+					}
+				}else{
+					IncrementActiveConnections();
+					void *Argument = (void*)((uintptr)Socket & 0xFFFF);
+					ThreadHandle ConnectionThread = StartThread(HandleConnection,
+							Argument, COMMUNICATION_THREAD_STACK_SIZE, true);
+					if(ConnectionThread == INVALID_THREAD_HANDLE){
+						print(3, "Kann neuen Thread nicht anlegen.\n");
+						DecrementActiveConnections();
+						if(close(Socket) == -1){
+							error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (4).\n", errno);
+						}
 					}
 				}
 			}
-		}else{
-			if(ActiveConnections >= MAX_COMMUNICATION_THREADS){
-				print(3,"Keine Verbindung mehr frei.\n");
-				if(close(Socket) == -1){
-					error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (3).\n", errno);
-				}
-			}else{
-				IncrementActiveConnections();
-				void *Argument = (void*)((uintptr)Socket & 0xFFFF);
-				ThreadHandle ConnectionThread = StartThread(HandleConnection,
-						Argument, COMMUNICATION_THREAD_STACK_SIZE, true);
-				if(ConnectionThread == INVALID_THREAD_HANDLE){
-					print(3, "Kann neuen Thread nicht anlegen.\n");
-					DecrementActiveConnections();
-					if(close(Socket) == -1){
-						error("AcceptorThreadLoop: Fehler %d beim Schließen der Socket (4).\n", errno);
-					}
-				}
-			}
+		}catch(RESULT r){
+			error("AcceptorThreadLoop: Nicht abgefangene Exception %d.\n", r);
+		}catch(const char *str){
+			error("AcceptorThreadLoop: Nicht abgefangene Exception \"%s\".\n", str);
+		}catch(...){
+			error("AcceptorThreadLoop: Nicht abgefangene Exception unbekannten Typs.\n");
 		}
 	}
 
