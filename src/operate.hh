@@ -22,8 +22,6 @@ enum : int {
 	OBJECT_MOVED				= 3,
 };
 
-#if 0
-// TODO(fusion): Use these?
 enum : int {
 	CHANNEL_GUILD				= 0,
 	CHANNEL_GAMEMASTER			= 1,
@@ -38,7 +36,6 @@ enum : int {
 	CHANNEL_FIRST				= 0,
 	CHANNEL_LAST				= 0xFFFF,
 };
-#endif
 
 struct TChannel {
 	TChannel(void);

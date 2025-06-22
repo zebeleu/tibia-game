@@ -11,78 +11,7 @@
 
 static Semaphore ConnectionMutex(1);
 static int ConnectionIterator;
-static TConnection *FirstSendingConnection;
 static TConnection Connections[MAX_CONNECTIONS];
-
-enum ClientCommand: int {
-	CL_CMD_LOGIN					= 10,
-	CL_CMD_LOGIN_TREATED			= 11,
-	CL_CMD_LOGOUT					= 20,
-	CL_CMD_PING						= 30,
-	CL_CMD_GO						= 100,
-	CL_CMD_GO_NORTH					= 101,
-	CL_CMD_GO_EAST					= 102,
-	CL_CMD_GO_SOUTH					= 103,
-	CL_CMD_GO_WEST					= 104,
-	CL_CMD_GO_STOP					= 105,
-	CL_CMD_GO_NORTHEAST				= 106,
-	CL_CMD_GO_SOUTHEAST				= 107,
-	CL_CMD_GO_SOUTHWEST				= 108,
-	CL_CMD_GO_NORTHWEST				= 109,
-	CL_CMD_ROTATE_NORTH				= 111,
-	CL_CMD_ROTATE_EAST				= 112,
-	CL_CMD_ROTATE_SOUTH				= 113,
-	CL_CMD_ROTATE_WEST				= 114,
-	CL_CMD_MOVE_OBJECT				= 120,
-	CL_CMD_TRADE_OBJECT				= 125,
-	CL_CMD_INSPECT_TRADE			= 126,
-	CL_CMD_ACCEPT_TRADE				= 127,
-	CL_CMD_REJECT_TRADE				= 128,
-	CL_CMD_USE_OBJECT				= 130,
-	CL_CMD_USE_TWO_OBJECTS			= 131,
-	CL_CMD_USE_ON_CREATURE			= 132,
-	CL_CMD_TURN_OBJECT				= 133,
-	CL_CMD_CLOSE_CONTAINER			= 135,
-	CL_CMD_UP_CONTAINER				= 136,
-	CL_CMD_EDIT_TEXT				= 137,
-	CL_CMD_EDIT_LIST				= 138,
-	CL_CMD_LOOK_AT_POINT			= 140,
-	CL_CMD_TALK						= 150,
-	CL_CMD_GET_CHANNELS				= 151,
-	CL_CMD_JOIN_CHANNEL				= 152,
-	CL_CMD_LEAVE_CHANNEL			= 153,
-	CL_CMD_PRIVATE_CHANNEL			= 154,
-	CL_CMD_PROCESS_REQUEST			= 155,
-	CL_CMD_REMOVE_REQUEST			= 156,
-	CL_CMD_CANCEL_REQUEST			= 157,
-	CL_CMD_SET_TACTICS				= 160,
-	CL_CMD_ATTACK					= 161,
-	CL_CMD_FOLLOW					= 162,
-	CL_CMD_INVITE_TO_PARTY			= 163,
-	CL_CMD_JOIN_PARTY				= 164,
-	CL_CMD_REVOKE_INVITATION		= 165,
-	CL_CMD_PASS_LEADERSHIP			= 166,
-	CL_CMD_LEAVE_PARTY				= 167,
-	CL_CMD_OPEN_CHANNEL				= 170,
-	CL_CMD_INVITE_TO_CHANNEL		= 171,
-	CL_CMD_EXCLUDE_FROM_CHANNEL		= 172,
-	CL_CMD_CANCEL					= 190,
-	CL_CMD_REFRESH_FIELD			= 201,
-	CL_CMD_REFRESH_CONTAINER		= 202,
-	CL_CMD_GET_OUTFIT				= 210,
-	CL_CMD_SET_OUTFIT				= 211,
-	CL_CMD_ADD_BUDDY				= 220,
-	CL_CMD_REMOVE_BUDDY				= 221,
-	CL_CMD_BUG_REPORT				= 230,
-	CL_CMD_RULE_VIOLATION			= 231,
-	CL_CMD_ERROR_FILE_ENTRY			= 232,
-};
-
-enum ServerCommand: int {
-	SV_CMD_LOGIN_ERROR				= 20,
-	SV_CMD_LOGIN_PREMIUM			= 21,
-	SV_CMD_LOGIN_WAITINGLIST		= 22,
-};
 
 // TConnection
 // =============================================================================
@@ -563,13 +492,16 @@ void ProcessConnections(void){
 }
 
 void InitConnections(void){
+	InitSending();
+	InitReceiving();
+
 	ConnectionIterator = 0;
-	FirstSendingConnection = NULL;
 	for(int i = 0; i < MAX_CONNECTIONS; i += 1){
 		Connections[i].State = CONNECTION_FREE;
 	}
 }
 
 void ExitConnections(void){
-	// no-op
+	ExitSending();
+	ExitReceiving();
 }
