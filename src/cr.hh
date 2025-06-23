@@ -18,6 +18,11 @@ struct TOutfit{
 		uint8 Colors[4];
 		uint32 PackedData;
 	};
+
+	constexpr bool operator==(const TOutfit &Other) const {
+		return this->OutfitID == Other.OutfitID
+			&& this->PackedData == Other.PackedData;
+	}
 };
 
 struct TSkillData {

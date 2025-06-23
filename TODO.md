@@ -8,6 +8,11 @@
 - WRITER.CC
 - DBFUNCS.CC
 
+- Include `x == 0xFFFF` inside `CheckVisibility`?
+- The map container uses type id zero but it seems to also be used as a "no type"
+  id which makes me want to add some `isNone()`, `isNull()`, `isVoid()` check to
+  `ObjectType` to be used as an alias when pertinent.
+
 ## Stack allocations
 Any functions that use `alloca` or some other form of dynamic stack allocations will cause decompiled functions to be an absolute mess. It usually shows up in the decompiled code as both a size computation like `-(VAR + CONST & 0xfffffff0)`, followed by some assignment. It doesn't make total sense without looking at the disassembly. I've encountered ~30 such computations and expect the functions containing them to be amongt the most challenging/annoying to be properly decompiled.
 

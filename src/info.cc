@@ -399,9 +399,7 @@ Object GetObject(uint32 CreatureID, int x, int y, int z, int RNum, ObjectType Ty
 			error("GetObject: Ungültiger ContainerCode x=%d,y=%d,z=%d,RNum=%d,Type=%d.\n",
 					x, y, z, RNum, Type.TypeID);
 		}
-	}else if(RNum == -1){
-		Obj = GetTopObject(x, y, z, false);
-	}else{
+	}else if(RNum != -1){
 		Obj = GetFirstObject(x, y, z);
 		while(Obj != NONE){
 			if(Obj.getObjectType().getDisguise() == Type){
@@ -409,6 +407,8 @@ Object GetObject(uint32 CreatureID, int x, int y, int z, int RNum, ObjectType Ty
 			}
 			Obj = Obj.getNextObject();
 		}
+	}else{
+		Obj = GetTopObject(x, y, z, false);
 	}
 
 	// NOTE(fusion): `Type` can be a map container (TypeID = 0) as a wildcard for

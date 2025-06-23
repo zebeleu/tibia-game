@@ -1091,8 +1091,8 @@ void SendEditText(TConnection *Connection, Object Obj){
 	char SpellbookBuffer[4096] = {};
 	if(ObjType.getFlag(WRITE) || ObjType.getFlag(WRITEONCE)){
 		MaxLength = (ObjType.getFlag(WRITE)
-				? ObjType.getAttribute(MAXLENGTH)
-				: ObjType.getAttribute(MAXLENGTHONCE));
+				? (int)ObjType.getAttribute(MAXLENGTH)
+				: (int)ObjType.getAttribute(MAXLENGTHONCE));
 		MaxLength -= 1;
 		Text = GetDynamicString(Obj.getAttribute(TEXTSTRING));
 		Editor = GetDynamicString(Obj.getAttribute(EDITOR));
@@ -1532,12 +1532,12 @@ void SendPrivateChannel(TConnection *Connection, const char *Name){
 	FinishSendData(Connection);
 }
 
-void SendOpenRequest(TConnection *Connection){
+void SendOpenRequestQueue(TConnection *Connection){
 	if(!BeginSendData(Connection)){
 		return;
 	}
 
-	SendByte(Connection, SV_CMD_OPEN_REQUEST);
+	SendByte(Connection, SV_CMD_OPEN_REQUEST_QUEUE);
 	SendWord(Connection, (uint16)CHANNEL_RULEVIOLATIONS);
 	FinishSendData(Connection);
 }
@@ -1719,6 +1719,29 @@ void BroadcastMessage(int Mode, const char *Text, ...){
 	while(Connection != NULL){
 		if(Connection->Live()){
 			SendMessage(Connection, Mode, Message);
+		}
+		Connection = GetNextConnection();
+	}
+}
+
+void CreateGamemasterRequest(const char *Name, const char *Text){
+	if(Name == NULL){
+		error("CreateGamemasterRequest: Name ist NULL.\n");
+		return;
+	}
+
+	if(Text == NULL){
+		error("CreateGamemasterRequest: Name ist NULL.\n");
+		return;
+	}
+
+	TConnection *Connection = GetFirstConnection();
+	while(Connection != NULL){
+		if(Connection->Live()){
+			TPlayer *Player = Connection->GetPlayer();
+			if(Player != NULL && ChannelSubscribed(CHANNEL_RULEVIOLATIONS, Player->ID)){
+				SendTalk(Connection, 0, Name, TALK_GAMEMASTER_REQUEST, Text, 0);
+			}
 		}
 		Connection = GetNextConnection();
 	}

@@ -1,6 +1,7 @@
 #ifndef TIBIA_COMMON_HH_
 #define TIBIA_COMMON_HH_ 1
 
+#include <ctype.h>
 #include <float.h>
 #include <limits.h>
 #include <stddef.h>

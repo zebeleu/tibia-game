@@ -18,6 +18,9 @@ typedef void TSendMailsFunction(TPlayerData *PlayerData);
 extern void AbortWriter(void);
 extern void AddBuddyOrder(TCreature *Creature, uint32 CharacterID);
 extern void RemoveBuddyOrder(TCreature *Creature, uint32 BuddyID);
+extern void ChangeGuests(uint16 HouseID, TPlayer *Player, const char *Text);
+extern void ChangeSubowners(uint16 HouseID, TPlayer *Player, const char *Text);
+extern void ChangeNameDoor(Object Door, TPlayer *Player, const char *Text);
 extern void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 			uint32 Offender, const char *Remark, bool Unjustified);
@@ -47,7 +50,6 @@ extern void PunishmentOrder(TCreature *Creature, const char *Name, const char *I
 					int Reason, int Action, const char *Comment, int NumberOfStatements,
 					vector<TReportedStatement> *ReportedStatements, uint32 StatementID,
 					bool IPBanishment);
-extern void ReceiveData(void);
 extern void SavePlayerData(TPlayerData *Slot);
 extern bool LoadPlayerData(TPlayerData *Slot);
 extern bool PlayerDataExists(uint32 CharacterID);

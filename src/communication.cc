@@ -920,7 +920,7 @@ bool HandleLogin(TConnection *Connection){
 	TReadBuffer InputBuffer(Connection->InData, Connection->InDataSize);
 	try{
 		uint8 Command = InputBuffer.readByte();
-		if(Command != 10){
+		if(Command != CL_CMD_LOGIN_REQUEST){
 			print(3, "Ungültiges Init-Kommando %d.\n", Command);
 			return false;
 		}
@@ -1104,7 +1104,7 @@ bool HandleLogin(TConnection *Connection){
 	TWriteBuffer WriteBuffer(Connection->InData + 2,
 					sizeof(Connection->InData) - 2);
 	try{
-		WriteBuffer.writeByte(11);
+		WriteBuffer.writeByte(CL_CMD_LOGIN);
 		WriteBuffer.writeWord((int)TerminalType);
 		WriteBuffer.writeWord((int)TerminalVersion);
 		WriteBuffer.writeQuad(Slot->CharacterID);

@@ -2634,8 +2634,8 @@ void EditText(uint32 CreatureID, Object Obj, const char *Text){
 
 	int TextLength = (int)strlen(Text);
 	int MaxLength = (ObjType.getFlag(WRITE)
-			? ObjType.getAttribute(MAXLENGTH)
-			: ObjType.getAttribute(MAXLENGTHONCE));
+			? (int)ObjType.getAttribute(MAXLENGTH)
+			: (int)ObjType.getAttribute(MAXLENGTHONCE));
 	if(TextLength >= MaxLength){
 		throw TOOLONG;
 	}

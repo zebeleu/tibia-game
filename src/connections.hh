@@ -10,11 +10,11 @@ struct TConnection;
 struct TPlayer;
 
 enum ClientCommand: int {
-	CL_CMD_LOGIN					= 10,
-	CL_CMD_LOGIN_TREATED			= 11,
+	CL_CMD_LOGIN_REQUEST			= 10,
+	CL_CMD_LOGIN					= 11,
 	CL_CMD_LOGOUT					= 20,
 	CL_CMD_PING						= 30,
-	CL_CMD_GO						= 100,
+	CL_CMD_GO_PATH					= 100,
 	CL_CMD_GO_NORTH					= 101,
 	CL_CMD_GO_EAST					= 102,
 	CL_CMD_GO_SOUTH					= 103,
@@ -121,7 +121,7 @@ enum ServerCommand: int {
 	SV_CMD_CHANNELS					= 171,
 	SV_CMD_OPEN_CHANNEL				= 172,
 	SV_CMD_PRIVATE_CHANNEL			= 173,
-	SV_CMD_OPEN_REQUEST				= 174,
+	SV_CMD_OPEN_REQUEST_QUEUE		= 174,
 	SV_CMD_DELETE_REQUEST			= 175,
 	SV_CMD_FINISH_REQUEST			= 176,
 	SV_CMD_CLOSE_REQUEST			= 177,
@@ -288,7 +288,7 @@ void SendTalk(TConnection *Connection, uint32 StatementID,
 void SendChannels(TConnection *Connection);
 void SendOpenChannel(TConnection *Connection, int Channel);
 void SendPrivateChannel(TConnection *Connection, const char *Name);
-void SendOpenRequest(TConnection *Connection);
+void SendOpenRequestQueue(TConnection *Connection);
 void SendDeleteRequest(TConnection *Connection, const char *Name);
 void SendFinishRequest(TConnection *Connection, const char *Name);
 void SendCloseRequest(TConnection *Connection);
@@ -300,11 +300,14 @@ void SendOutfit(TConnection *Connection);
 void SendBuddyData(TConnection *Connection, uint32 CharacterID, const char *Name, bool Online);
 void SendBuddyStatus(TConnection *Connection, uint32 CharacterID, bool Online);
 void BroadcastMessage(int Mode, const char *Text, ...) ATTR_PRINTF(2, 3);
+void CreateGamemasterRequest(const char *Name, const char *Text);
 void DeleteGamemasterRequest(const char *Name);
 void InitSending(void);
 void ExitSending(void);
 
 // receiving.cc
+void ReceiveData(TConnection *Connection);
+void ReceiveData(void);
 void InitReceiving(void);
 void ExitReceiving(void);
 
