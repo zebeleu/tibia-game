@@ -62,18 +62,6 @@ struct TDelayedMail {
     int PacketSize;
 };
 
-struct TMonsterhome {
-    int Race;
-    int x;
-    int y;
-    int z;
-    int Radius;
-    int MaxMonsters;
-    int ActMonsters;
-    int RegenerationTime;
-    int Timer;
-};
-
 struct THelpDepot {
     ulong CharacterID;
     struct Object Box;

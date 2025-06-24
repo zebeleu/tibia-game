@@ -21,7 +21,6 @@ extern void RemoveBuddyOrder(TCreature *Creature, uint32 BuddyID);
 extern void ChangeGuests(uint16 HouseID, TPlayer *Player, const char *Text);
 extern void ChangeSubowners(uint16 HouseID, TPlayer *Player, const char *Text);
 extern void ChangeNameDoor(Object Door, TPlayer *Player, const char *Text);
-extern void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 			uint32 Offender, const char *Remark, bool Unjustified);
 extern void CleanHouseField(int x, int y, int z);
@@ -43,7 +42,6 @@ extern void LogoutOrder(TPlayer *Player);
 extern void PrepareHouseCleanup(void);
 extern void FinishHouseCleanup(void);
 extern void PlayerlistOrder(int NumberOfPlayers, char *PlayerNames, int *PlayerLevels, int *PlayerProfessions);
-extern void ProcessMonsterhomes(void);
 extern void ProcessReaderThreadReplies(TRefreshSectorFunction *RefreshSector, TSendMailsFunction *SendMails);
 extern void ProcessWriterThreadReplies(void);
 extern void PunishmentOrder(TCreature *Creature, const char *Name, const char *IPAddress,

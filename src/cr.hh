@@ -8,6 +8,9 @@
 #include "map.hh"
 
 struct TCreature;
+struct TMonster;
+struct TNPC;
+struct TPlayer;
 
 // Creature Data
 // =============================================================================
@@ -620,7 +623,10 @@ struct TCreature: TSkillBase {
 // TNonPlayer
 // =============================================================================
 struct TNonplayer: TCreature {
-	//TNonplayer(void);
+	TNonplayer(void);
+	~TNonplayer(void) override;
+	void SetInList(void);
+	void DelInList(void);
 
 	// DATA
 	// =================
@@ -630,46 +636,93 @@ struct TNonplayer: TCreature {
 
 // TNPC
 // =============================================================================
-// TODO(fusion): Most of these are probably contained in `crnonpl.cc` because
-// `TNPC` has a pointer to `TBehaviourDatabase`.
-struct TNode {
+struct TBehaviourNode {
 	int Type;
 	int Data;
-	TNode *Left;
-	TNode *Right;
+	TBehaviourNode *Left;
+	TBehaviourNode *Right;
 };
 
-struct TCondition {
+struct TBehaviourCondition {
+	bool set(int Type, void *Data);
+	void clear(void);
+
+	// DATA
+	// =================
 	int Type;
 	uint32 Text;
-	TNode *Expression;
+	TBehaviourNode *Expression;
 	int Property;
 	int Number;
 };
 
-struct TAction {
+struct TBehaviourAction {
+	bool set(int Type, void *Data, void *Data2, void *Data3, void *Data4);
+	void clear(void);
+
+	// DATA
+	// =================
 	int Type;
 	uint32 Text;
 	int Number;
-	TNode *Expression;
-	TNode *Expression2;
-	TNode *Expression3;
+	TBehaviourNode *Expression;
+	TBehaviourNode *Expression2;
+	TBehaviourNode *Expression3;
 };
 
 struct TBehaviour {
-	vector<TCondition> Condition;
-	vector<TAction> Action;
+	TBehaviour(void);
+	~TBehaviour(void);
+	bool addCondition(int Type, void *Data);
+	bool addAction(int Type, void *Data, void *Data2, void *Data3, void *Data4);
+
+	// TODO(fusion): Same as `TChannel` in `operate.hh`.
+	TBehaviour(const TBehaviour &Other);
+	void operator=(const TBehaviour &Other);
+
+	// DATA
+	// =================
+	vector<TBehaviourCondition> Condition;
+	vector<TBehaviourAction> Action;
 	int Conditions;
 	int Actions;
 };
 
 struct TBehaviourDatabase {
+	TBehaviourDatabase(TReadScriptFile *Script);
+
+	// TODO(fusion): These could/should be standalone functions.
+	TBehaviourNode *readValue(TReadScriptFile *Script);
+	TBehaviourNode *readFactor(TReadScriptFile *Script);
+	TBehaviourNode *readTerm(TReadScriptFile *Script);
+	int evaluate(TNPC *Npc, TBehaviourNode *Node, int *Parameters);
+
+	void react(TNPC *Npc, const char *Text, SITUATION Situation);
+
+	// DATA
+	// =================
 	vector<TBehaviour> Behaviour;
 	int Behaviours;
 };
 
-struct TNPC {
-	//TNPC(void);
+struct TNPC: TNonplayer {
+	TNPC(const char *FileName);
+	void GiveTo(ObjectType Type, int Amount);
+	void GetFrom(ObjectType Type, int Amount);
+	void GiveMoney(int Amount);
+	void GetMoney(int Amount);
+	void Enqueue(uint32 InterlocutorID, const char *Text);
+	void TurnToInterlocutor(void);
+	void ChangeState(STATE NewState, bool Stimulus);
+
+	// VIRTUAL FUNCTIONS
+	// =================
+	~TNPC(void) override;
+	bool MovePossible(int x, int y, int z, bool Execute, bool Jump) override;
+	void TalkStimulus(uint32 SpeakerID, const char *Text) override;
+	void DamageStimulus(uint32 AttackerID, int Damage, int DamageType) override;
+	void IdleStimulus(void) override;
+	void CreatureMoveStimulus(uint32 CreatureID, int Type) override;
 
 	// DATA
 	// =================
@@ -689,8 +742,24 @@ struct TNPC {
 
 // TMonster
 // =============================================================================
+struct TMonsterhome {
+	int Race;
+	int x;
+	int y;
+	int z;
+	int Radius;
+	int MaxMonsters;
+	int ActMonsters;
+	int RegenerationTime;
+	int Timer;
+};
+
 struct TMonster: TNonplayer {
-	//TMonster(void);
+	TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID);
+
+	// VIRTUAL FUNCTIONS
+	// =================
+	~TMonster(void) override;
 
 	// DATA
 	//TNonplayer super_TNonplayer;	// IMPLICIT
@@ -871,6 +940,12 @@ int GetSkillByName(const char *Name);
 
 // crnonpl.cc
 // =============================================================================
+void StartMonsterhomeTimer(int Nr);
+void LoadMonsterhomes(void);
+void ProcessMonsterhomes(void);
+void NotifyMonsterhomeOfDeath(int Nr);
+bool MonsterhomeInRange(int Nr, int x, int y, int z);
+void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
 void InitNonplayer();
 void ExitNonplayer();
 

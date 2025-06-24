@@ -12,14 +12,16 @@
 TRaceData RaceData[MAX_RACES];
 priority_queue<uint32, uint32> ToDoQueue(5000, 1000);
 
-static uint32 NextCreatureID;
-static int FirstFreeCreature;
 static TCreature *HashList[1000];
 static matrix<uint32> *FirstChainCreature;
 static vector<TCreature*> CreatureList(0, 10000, 1000, NULL);
-static priority_queue<uint32, TAttackWave*> AttackWaveQueue(100, 100);
+static int FirstFreeCreature;
+static uint32 NextCreatureID;
+
 static int KilledCreatures[MAX_RACES];
 static int KilledPlayers[MAX_RACES];
+
+static priority_queue<uint32, TAttackWave*> AttackWaveQueue(100, 100);
 
 // TFindCreatures
 // =============================================================================
@@ -125,14 +127,19 @@ TCreature::TCreature(void) :
 	this->ID = 0;
 	this->NextHashEntry = NULL;
 	this->NextChainCreature =  0;
+	this->Name[0] = 0;
 	this->Murderer[0] = 0;
+	this->OrgOutfit = {};
+	this->Outfit = {};
 	this->startx = 0;
 	this->starty = 0;
 	this->startz = 0;
 	this->posx = 0;
 	this->posy = 0;
 	this->posz = 0;
-	this->Direction = 0;
+	this->Sex = 1;
+	this->Race = 0;
+	this->Direction = DIRECTION_SOUTH;
 	this->Radius = INT_MAX;
 	this->IsDead = false;
 	this->LoseInventory = LOSE_INVENTORY_ALL;

@@ -8,8 +8,8 @@
 #include "stubs.hh"
 
 static Semaphore PlayerMutex(1);
-static int FirstFreePlayer;
 static vector<TPlayer*> PlayerList(0, 100, 10, NULL);
+static int FirstFreePlayer;
 
 static Semaphore PlayerDataPoolMutex(1);
 static TPlayerData PlayerDataPool[2000];
