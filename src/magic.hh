@@ -19,6 +19,13 @@ struct TImpact{
 	virtual void handleCreature(TCreature *Victim);										// VTABLE[1]
 	virtual bool isAggressive(void);													// VTABLE[2]
 
+	// NOTE(fusion): I don't think the original version had a destructor declared
+	// here but the compiler complains when calling delete (which seems to only be
+	// used in `TMonster::IdleStimulus`).
+	virtual ~TImpact(void){
+		// no-op
+	}
+
 	// DATA
 	// =========================================================================
 	//void *VTABLE;	// IMPLICIT

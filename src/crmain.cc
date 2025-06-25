@@ -589,11 +589,9 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 
 	this->DamageStimulus(Attacker->ID, Damage, DamageType);
 
-	// NOTE(fusion): Remove non-player illusion. Might as well be an inlined
+	// NOTE(fusion): Remove non-player invisibility. Might as well be an inlined
 	// function.
-	if(this->Type != PLAYER
-			&& this->Outfit.OutfitID == 0
-			&& this->Outfit.ObjectType == 0){
+	if(this->Type != PLAYER && this->IsInvisible()){
 		this->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
 		this->Outfit = this->OrgOutfit;
 		AnnounceChangedCreature(this->ID, CREATURE_OUTFIT_CHANGED);

@@ -2787,17 +2787,8 @@ bool SectorRefreshable(int SectorX, int SectorY, int SectorZ){
 			continue;
 		}
 
-		// TODO(fusion): Maybe an inlined function to check whether a player
-		// can see some floor. All floors above ground, when above ground. Or
-		// two floors up and down, when underground.
-		if(Player->posz <= 7){
-			if(SectorZ <= 7){
-				return false;
-			}
-		}else{
-			if(std::abs(Player->posz - SectorZ) <= 2){
-				return false;
-			}
+		if(Player->CanSeeFloor(SectorZ)){
+			return false;
 		}
 	}
 

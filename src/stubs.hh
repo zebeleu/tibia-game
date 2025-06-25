@@ -24,9 +24,6 @@ extern void ChangeNameDoor(Object Door, TPlayer *Player, const char *Text);
 extern void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 			uint32 Offender, const char *Remark, bool Unjustified);
 extern void CleanHouseField(int x, int y, int z);
-extern void ConvinceMonster(TCreature *Master, TCreature *Slave);
-extern void ChallengeMonster(TCreature *Challenger, TCreature *Monster);
-extern TCreature *CreateMonster(int Race, int x, int y, int z, int Home, uint32 Master, bool ShowEffect);
 extern void DecrementIsOnlineOrder(uint32 CharacterID);
 extern void GetExitPosition(uint16 HouseID, int *x, int *y, int *z);
 extern int GetOrderBufferSpace(void);

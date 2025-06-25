@@ -420,7 +420,7 @@ void TCombat::SetAttackDest(uint32 TargetID, bool Follow){
 	}
 
 	if(Master->Type == PLAYER && Target->Type != PLAYER){
-		if(Target->Outfit.OutfitID == 0 && Target->Outfit.ObjectType == 0){
+		if(Target->IsInvisible()){
 			this->StopAttack(0);
 			throw TARGETLOST;
 		}
@@ -463,7 +463,7 @@ void TCombat::CanToDoAttack(void){
 	}
 
 	if(Master->Type == PLAYER && Target->Type != PLAYER){
-		if(Target->Outfit.OutfitID == 0 && Target->Outfit.ObjectType == 0){
+		if(Target->IsInvisible()){
 			this->StopAttack(0);
 			throw TARGETLOST;
 		}
@@ -559,7 +559,7 @@ void TCombat::Attack(void){
 	}
 
 	if(Master->Type == PLAYER && Target->Type != PLAYER){
-		if(Target->Outfit.OutfitID == 0 && Target->Outfit.ObjectType == 0){
+		if(Target->IsInvisible()){
 			this->StopAttack(0);
 			throw TARGETLOST;
 		}
@@ -696,7 +696,7 @@ void TCombat::WandAttack(TCreature *Target){
 	ASSERT(this->Wand != NONE);
 
 	TCreature *Master = this->Master;
-	int Distance = std::min<int>(
+	int Distance = std::max<int>(
 			std::abs(Master->posx - Target->posx),
 			std::abs(Master->posy - Target->posy));
 

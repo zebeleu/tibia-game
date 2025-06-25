@@ -968,8 +968,7 @@ void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
 						error("KillAllMonsters: Ungültige Kreatur.\n");
 					}else if(Actor != Victim && Victim->Type == MONSTER){
 						print(3, "Töte %s...\n", Victim->Name);
-						Victim->Skills[SKILL_HITPOINTS]->Set(0);
-						Victim->Death();
+						Victim->Kill();
 					}
 				}
 				Obj = Obj.getNextObject();
@@ -2395,7 +2394,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 					TCreature *Victim = GetCreature(Obj);
 					if(Victim == NULL){
 						error("CancelInvisibility: Ungültige Kreatur.\n");
-					}else if(Victim->Outfit.OutfitID == 0 && Victim->Outfit.ObjectType == 0
+					}else if(Victim->IsInvisible()
 							&& (WorldType != NON_PVP || !Victim->IsPeaceful())){
 						Victim->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
 						if(Victim->Skills[SKILL_ILLUSION]->Get() == 0){

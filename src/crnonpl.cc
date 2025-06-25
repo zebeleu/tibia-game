@@ -6,6 +6,8 @@
 
 #include "stubs.hh"
 
+#include <dirent.h>
+
 static vector<TNonplayer*> NonplayerList(0, 10000, 1000, NULL);
 static int FirstFreeNonplayer;
 
@@ -1422,16 +1424,8 @@ void ProcessMonsterhomes(void){
 				break;
 			}
 
-			// TODO(fusion): There is probably a helper function to check whether
-			// a floor is visible from another.
-			if(Player->posz <= 7){
-				if(MH->z > 7){
-					continue;
-				}
-			}else{
-				if(std::abs(Player->posz - MH->z) > 2){
-					continue;
-				}
+			if(!Player->CanSeeFloor(MH->z)){
+				continue;
 			}
 
 			int DistanceX = std::abs(Player->posx - MH->x);
@@ -1772,18 +1766,17 @@ void TNPC::IdleStimulus(void){
 				}
 			}
 
-			if(!FoundDest){
+			if(FoundDest){
+				try{
+					this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
+					this->ToDoWait(2000);
+					this->ToDoStart();
+				}catch(RESULT r){
+					error("TNPC::IdleStimulus: Exception %d!\n", r);
+				}
+			}else{
 				this->ToDoWait(2000);
 				this->ToDoStart();
-				return;
-			}
-
-			try{
-				this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
-				this->ToDoWait(2000);
-				this->ToDoStart();
-			}catch(RESULT r){
-				error("TNPC::IdleStimulus: Exception %d!\n", r);
 			}
 		}
 	}
@@ -2025,6 +2018,8 @@ TMonster::TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID) :
 		return;
 	}
 
+	// TODO(fusion): This part is very similar to `ProcessMonsterRaids` when
+	// adding extra items to spawned monsters.
 	try{
 		if(this->Master == 0 && RaceData[Race].Items > 0){
 			Object Bag = Create(GetBodyContainer(this->ID, INVENTORY_BAG),
@@ -2045,7 +2040,6 @@ TMonster::TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID) :
 				}
 
 				for(int j = 0; j < Repeat; j += 1){
-					// TODO(fusion): Same as `ProcessMonsterRaids`.
 					Object Item = NONE;
 					try{
 						if(ItemType.getFlag(WEAPON)
@@ -2107,4 +2101,1046 @@ TMonster::~TMonster(void){
 	if(this->Home != 0){
 		NotifyMonsterhomeOfDeath(this->Home);
 	}
+}
+
+bool TMonster::MovePossible(int x, int y, int z, bool Execute, bool Jump){
+	if(this->posz != z){
+		error("TMonster::MovePossible: Prüfung über Ebenen hinweg ([%d,%d,%d] -> [%d,%d,%d]).\n",
+				this->posx, this->posy, this->posz, x, y, z);
+		return false;
+	}
+
+	if(this->State != ATTACKING && this->State != PANIC){
+		if(!MonsterhomeInRange(this->Home, x, y, z)){
+			return false;
+		}
+
+		// NOTE(fusion): Max distance.
+		int Distance = std::max<int>(
+				std::abs(x - this->posx),
+				std::abs(y - this->posy));
+		if(Distance > this->Radius){
+			return false;
+		}
+	}
+
+	if(this->Skills[SKILL_GO_STRENGTH]->Act < 0){
+		error("TMonster::MovePossible: Monster %s an [%d,%d,%d] darf sich nicht bewegen.\n",
+				this->Name, this->posx, this->posy, this->posz);
+		return false;
+	}
+
+	if(IsProtectionZone(x, y, z) || IsHouse(x, y, z)){
+		return false;
+	}
+
+	if(Execute && this->Master != 0 && this->State != ATTACKING && this->State != PANIC){
+		TCreature *Master = GetCreature(this->Master);
+		if(Master != NULL && Master->posz == this->posz){
+			// NOTE(fusion): Manhattan distance.
+			if((std::abs(Master->posx - this->posx) + std::abs(Master->posy - this->posy)) >  1
+			&& (std::abs(Master->posx -          x) + std::abs(Master->posy -          y)) <= 1){
+				return false;
+			}
+		}
+	}
+
+	// NOTE(fusion): Check destination and retry while we keep kicking blocking
+	// objects away.
+	for(int Attempt = 0; Attempt < 100; Attempt += 1){
+		Object Obj = GetFirstObject(x, y, z);
+		if(!Obj.getObjectType().getFlag(BANK)){
+			return false;
+		}
+
+		while(Obj != NONE){
+			ObjectType ObjType = Obj.getObjectType();
+			if(ObjType.isCreatureContainer()){
+				if(this->State != ATTACKING && this->State != PANIC){
+					return false;
+				}
+
+				if(this->Target == 0){
+					return false;
+				}
+
+				if(!RaceData[this->Race].KickCreatures){
+					return false;
+				}
+
+				TCreature *Creature = GetCreature(Obj);
+				if(Creature == NULL){
+					error("TMonster::MovePossible: Kann Hindernis-Kreatur nicht identifizieren.\n");
+					return false;
+				}
+
+				if(Creature->ID == this->Target || Creature->ID == this->Master){
+					return false;
+				}
+
+				if(RaceData[Creature->Race].Unpushable){
+					return false;
+				}
+
+				// TODO(fusion): Why?
+				if(!RaceData[this->Race].SeeInvisible && Creature->IsInvisible()){
+					return false;
+				}
+
+				if(Creature->Type == NPC){
+					return false;
+				}
+
+				if(Creature->Type == PLAYER){
+					if(this->Master != 0 || CheckRight(Creature->ID, IGNORED_BY_MONSTERS)){
+						return false;
+					}
+				}
+
+				if(Execute){
+					if(Creature->Type == PLAYER){
+						this->Target = 0;
+						throw EXHAUSTED;
+					}
+
+					if(!this->KickCreature(Creature)){
+						throw EXHAUSTED;
+					}
+
+					// NOTE(fusion): Break from the inner loop and retry.
+					break;
+				}
+			}else{
+				if(ObjType.getFlag(UNPASS)){
+					if(ObjType.getFlag(UNMOVE) || !this->CanKickBoxes()){
+						return false;
+					}
+
+					if(Execute){
+						this->KickBoxes(Obj);
+
+						// NOTE(fusion): Break from the inner loop and retry.
+						break;
+					}
+				}
+
+				if(ObjType.getFlag(AVOID)){
+					int AvoidDamageTypes = (int)ObjType.getAttribute(AVOIDDAMAGETYPES);
+					bool IgnoreHazard = (this->State == PANIC && AvoidDamageTypes != 0)
+						|| (RaceData[this->Race].NoPoison  && AvoidDamageTypes == DAMAGE_POISON)
+						|| (RaceData[this->Race].NoBurning && AvoidDamageTypes == DAMAGE_FIRE)
+						|| (RaceData[this->Race].NoEnergy  && AvoidDamageTypes == DAMAGE_ENERGY);
+					if(!IgnoreHazard){
+						if(ObjType.getFlag(UNMOVE) || !this->CanKickBoxes()){
+							return false;
+						}
+
+						if(Execute){
+							this->KickBoxes(Obj);
+
+							// NOTE(fusion): Break from the inner loop and retry.
+							break;
+						}
+					}
+				}
+			}
+			Obj = Obj.getNextObject();
+		}
+
+		if(Obj == NONE){
+			return true;
+		}
+	}
+
+	error("TMonster::MovePossible: Endlosschleife vermutet für %s an [%d,%d,%d].\n",
+			this->Name, x, y, z);
+	return false;
+}
+
+bool TMonster::IsPeaceful(void){
+	return this->Master != 0
+		&& IsCreaturePlayer(this->Master);
+}
+
+uint32 TMonster::GetMaster(void){
+	return this->Master;
+}
+
+void TMonster::DamageStimulus(uint32 AttackerID, int Damage, int DamageType){
+	if(AttackerID != 0 && Damage != 0){
+		if(this->State == SLEEPING){
+			if(this->Target == 0){
+				this->State = PANIC;
+			}else{
+				this->State = UNDERATTACK;
+			}
+			this->ToDoYield();
+		}else{
+			if(this->Target == 0){
+				this->State = PANIC;
+			}else if(this->State == IDLE){
+				this->State = UNDERATTACK;
+			}
+		}
+	}
+}
+
+void TMonster::IdleStimulus(void){
+	if(this->LockToDo || this->LoggingOut){
+		return;
+	}
+
+	if(this->LifeEndRound != 0 && this->LifeEndRound <= RoundNr){
+		print(3, "Lebenszeit für %s abgelaufen.\n", this->Name);
+		this->StartLogout(true, true);
+		this->State = SLEEPING;
+		return;
+	}
+
+	if(this->Master != 0){
+		TCreature *Master = GetCreature(this->Master);
+		bool MasterIsPlayer = IsCreaturePlayer(this->Master);
+		bool ShouldDespawn = false;
+		if(Master == NULL){
+			if(MasterIsPlayer){
+				print(3, "Kreatur %s verliert ihren Spieler-Master.\n", this->Name);
+			}else{
+				print(3, "Kreatur %s verliert ihr Mutter-Monster.\n", this->Name);
+			}
+			ShouldDespawn = true;
+		}else if(MasterIsPlayer && Master->SummonedCreatures == 0){
+			print(3, "Spieler-Master hat sich eben wieder neu eingeloggt.\n");
+			ShouldDespawn = true;
+		}else if(!MasterIsPlayer && Master->posz != this->posz){
+			print(3, "Mutter-Monster ist zu weit entfernt.\n");
+			ShouldDespawn = true;
+		}else if(std::abs(Master->posz - this->posz) > 1
+				|| std::abs(Master->posx - this->posx) > 30
+				|| std::abs(Master->posy - this->posy) > 30){
+			if(MasterIsPlayer){
+				print(3, "Spieler-Master ist zu weit entfernt.\n");
+			}else{
+				print(3, "Mutter-Monster ist zu weit entfernt.\n");
+			}
+			ShouldDespawn = true;
+		}
+
+		if(ShouldDespawn){
+			if(MasterIsPlayer){
+				this->StartLogout(true, true);
+			}else{
+				this->Kill();
+			}
+			this->State = SLEEPING;
+			return;
+		}
+
+		if(Master->Combat.Following){
+			this->Target = 0;
+		}else{
+			this->Target = Master->Combat.AttackDest;
+		}
+
+		if(this->Target == 0 || this->Target == this->ID){
+			this->Target = this->Master;
+		}
+
+	}else{
+		if(!MonsterhomeInRange(this->Home, this->posx, this->posy, this->posz)){
+			TMonsterhome *MH = Monsterhome.at(this->Home);
+			print(3, "%s an [%d,%d,%d] zu weit von [%d,%d,%d] entfernt.\n",
+					this->Name, this->posx, this->posy, this->posz, MH->x, MH->y, MH->z);
+			this->StartLogout(true, true);
+			this->State = SLEEPING;
+			return;
+		}
+	}
+
+	if(this->Target != 0){
+		TCreature *Target = GetCreature(this->Target);
+		bool LoseTarget = (Target == NULL)
+			// RANGE CHECK
+			|| Target->posz != this->posz
+			|| std::abs(Target->posx - this->posx) > 10
+			|| std::abs(Target->posy - this->posy) > 10
+			// FIELD CHECK
+			|| IsProtectionZone(Target->posx, Target->posy, Target->posz)
+			|| IsHouse(Target->posx, Target->posy, Target->posz)
+			// INVISIBILITY CHECK
+			|| (Target->IsInvisible() && !RaceData[this->Race].SeeInvisible)
+			// LOSETARGET CHECK
+			|| (this->Master == 0 && random(0, 99) < RaceData[this->Race].LoseTarget);
+		if(LoseTarget){
+			this->Target = 0;
+		}
+	}
+
+	if(this->State != PANIC && this->State != UNDERATTACK){
+		this->State = IDLE;
+	}
+
+	// NOTE(fusion): TALKING.
+	if(RaceData[this->Race].Talks > 0 && (rand() % 50) == 0){
+		int TalkNr = rand() % (RaceData[this->Race].Talks + 1);
+		const char *Text = GetDynamicString(*RaceData[this->Race].Talk.at(TalkNr));
+		if(Text != 0 && Text[0] != 0){
+			// TODO(fusion): We were only checking for a `#` but it could be
+			// problematic for any two character nul terminated string, since
+			// adding 3 would make it point out of bounds. Poor string management
+			// is a recurring theme.
+			int Mode = TALK_ANIMAL_LOW;
+			if(Text[0] == '#' && (Text[1] == 'y' || Text[1] == 'Y') && Text[2] == ' '){
+				Mode = TALK_ANIMAL_LOUD;
+				Text += 3;
+			}
+
+			try{
+				Talk(this->ID, Mode, NULL, Text, false);
+			}catch(RESULT r){
+				error("TMonster::IdleStimulus: Exception %d bei Talk.\n", r);
+			}
+		}else{
+			// TODO(fusion): The original wouldn't check if `Text` is actually
+			// valid which could also be a problem.
+			error("TMonster::IdleStimulus: Race %d talk entry %d is invalid.",
+					this->Race, TalkNr);
+		}
+	}
+
+	// NOTE(fusion): TARGETING.
+	if(this->Target == 0){
+		bool ShouldSleep = true;
+		if(this->Master == 0){
+			// IMPORTANT(fusion): We don't iterate over the last strategy on purpose.
+			int Strategy = 0;
+			int StrategyRoll = random(0, 99);
+			while(Strategy < (NARRAY(TRaceData::Strategy) - 1)){
+				if(StrategyRoll < RaceData[this->Race].Strategy[Strategy]){
+					break;
+				}
+				StrategyRoll -= RaceData[this->Race].Strategy[Strategy];
+				Strategy += 1;
+			}
+
+			int BestStrategyParam = INT_MIN;
+			int BestTieBreaker = 0;
+			TFindCreatures Search(12, 12, this->ID, FIND_PLAYERS | FIND_MONSTERS);
+			while(true){
+				uint32 TargetID = Search.getNext();
+				if(TargetID == 0){
+					break;
+				}
+
+				TCreature *Target = GetCreature(TargetID);
+				if(Target == NULL){
+					error("TMonster::IdleStimulus: Kreatur existiert nicht.\n");
+					continue;
+				}
+
+				if(Target->Type == MONSTER && !((TMonster*)Target)->IsPlayerControlled()){
+					continue;
+				}
+
+				if(Target->CanSeeFloor(this->posz)){
+					ShouldSleep = false;
+				}
+
+				// TODO(fusion): This is quite similar to the conditions for losing
+				// the target. Perhaps there is some common inlined function.
+				int DistanceX = std::abs(Target->posx - this->posx);
+				int DistanceY = std::abs(Target->posy - this->posy);
+				if((Target->posz != this->posz || DistanceX > 10 || DistanceY > 10)
+						||(Target->Type == PLAYER && CheckRight(Target->ID, IGNORED_BY_MONSTERS))
+						|| (Target->IsInvisible() && !RaceData[this->Race].SeeInvisible)
+						|| IsProtectionZone(Target->posx, Target->posy, Target->posz)
+						|| IsHouse(Target->posx, Target->posy, Target->posz)
+						|| std::abs(Target->posx - this->posx) > 10
+						|| std::abs(Target->posy - this->posy) > 10){
+					continue;
+				}
+
+				int StrategyParam = 0;
+				if(Strategy == 0){ // STRATEGY_NEAREST
+					StrategyParam = -(DistanceX + DistanceY);
+				}else if(Strategy == 1){ // STRATEGY_LOWEST_HEALTH
+					StrategyParam = -Target->Skills[SKILL_HITPOINTS]->Get();
+				}else if(Strategy == 2){ // STRATEGY_MOST_DAMAGE
+					StrategyParam = this->Combat.GetDamageByCreature(TargetID);
+				}else if(Strategy == 3){ // STRATEGY_RANDOM
+					// no-op
+				}else{
+					error("TMonster::IdleStimulus: Unbekannte Strategie %d.\n", Strategy);
+				}
+
+				// NOTE(fusion): We're looking for the creature that maximizes
+				// the strategy parameter.
+				int TieBreaker = random(0, 99);
+				if(StrategyParam >= BestStrategyParam
+				||(StrategyParam == BestStrategyParam && TieBreaker > BestTieBreaker)){
+					this->Target = TargetID;
+					BestTieBreaker = TieBreaker;
+					BestStrategyParam = StrategyParam;
+				}
+			}
+		}
+
+		if(ShouldSleep && this->Target == 0
+				&& this->State != UNDERATTACK
+				&& this->State != PANIC){
+			if(this->Master == 0){
+				this->State = SLEEPING;
+			}else{
+				this->ToDoWait(1000);
+				this->ToDoStart();
+			}
+			return;
+		}
+
+		if(this->State == PANIC && this->Target == 0){
+			this->State = IDLE;
+		}
+
+		if(this->State == UNDERATTACK){
+			this->State = IDLE;
+		}
+	}
+
+	// NOTE(fusion): CASTING.
+	// TODO(fusion): It is highly unlikely but we could cast all spells at once.
+	// I'm not sure this is correct but I can see it happening.
+	if(RaceData[this->Race].Spells > 0){
+		TCreature *Target = GetCreature(this->Target);
+		for(int SpellNr = 1;
+				SpellNr <= RaceData[this->Race].Spells;
+				SpellNr += 1){
+			TSpellData *SpellData = RaceData[this->Race].Spell.at(SpellNr);
+			if((rand() % SpellData->Delay) != 0){
+				continue;
+			}
+
+			if(this->IsFleeing() && random(1, 3) == 1){
+				continue;
+			}
+
+			TImpact *Impact = NULL;
+			switch(SpellData->Impact){
+				case IMPACT_DAMAGE:{
+					int DamageType = SpellData->ImpactParam1;
+					int Damage = SpellData->ImpactParam2;
+					int Variation = SpellData->ImpactParam3;
+					Damage = ComputeDamage(this, 0, Damage, Variation);
+					Impact = new TDamageImpact(this, DamageType, Damage, true);
+					break;
+				}
+
+				case IMPACT_FIELD:{
+					int FieldType = SpellData->ImpactParam1;
+					Impact = new TFieldImpact(this, FieldType);
+					break;
+				}
+
+				case IMPACT_HEALING:{
+					int Amount = SpellData->ImpactParam1;
+					int Variation = SpellData->ImpactParam2;
+					Amount = ComputeDamage(this, 0, Amount, Variation);
+					Impact = new THealingImpact(this, Amount);
+					break;
+				}
+
+				case IMPACT_SPEED:{
+					int Percent = SpellData->ImpactParam1;
+					int Variation = SpellData->ImpactParam2;
+					int Duration = SpellData->ImpactParam3;
+					Percent = ComputeDamage(this, 0, Percent, Variation);
+					Impact = new TSpeedImpact(this, Percent, Duration);
+					break;
+				}
+
+				case IMPACT_DRUNKEN:{
+					int Strength = SpellData->ImpactParam1;
+					int Variation = SpellData->ImpactParam2;
+					int Duration = SpellData->ImpactParam3;
+					Strength = ComputeDamage(this, 0, Strength, Variation);
+					Impact = new TDrunkenImpact(this, Strength, Duration);
+					break;
+				}
+
+				case IMPACT_STRENGTH:{
+					int Skills = SpellData->ImpactParam1;
+					int Percent = SpellData->ImpactParam2;
+					int Variation = SpellData->ImpactParam3;
+					int Duration = SpellData->ImpactParam4;
+					Percent = ComputeDamage(this, 0, Percent, Variation);
+					Impact = new TStrengthImpact(this, Skills, Percent, Duration);
+					break;
+				}
+
+				case IMPACT_OUTFIT:{
+					TOutfit Outfit = {};
+					Outfit.OutfitID = SpellData->ImpactParam1;
+					Outfit.PackedData = (uint32)SpellData->ImpactParam2;
+					int Duration = SpellData->ImpactParam3;
+					Impact = new TOutfitImpact(this, Outfit, Duration);
+					break;
+				}
+
+				case IMPACT_SUMMON:{
+					int SummonRace = SpellData->ImpactParam1;
+					int MaxSummons = SpellData->ImpactParam2;
+					Impact = new TSummonImpact(this, SummonRace, MaxSummons);
+					break;
+				}
+			}
+
+			if(Impact != NULL){
+				switch(SpellData->Shape){
+					case SHAPE_ACTOR:{
+						int Effect = SpellData->ShapeParam1;
+						ActorShapeSpell(this, Impact, Effect);
+						break;
+					}
+
+					case SHAPE_VICTIM:{
+						if(Target != NULL){
+							this->Rotate(Target);
+
+							int Range = SpellData->ShapeParam1;
+							int Animation = SpellData->ShapeParam2;
+							int Effect = SpellData->ShapeParam3;
+							VictimShapeSpell(this, Target, Range,
+									Animation, Impact, Effect);
+						}
+						break;
+					}
+
+					case SHAPE_ORIGIN:{
+						int Radius = SpellData->ShapeParam1;
+						int Effect = SpellData->ShapeParam2;
+						OriginShapeSpell(this, Radius, Impact, Effect);
+						break;
+					}
+
+					case SHAPE_DESTINATION:{
+						if(Target != NULL){
+							this->Rotate(Target);
+
+							int Range = SpellData->ShapeParam1;
+							int Animation = SpellData->ShapeParam2;
+							int Radius = SpellData->ShapeParam3;
+							int Effect  = SpellData->ShapeParam4;
+							DestinationShapeSpell(this, Target, Range,
+									Animation, Radius, Impact, Effect);
+						}
+						break;
+					}
+
+					case SHAPE_ANGLE:{
+						if(Target != NULL){
+							this->Rotate(Target);
+						}
+
+						int Angle = SpellData->ShapeParam1;
+						int Range = SpellData->ShapeParam2;
+						int Effect = SpellData->ShapeParam3;
+						AngleShapeSpell(this, Angle, Range, Impact, Effect);
+						break;
+					}
+				}
+
+				delete Impact;
+			}
+		}
+	}
+
+	// NOTE(fusion): WALKING. What was already bad got even worse.
+	TCreature *Target = GetCreature(this->Target);
+	if(this->Target != 0 && Target == NULL){
+		error("TMonster::IdleStimulus: Kreatur existiert nicht.\n");
+		this->Target = 0;
+	}
+
+	try{
+		if(Target != NULL){
+			if(this->IsFleeing()){
+				int DestX, DestY, DestZ;
+				if(SearchFlightField(this->ID, this->Target, &DestX, &DestY, &DestZ)){
+					this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
+					this->ToDoStart();
+					return;
+				}
+			}else if(this->Target == this->Master){
+				// NOTE(fusion): Manhattan distance.
+				int DistanceX = std::abs(Target->posx - this->posx);
+				int DistanceY = std::abs(Target->posy - this->posy);
+				int Distance = DistanceX + DistanceY;
+				if(Distance > 1){
+					if(Distance == 2){
+						this->ToDoWait(1000);
+					}else{
+						if(Distance == 3){
+							this->ToDoWait(1000);
+						}
+						this->ToDoGo(Target->posx, Target->posy, Target->posz, false, 3);
+					}
+					this->ToDoStart();
+					return;
+				}
+			}else{
+				if(this->Skills[SKILL_FIST]->Get() > 0 && this->State != PANIC){
+					this->State = ATTACKING;
+				}
+
+				if(this->State == ATTACKING || this->State == PANIC){
+					this->Combat.SetAttackDest(this->Target, false);
+					this->Combat.SetChaseMode(CHASE_MODE_NONE);
+				}
+
+				// TODO(fusion): We're doing something similar to `TCombat::CanToDoAttack`
+				// with added random steps around the attacking position. This function is
+				// too convoluted and we should definitely split it into smaller ones. I
+				// don't have a problem with large functions but this it too much.
+
+				// NOTE(fusion): Max distance.
+				int Distance = std::max<int>(
+						std::abs(Target->posx - this->posx),
+						std::abs(Target->posy - this->posy));
+				if(!RaceData[this->Race].DistanceFighting
+						|| !ThrowPossible(this->posx, this->posy, this->posz,
+								Target->posx, Target->posy, Target->posz, 0)){
+					this->Combat.SetChaseMode(CHASE_MODE_CLOSE);
+					if(Distance > 1){
+						// TODO(fusion): Not sure what is going on here. I think
+						// it's because `ToDoAttack` with `CHASE_MODE_CLOSE` will
+						// already take care of walking to the target?
+						if(this->State != ATTACKING && this->State != PANIC){
+							this->ToDoGo(Target->posx, Target->posy, Target->posz, false, 3);
+						}
+					}else{
+						int DestX = this->posx;
+						int DestY = this->posy;
+						int DestZ = this->posz;
+						switch(rand() % 5){
+							case 0: DestX -= 1; break;
+							case 1: DestX += 1; break;
+							case 2: DestY -= 1; break;
+							case 3: DestY += 1; break;
+							case 4: break; // no step
+						}
+
+						int DestDistance = std::max<int>(
+								std::abs(Target->posx - DestX),
+								std::abs(Target->posy - DestY));
+						if(DestDistance == 1 && this->MovePossible(DestX, DestY, DestZ, true, false)){
+							this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
+						}
+
+						if(this->State == PANIC){
+							this->State = ATTACKING;
+						}
+					}
+				}else{
+					if(Distance < 4){
+						int DestX, DestY, DestZ;
+						if(SearchFlightField(this->ID, this->Target, &DestX, &DestY, &DestZ)){
+							this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
+						}else{
+							this->ToDoWait(1000);
+						}
+					}else if(Distance > 4){
+						this->ToDoGo(Target->posx, Target->posy, Target->posz, false, Distance - 4);
+					}else{
+						int DestX = this->posx;
+						int DestY = this->posy;
+						int DestZ = this->posz;
+						switch(rand() % 5){
+							case 0: DestX -= 1; break;
+							case 1: DestX += 1; break;
+							case 2: DestY -= 1; break;
+							case 3: DestY += 1; break;
+							case 4: break; // no step
+						}
+
+						int DestDistance = std::max<int>(
+								std::abs(Target->posx - DestX),
+								std::abs(Target->posy - DestY));
+						if(DestDistance == 4 && this->MovePossible(DestX, DestY, DestZ, true, false)){
+							this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
+						}
+
+						this->ToDoWait(1000);
+					}
+				}
+
+				if(this->State == ATTACKING || this->State == PANIC){
+					this->Rotate(Target);
+					if(this->Master != this->Target){
+						this->ToDoAttack();
+					}else{
+						error("TMonster::IdleStimulus: %s greift Master %u an (St=%d, T: %u).\n",
+								this->Name, this->Master, this->State, this->Target);
+					}
+				}else{
+					this->ToDoWait(1000);
+				}
+
+				this->ToDoStart();
+				return;
+			}
+		}
+	}catch(RESULT r){
+		this->Target = 0;
+		this->ToDoClear();
+		if(r == EXHAUSTED){
+			this->ToDoWait(1000);
+			this->ToDoStart();
+			return;
+		}
+	}
+
+	// TODO(fusion): This part is similar to `TNPC::IdleStimulus`. Perhaps there
+	// is a common function in `TNonplayer` that does this?
+	bool FoundDest = false;
+	int DestX, DestY, DestZ;
+	for(int i = 0; i < 10; i += 1){
+		DestX = this->posx;
+		DestY = this->posy;
+		DestZ = this->posz;
+		switch(rand() % 4){
+			case 0: DestX -= 1; break;
+			case 1: DestX += 1; break;
+			case 2: DestY -= 1; break;
+			case 3: DestY += 1; break;
+		}
+
+		if(this->MovePossible(DestX, DestY, DestZ, true, false)){
+			FoundDest = true;
+			break;
+		}
+	}
+
+	if(FoundDest){
+		try{
+			this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
+			this->ToDoWait(1000);
+			this->ToDoStart();
+		}catch(RESULT r){
+			error("TMonster::IdleStimulus: Exception %d.\n", r);
+		}
+	}else{
+		this->ToDoWait(1000);
+		this->ToDoStart();
+	}
+}
+
+void TMonster::CreatureMoveStimulus(uint32 CreatureID, int Type){
+	if(CreatureID == this->ID){
+		if(this->State == SLEEPING && Type != OBJECT_DELETED){
+			this->State = IDLE;
+			this->ToDoYield();
+		}
+		return;
+	}
+
+	if(this->State == SLEEPING && Type != OBJECT_DELETED){
+		TCreature *Creature = GetCreature(CreatureID);
+		if(Creature == NULL){
+			error("TMonster::CreatureMoveStimulus: Kreatur %u existiert nicht.\n", CreatureID);
+			return;
+		}
+
+		if(Creature->Type == NPC){
+			return;
+		}
+
+		if(Creature->Type == MONSTER && !((TMonster*)Creature)->IsPlayerControlled()){
+			return;
+		}
+
+		this->State = IDLE;
+		this->ToDoYield();
+	}
+
+	TCreature::CreatureMoveStimulus(CreatureID, Type);
+}
+
+bool TMonster::CanKickBoxes(void){
+	bool Result = RaceData[this->Race].KickBoxes;
+	if(!Result && this->Master != 0){
+		TCreature *Master = GetCreature(this->Master);
+		Result = (Master != NULL && Master->Type == MONSTER
+					&& ((TMonster*)Master)->CanKickBoxes());
+	}
+	return Result;
+}
+
+void TMonster::KickBoxes(Object Obj){
+	if(!Obj.exists()){
+		error("TMonster::KickBoxes: Übergebenes Objekt existiert nicht.\n");
+		return;
+	}
+
+	int ObjX, ObjY, ObjZ;
+	GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
+
+	try{
+		bool ObjMoved = false;
+		int OffsetX[4] = { 0,  0, -1,  1};
+		int OffsetY[4] = {-1,  1,  0,  0};
+		for(int i = 0; i < 4; i += 1){
+			int DestX = ObjX + OffsetX[i];
+			int DestY = ObjY + OffsetY[i];
+			int DestZ = ObjZ;
+			if(DestX == this->posx && DestY == this->posy){
+				continue;
+			}
+
+			if(CoordinateFlag(DestX, DestY, DestZ, BANK)
+			&& !CoordinateFlag(DestX, DestY, DestZ, UNPASS)){
+				Object Dest = GetMapContainer(DestX, DestY, DestZ);
+				::Move(this->ID, Obj, Dest, -1, false, NONE);
+				ObjMoved = true;
+				break;
+			}
+		}
+
+		if(!ObjMoved){
+			GraphicalEffect(Obj, EFFECT_BLOCK_HIT);
+			Delete(Obj, -1);
+		}
+	}catch(RESULT r){
+		error("TMonster::KickBoxes: Exception %d, Objekt %d.\n",
+				r, Obj.getObjectType().TypeID);
+		error("# eigene Position: [%d,%d,%d] - Objektposition: [%d,%d,%d]\n",
+				this->posx, this->posy, this->posz, ObjX, ObjY, ObjZ);
+	}
+}
+
+bool TMonster::KickCreature(TCreature *Creature){
+	if(Creature == NULL){
+		error("TMonster::KickCreature: Übergebene Kreatur existiert nicht.\n");
+		return false;
+	}
+
+	if(Creature->Type != MONSTER){
+		error("TMonster::KickCreature: Zu verschiebende Kreatur ist kein Monster.\n");
+		return false;
+	}
+
+	print(3, "%s verschiebt %s.\n", this->Name, Creature->Name);
+
+	// TODO(fusion): Declare these here so they can be used within the catch
+	// block to print out what's on the last position we tried to move the
+	// creature to.
+	int DestX = Creature->posx;
+	int DestY = Creature->posy;
+	int DestZ = Creature->posz;
+	bool CreatureMoved = false;
+	try{
+		int OffsetX[4] = { 0,  0, -1,  1};
+		int OffsetY[4] = {-1,  1,  0,  0};
+		for(int i = 0; i < 4; i += 1){
+			DestX = Creature->posx + OffsetX[i];
+			DestY = Creature->posy + OffsetY[i];
+			if(DestX == this->posx && DestY == this->posy){
+				continue;
+			}
+
+			if(Creature->MovePossible(DestX, DestY, DestZ, true, false)
+					&& !CoordinateFlag(DestX, DestY, DestZ, AVOID)){
+				Object Dest = GetMapContainer(DestX, DestY, DestZ);
+				::Move(this->ID, Creature->CrObject, Dest, -1, false, NONE);
+				CreatureMoved = true;
+				break;
+			}
+		}
+
+		if(!CreatureMoved){
+			print(3, "Kein Platz zum Verschieben => Töten.\n");
+			GraphicalEffect(Creature->CrObject, EFFECT_BLOCK_HIT);
+			Creature->Combat.AddDamageToCombatList(this->ID,
+					Creature->Skills[SKILL_HITPOINTS]->Get());
+			Creature->Kill();
+		}
+	}catch(RESULT r){
+		error("TMonster::KickCreature: Exception %d, Kreatur %s.\n",
+				r, Creature->Name);
+		error("# eigene Position: [%d,%d,%d] - Hindernisposition: [%d,%d,%d]\n",
+				this->posx, this->posy, this->posz,
+				Creature->posx, Creature->posy, Creature->posz);
+
+		error("# Objekte auf Zielfeld [%d,%d,%d]:\n", DestX, DestY, DestZ);
+		Object Obj = GetFirstObject(DestX, DestY, DestZ);
+		while(Obj != NONE){
+			error("# %d\n", Obj.getObjectType().TypeID);
+			Obj = Obj.getNextObject();
+		}
+	}
+
+	return CreatureMoved;
+}
+
+void TMonster::Convince(TCreature *NewMaster){
+	if(NewMaster == NULL){
+		error("TMonster::Convince: NewMaster ist NULL.");
+		return;
+	}
+
+	if(this->Home != 0){
+		NotifyMonsterhomeOfDeath(this->Home);
+	}
+
+	this->Home = 0;
+	if(this->Master != 0){
+		TCreature *OldMaster = GetCreature(this->Master);
+		if(OldMaster != NULL){
+			OldMaster->SummonedCreatures -= 1;
+		}
+	}
+
+	this->Master = NewMaster->ID;
+	NewMaster->SummonedCreatures += 1;
+
+	this->ToDoClear();
+	this->ToDoWait(100);
+	this->ToDoStart();
+}
+
+void TMonster::SetTarget(TCreature *NewTarget){
+	if(NewTarget == NULL){
+		error("TMonster::SetTarget: NewTarget ist NULL.\n");
+		return;
+	}
+
+	if(this->Master == 0){
+		this->Target = NewTarget->ID;
+		this->Rotate(NewTarget);
+		this->ToDoYield();
+	}
+}
+
+bool TMonster::IsPlayerControlled(void){
+	bool Result = false;
+	if(this->Master != 0){
+		TCreature *Master = GetCreature(this->Master);
+		Result = (Master && Master->Type == PLAYER);
+	}
+	return Result;
+}
+
+bool TMonster::IsFleeing(void){
+	bool Result = false;
+	if(this->Master == 0){
+		int HitPoints = this->Skills[SKILL_HITPOINTS]->Get();
+		int FleeThreshold = RaceData[this->Race].FleeThreshold;
+		Result = HitPoints <= FleeThreshold;
+	}
+	return Result;
+}
+
+TCreature *CreateMonster(int Race, int x, int y, int z, int Home, uint32 MasterID, bool ShowEffect){
+	if(!IsRaceValid(Race)){
+		error("CreateMonster: Ungültige Rassennummer %d.\n", Race);
+		return NULL;
+	}
+
+	if(RaceData[Race].Name[0] == 0){
+		error("CreateMonster: Daten für Rasse %d nicht definiert.\n", Race);
+		return NULL;
+	}
+
+	SearchFreeField(&x, &y, &z, 2, 0, false);
+	TMonster *Monster = new TMonster(Race, x, y, z, Home, MasterID);
+	if(ShowEffect){
+		GraphicalEffect(x, y, z, EFFECT_ENERGY);
+	}
+	return Monster;
+}
+
+void ConvinceMonster(TCreature *Master, TCreature *Slave){
+	if(Master == NULL){
+		error("ConvinceMonster: Master existiert nicht.\n");
+		return;
+	}
+
+	if(Slave == NULL){
+		error("ConvinceMonster: Slave existiert nicht.\n");
+		return;
+	}
+
+	if(Slave->Type != MONSTER){
+		error("ConvinceMonster: Slave ist kein Monster.\n");
+		return;
+	}
+
+	((TMonster*)Slave)->Convince(Master);
+}
+
+void ChallengeMonster(TCreature *Challenger, TCreature *Monster){
+	if(Challenger == NULL){
+		error("ChallengeMonster: Herausforderer existiert nicht.\n");
+		return;
+	}
+
+	if(Monster == NULL){
+		error("ChallengeMonster: Monster existiert nicht.\n");
+		return;
+	}
+
+	if(Monster->Type != MONSTER){
+		error("ChallengeMonster: Monster ist kein Monster.\n");
+		return;
+	}
+
+	((TMonster*)Monster)->Target = Challenger->ID;
+	Monster->Rotate(Challenger);
+	Monster->ToDoYield();
+}
+
+// Initialization
+// =============================================================================
+void InitNPCs(void){
+	DIR *NpcDir = opendir(NPCPATH);
+	if(NpcDir == NULL){
+		error("InitNPCs: Unterverzeichnis %s nicht gefunden\n", NPCPATH);
+		throw "Cannot init NPCs";
+	}
+
+	char FileName[4096];
+	while(dirent *DirEntry = readdir(NpcDir)){
+		if(DirEntry->d_type != DT_REG){
+			continue;
+		}
+
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt == NULL || strcmp(FileExt, ".npc") != 0){
+			continue;
+		}
+
+		snprintf(FileName, sizeof(FileName), "%s/%s", NPCPATH, DirEntry->d_name);
+		new TNPC(FileName);
+	}
+
+	closedir(NpcDir);
+}
+
+void InitNonplayer(void){
+	print(1, "Initializing Nonplayers ...\n");
+	FirstFreeNonplayer = 0;
+	InitNPCs();
+	LoadMonsterhomes();
+}
+
+void ExitNonplayer(void){
+	while(FirstFreeNonplayer > 0){
+		// NOTE(fusion): Deleting a non player or any other creature will
+		// automatically remove it from its related creature lists.
+		TNonplayer *Nonplayer = *NonplayerList.at(0);
+		delete Nonplayer;
+	}
+
+	// TODO(fusion): For any reason `BehaviourNodeTable` was originally a
+	// pointer and it was deleted here. I doesn't really make a difference
+	// because we'd usually exit after calling this function but if we wanted
+	// to cleanup all memory, we'd need to add some `freeAll` method to the
+	// `store` container.
 }

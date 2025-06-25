@@ -26,6 +26,10 @@ struct TOutfit{
 		return this->OutfitID == Other.OutfitID
 			&& this->PackedData == Other.PackedData;
 	}
+
+	static constexpr TOutfit Invisible(void){
+		return TOutfit{};
+	}
 };
 
 struct TSkillData {
@@ -555,6 +559,23 @@ struct TCreature: TSkillBase {
 	void NotifyDelete(void);
 	void NotifyChangeInventory(void);
 
+	void Kill(void){
+		this->Skills[SKILL_HITPOINTS]->Set(0);
+		this->Death();
+	}
+
+	bool IsInvisible(void){
+		return this->Outfit == TOutfit::Invisible();
+	}
+
+	bool CanSeeFloor(int FloorZ){
+		if(this->posz <= 7){
+			return FloorZ <= 7;
+		}else{
+			return std::abs(this->posz - FloorZ) <= 2;
+		}
+	}
+
 	// VIRTUAL FUNCTIONS
 	// =================
 	virtual ~TCreature(void);															// VTABLE[ 0]
@@ -756,10 +777,23 @@ struct TMonsterhome {
 
 struct TMonster: TNonplayer {
 	TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID);
+	bool CanKickBoxes(void);
+	void KickBoxes(Object Obj);
+	bool KickCreature(TCreature *Creature);
+	void Convince(TCreature *NewMaster);
+	void SetTarget(TCreature *NewTarget);
+	bool IsPlayerControlled(void);
+	bool IsFleeing(void);
 
 	// VIRTUAL FUNCTIONS
 	// =================
 	~TMonster(void) override;
+	bool MovePossible(int x, int y, int z, bool Execute, bool Jump) override;
+	bool IsPeaceful(void) override;
+	uint32 GetMaster(void) override;
+	void DamageStimulus(uint32 AttackerID, int Damage, int DamageType) override;
+	void IdleStimulus(void) override;
+	void CreatureMoveStimulus(uint32 CreatureID, int Type) override;
 
 	// DATA
 	//TNonplayer super_TNonplayer;	// IMPLICIT
@@ -945,9 +979,17 @@ void LoadMonsterhomes(void);
 void ProcessMonsterhomes(void);
 void NotifyMonsterhomeOfDeath(int Nr);
 bool MonsterhomeInRange(int Nr, int x, int y, int z);
+
 void ChangeNPCState(TCreature *Npc, int NewState, bool Stimulus);
-void InitNonplayer();
-void ExitNonplayer();
+
+TCreature *CreateMonster(int Race, int x, int y, int z,
+		int Home, uint32 MasterID, bool ShowEffect);
+void ConvinceMonster(TCreature *Master, TCreature *Slave);
+void ChallengeMonster(TCreature *Challenger, TCreature *Monster);
+
+void InitNPCs(void);
+void InitNonplayer(void);
+void ExitNonplayer(void);
 
 // crplayer.cc
 // =============================================================================

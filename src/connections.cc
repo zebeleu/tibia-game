@@ -307,8 +307,7 @@ bool TConnection::IsVisible(int x, int y, int z){
 	int PlayerX, PlayerY, PlayerZ;
 	this->GetPosition(&PlayerX, &PlayerY, &PlayerZ);
 
-	// NOTE(fusion): The player can see only floors above ground when above
-	// ground, or two floors up and down when underground.
+	// TODO(fusion): Have a standalone version of `TCreature::CanSeeFloor`?
 	if(PlayerZ <= 7){
 		if(z > 7){
 			return false;
