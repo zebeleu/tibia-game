@@ -517,7 +517,7 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 						if(RemainingUses > 1){
 							Change(Obj, REMAININGUSES, RemainingUses - 1);
 						}else{
-							ObjectType WearOutType = ObjType.getAttribute(WEAROUTTARGET);
+							ObjectType WearOutType = (int)ObjType.getAttribute(WEAROUTTARGET);
 							Change(Obj, WearOutType, 0);
 						}
 					}catch(RESULT r){
@@ -736,11 +736,11 @@ int TCreature::Damage(TCreature *Attacker, int Damage, int DamageType){
 		if(Attacker != NULL){
 			SendMessage(this->Connection, TALK_STATUS_MESSAGE,
 					"You lose %d hitpoint%s due to an attack by %s.",
-					Damage, (Damage == 1 ? "" : "s"), Attacker->Name);
+					Damage, (Damage != 1 ? "s" : ""), Attacker->Name);
 		}else{
 			SendMessage(this->Connection, TALK_STATUS_MESSAGE,
 					"You lose %d hitpoint%s.",
-					Damage, (Damage == 1 ? "" : "s"));
+					Damage, (Damage != 1 ? "s" : ""));
 		}
 		SendPlayerData(this->Connection);
 	}
@@ -1052,12 +1052,12 @@ void ProcessCreatures(void){
 			continue;
 		}
 
-		// TODO(fusion): It is weird that we do check the connection all the time
-		// and most of the time it is redundant because functions will check if
-		// it's NULL before attempting anything.
-
-		int FoodInterval = Creature->Skills[SKILL_FED]->Get();
-		if(FoodInterval > 0 && (RoundNr % FoodInterval) == 0 && !Creature->IsDead
+		// TODO(fusion): I'm almost sure this is processing ITEM regen rather
+		// FOOD regen. It wouldn't make a lot of sense to have this plus what
+		// happens in `TSkillFed::Event` if we didn't consider things like the
+		// life ring, etc...
+		int RegenInterval = Creature->Skills[SKILL_FED]->Get();
+		if(RegenInterval > 0 && (RoundNr % RegenInterval) == 0 && !Creature->IsDead
 				&& !IsProtectionZone(Creature->posx, Creature->posy, Creature->posz)){
 			Creature->Skills[SKILL_HITPOINTS]->Change(1);
 			Creature->Skills[SKILL_MANA]->Change(4);
@@ -1701,13 +1701,19 @@ void LoadRaces(void){
 		throw "Cannot load races";
 	}
 
-	char FilePath[4096];
+	char FileName[4096];
 	while(dirent *DirEntry = readdir(MonsterDir)){
-		const char *FileExt = findLast(DirEntry->d_name, '.');
-		if(FileExt != NULL && strcmp(FileExt, ".mon") == 0){
-			snprintf(FilePath, sizeof(FilePath), "%s/%s", MONSTERPATH, DirEntry->d_name);
-			LoadRace(FilePath);
+		if(DirEntry->d_type != DT_REG){
+			continue;
 		}
+
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt == NULL || strcmp(FileExt, ".mon") != 0){
+			continue;
+		}
+
+		snprintf(FileName, sizeof(FileName), "%s/%s", MONSTERPATH, DirEntry->d_name);
+		LoadRace(FileName);
 	}
 
 	closedir(MonsterDir);
@@ -1929,44 +1935,49 @@ void LoadMonsterRaids(void){
 
 	char FileName[4096];
 	while(dirent *DirEntry = readdir(MonsterDir)){
+		if(DirEntry->d_type != DT_REG){
+			continue;
+		}
+
 		const char *FileExt = findLast(DirEntry->d_name, '.');
-		if(FileExt != NULL && strcmp(FileExt, ".evt") == 0){
-			snprintf(FileName, sizeof(FileName), "%s/%s", MONSTERPATH, DirEntry->d_name);
+		if(FileExt == NULL || strcmp(FileExt, ".evt") != 0){
+			continue;
+		}
 
-			bool BigRaid;
-			int Date, Interval, Duration;
-			LoadMonsterRaid(FileName, -1, &BigRaid, &Date, &Interval, &Duration);
-			print(1, "Raid %s: Date %d, Interval %d, Duration %d\n",
-					FileName, Date, Interval, Duration);
+		bool BigRaid;
+		int Date, Interval, Duration;
+		snprintf(FileName, sizeof(FileName), "%s/%s", MONSTERPATH, DirEntry->d_name);
+		LoadMonsterRaid(FileName, -1, &BigRaid, &Date, &Interval, &Duration);
+		print(1, "Raid %s: Date %d, Interval %d, Duration %d\n",
+				FileName, Date, Interval, Duration);
 
-			if(Date > 0){
-				if(Now <= Date && Date <= (Now + SecondsToReboot)){
-					int Start = RoundNr + (Date - Now);
-					LoadMonsterRaid(FileName, Start, NULL, NULL, NULL, NULL);
-					if(BigRaid){
-						BigRaidName[0] = 0;
-						BigRaidDuration = 0;
-						BigRaidTieBreaker = 100;
-					}
+		if(Date > 0){
+			if(Now <= Date && Date <= (Now + SecondsToReboot)){
+				int Start = RoundNr + (Date - Now);
+				LoadMonsterRaid(FileName, Start, NULL, NULL, NULL, NULL);
+				if(BigRaid){
+					BigRaidName[0] = 0;
+					BigRaidDuration = 0;
+					BigRaidTieBreaker = 100;
 				}
-			}else if(Duration <= SecondsToReboot){
-				// NOTE(fusion): `Interval` specifies an average raid interval
-				// in seconds. With this function being called at startup, usually
-				// after a reboot, we can expect `SecondsToReboot` to be close to
-				// a day very regularly. Meaning we can approximate the condition
-				// below to `random(1, AverageIntervalDays) == 1` which hopefully
-				// makes more sense.
-				if(random(0, Interval - 1) < SecondsToReboot){
-					if(!BigRaid){
-						int Start = RoundNr + random(0, SecondsToReboot - Duration);
-						LoadMonsterRaid(FileName, Start, NULL, NULL, NULL, NULL);
-					}else{
-						int TieBreaker = random(0, 99);
-						if(TieBreaker > BigRaidTieBreaker){
-							strcpy(BigRaidName, FileName);
-							BigRaidDuration = Duration;
-							BigRaidTieBreaker = TieBreaker;
-						}
+			}
+		}else if(Duration <= SecondsToReboot){
+			// NOTE(fusion): `Interval` specifies an average raid interval
+			// in seconds. With this function being called at startup, usually
+			// after a reboot, we can expect `SecondsToReboot` to be close to
+			// a day very regularly. Meaning we can approximate the condition
+			// below to `random(1, AverageIntervalDays) == 1` which hopefully
+			// makes more sense.
+			if(random(0, Interval - 1) < SecondsToReboot){
+				if(!BigRaid){
+					int Start = RoundNr + random(0, SecondsToReboot - Duration);
+					LoadMonsterRaid(FileName, Start, NULL, NULL, NULL, NULL);
+				}else{
+					int TieBreaker = random(0, 99);
+					if(TieBreaker > BigRaidTieBreaker){
+						strcpy(BigRaidName, FileName);
+						BigRaidDuration = Duration;
+						BigRaidTieBreaker = TieBreaker;
 					}
 				}
 			}

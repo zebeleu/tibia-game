@@ -55,35 +55,10 @@ struct THouse {
     int Help;
 };
 
-struct TDelayedMail {
-    ulong CharacterID;
-    int DepotNumber;
-    uchar *Packet;
-    int PacketSize;
-};
-
 struct THelpDepot {
     ulong CharacterID;
     struct Object Box;
     int DepotNr;
-};
-
-struct TMoveUseAction {
-    enum ActionType Action;
-    int Parameters[5];
-};
-
-struct TMoveUseRule {
-    int FirstCondition;
-    int LastCondition;
-    int FirstAction;
-    int LastAction;
-};
-
-struct TMoveUseCondition {
-    enum ModifierType Modifier;
-    enum ConditionType Condition;
-    int Parameters[5];
 };
 
 struct THouseArea {
@@ -175,11 +150,6 @@ struct TKillStatisticsOrderData {
     char *RaceNames;
     int *KilledPlayers;
     int *KilledCreatures;
-};
-
-struct TMoveUseDatabase {
-    struct vector<TMoveUseRule> Rules;
-    int NumberOfRules;
 };
 
 struct TReaderThreadOrder {

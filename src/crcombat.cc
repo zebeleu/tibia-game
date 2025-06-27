@@ -271,7 +271,7 @@ int TCombat::GetDefendDamage(void){
 			if(RemainingUses > 1){
 				Change(Shield, REMAININGUSES, RemainingUses - 1);
 			}else{
-				ObjectType WearOutType = ShieldType.getAttribute(WEAROUTTARGET);
+				ObjectType WearOutType = (int)ShieldType.getAttribute(WEAROUTTARGET);
 				Change(Shield, WearOutType, 0);
 				// TODO(fusion): Probably just check anyways, to be sure.
 				if(!Shield.exists() || !WearOutType.getFlag(SHIELD)){
@@ -684,7 +684,7 @@ void TCombat::CloseAttack(TCreature *Target){
 			if(RemainingUses > 1){
 				Change(Close, REMAININGUSES, RemainingUses - 1);
 			}else{
-				ObjectType WearOutType = CloseType.getAttribute(WEAROUTTARGET);
+				ObjectType WearOutType = (int)CloseType.getAttribute(WEAROUTTARGET);
 				Change(Close, WearOutType, 0);
 				this->CheckCombatValues();
 			}

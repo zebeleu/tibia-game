@@ -760,19 +760,23 @@ void DeleteSwappedSectors(void){
 		return;
 	}
 
-	char FilePath[4096];
+	char FileName[4096];
 	while(dirent *DirEntry = readdir(SwapDir)){
-		if(DirEntry->d_type == DT_REG){
-			// NOTE(fusion): `DirEntry->d_name` will only contain the filename
-			// so we need to assemble the actual file path (relative in this
-			// case) to properly unlink it. Windows has the same behavior with
-			// its `FindFirstFile`/`FindNextFile` API.
-			const char *FileExt = findLast(DirEntry->d_name, '.');
-			if(FileExt != NULL && strcmp(FileExt, ".swp") == 0){
-				snprintf(FilePath, sizeof(FilePath), "%s/%s", SAVEPATH, DirEntry->d_name);
-				unlink(FilePath);
-			}
+		if(DirEntry->d_type != DT_REG){
+			continue;
 		}
+
+		// NOTE(fusion): `DirEntry->d_name` will only contain the filename
+		// so we need to assemble the actual file path (relative in this
+		// case) to properly unlink it. Windows has the same behavior with
+		// its `FindFirstFile`/`FindNextFile` API.
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt == NULL || strcmp(FileExt, ".swp") != 0){
+			continue;
+		}
+
+		snprintf(FileName, sizeof(FileName), "%s/%s", SAVEPATH, DirEntry->d_name);
+		unlink(FileName);
 	}
 
 	closedir(SwapDir);
@@ -1020,19 +1024,23 @@ void LoadMap(void){
 	ObjectCounter = 0;
 
 	int SectorCounter = 0;
-	char FilePath[4096];
+	char FileName[4096];
 	while(dirent *DirEntry = readdir(MapDir)){
-		if(DirEntry->d_type == DT_REG){
-			// NOTE(fusion): See note in `DeleteSwappedSectors`.
-			const char *FileExt = findLast(DirEntry->d_name, '.');
-			if(FileExt != NULL && strcmp(FileExt, ".sec") == 0){
-				int SectorX, SectorY, SectorZ;
-				if(sscanf(DirEntry->d_name, "%d-%d-%d.sec", &SectorX, &SectorY, &SectorZ) == 3){
-					snprintf(FilePath, sizeof(FilePath), "%s/%s", SAVEPATH, DirEntry->d_name);
-					LoadSector(FilePath, SectorX, SectorY, SectorZ);
-					SectorCounter += 1;
-				}
-			}
+		if(DirEntry->d_type != DT_REG){
+			continue;
+		}
+
+		// NOTE(fusion): See note in `DeleteSwappedSectors`.
+		const char *FileExt = findLast(DirEntry->d_name, '.');
+		if(FileExt == NULL || strcmp(FileExt, ".sec") != 0){
+			continue;
+		}
+
+		int SectorX, SectorY, SectorZ;
+		if(sscanf(DirEntry->d_name, "%d-%d-%d.sec", &SectorX, &SectorY, &SectorZ) == 3){
+			snprintf(FileName, sizeof(FileName), "%s/%s", SAVEPATH, DirEntry->d_name);
+			LoadSector(FileName, SectorX, SectorY, SectorZ);
+			SectorCounter += 1;
 		}
 	}
 

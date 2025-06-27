@@ -179,6 +179,9 @@ uint32 GetObjectCreatureID(Object Obj){
 	return CreatureID;
 }
 
+// TODO(fusion): I'm not sure about this one. Objects inside containers would
+// also return the body position of the container even if it isn't activelly
+// equipped.
 int GetObjectBodyPosition(Object Obj){
 	if(!Obj.exists()){
 		error("GetObjectBodyPosition: Übergebenes Objekt existiert nicht.\n");

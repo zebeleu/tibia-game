@@ -2561,7 +2561,7 @@ void ChangeData(TCreature *Actor, const char *Param){
 		}
 
 		if(Attribute != -1){
-			Change(Obj, Attribute, Value);
+			Change(Obj, (INSTANCEATTRIBUTE)Attribute, Value);
 			GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_GREEN);
 		}else{
 			SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,

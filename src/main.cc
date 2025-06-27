@@ -4,6 +4,7 @@
 #include "info.hh"
 #include "map.hh"
 #include "magic.hh"
+#include "moveuse.hh"
 #include "objects.hh"
 #include "operate.hh"
 #include "query.hh"
@@ -227,7 +228,7 @@ static void InitAll(void){
 		InitObjects();
 		InitMap();
 		InitInfo();
-		//InitMoveUse();
+		InitMoveUse();
 		InitMagic();
 		InitCr();
 		//InitHouses();
@@ -246,7 +247,7 @@ static void ExitAll(void){
 	ExitTime();
 	ExitCr();
 	ExitMagic();
-	//ExitMoveUse();
+	ExitMoveUse();
 	ExitInfo();
 	//ExitHouses();
 	ExitMap(SaveMapOn);

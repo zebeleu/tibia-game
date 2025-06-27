@@ -1747,7 +1747,7 @@ void TNPC::IdleStimulus(void){
 				return;
 			}
 
-			bool FoundDest = false;
+			bool DestFound = false;
 			int DestX, DestY, DestZ;
 			for(int i = 0; i < 10; i += 1){
 				DestX = this->posx;
@@ -1761,12 +1761,12 @@ void TNPC::IdleStimulus(void){
 				}
 
 				if(this->MovePossible(DestX, DestY, DestZ, true, false)){
-					FoundDest = true;
+					DestFound = true;
 					break;
 				}
 			}
 
-			if(FoundDest){
+			if(DestFound){
 				try{
 					this->ToDoGo(DestX, DestY, DestZ, true, INT_MAX);
 					this->ToDoWait(2000);

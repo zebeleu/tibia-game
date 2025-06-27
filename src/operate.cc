@@ -1,6 +1,7 @@
 #include "operate.hh"
 #include "config.hh"
 #include "info.hh"
+#include "moveuse.hh"
 
 #include "stubs.hh"
 
@@ -2107,15 +2108,12 @@ void Look(uint32 CreatureID, Object Obj){
 		if(CreatureID == 0 || ObjectInRange(CreatureID, Obj, 1)){
 			if(ObjType.getFlag(TAKE) && GetWeight(Obj, -1) > 0){
 				int ObjWeight = GetCompleteWeight(Obj);
-				if(ObjType.getFlag(CUMULATIVE)
+				bool Multiple = ObjType.getFlag(CUMULATIVE)
 						&& Obj.getAttribute(AMOUNT) > 1
-						&& IsCountable(ObjType.getName(1))){
-					snprintf(Help, sizeof(Help), "\nThey weigh %d.%02d oz.",
-							ObjWeight / 100, ObjWeight % 100);
-				}else{
-					snprintf(Help, sizeof(Help), "\nIt weighs %d.%02d oz.",
-							ObjWeight / 100, ObjWeight % 100);
-				}
+						&& IsCountable(ObjType.getName(1));
+				snprintf(Help, sizeof(Help), "\n%s %d.%02d oz.",
+						(Multiple ? "They weigh" : "It weighs"),
+						(ObjWeight / 100), (ObjWeight % 100));
 				strcat(Description, Help);
 			}
 
@@ -2570,7 +2568,7 @@ void Turn(uint32 CreatureID, Object Obj){
 		throw NOTTURNABLE;
 	}
 
-	ObjectType RotateTarget = ObjType.getAttribute(ROTATETARGET);
+	ObjectType RotateTarget = (int)ObjType.getAttribute(ROTATETARGET);
 	if(RotateTarget == ObjType){
 		error("Turn: Objekt %d wird durch Drehen zerstört.\n", ObjType.TypeID);
 	}
@@ -2753,7 +2751,7 @@ void ProcessCronSystem(void){
 		}
 
 		ObjectType ObjType = Obj.getObjectType();
-		ObjectType ExpireTarget = ObjType.getAttribute(EXPIRETARGET);
+		ObjectType ExpireTarget = (int)ObjType.getAttribute(EXPIRETARGET);
 		if(ObjType.getFlag(CONTAINER)){
 			int Remainder = 0;
 			if(!ExpireTarget.isMapContainer() && ExpireTarget.getFlag(CONTAINER)){

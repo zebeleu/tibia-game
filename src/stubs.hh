@@ -31,11 +31,14 @@ extern const char *GetHouseName(uint16 HouseID);
 extern const char *GetHouseOwner(uint16 HouseID);
 extern void InitLog(const char *ProtocolName);
 extern bool IsInvited(uint16 HouseID, TPlayer *Player, int TimeStamp);
+extern bool IsOwner(uint16 HouseID, TPlayer *Player);
 extern void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest);
 extern void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames, int *KilledPlayers, int *KilledCreatures);
+extern void LoadCharacterOrder(uint32 CharacterID);
 extern void LoadSectorOrder(int SectorX, int SectorY, int SectorZ);
 extern void Log(const char *ProtocolName, const char *Text, ...) ATTR_PRINTF(2, 3);
 extern void LogoutOrder(TPlayer *Player);
+extern bool MayOpenDoor(Object Door, TPlayer *Player);
 extern void PrepareHouseCleanup(void);
 extern void FinishHouseCleanup(void);
 extern void PlayerlistOrder(int NumberOfPlayers, char *PlayerNames, int *PlayerLevels, int *PlayerProfessions);
@@ -49,28 +52,8 @@ extern void SavePlayerData(TPlayerData *Slot);
 extern bool LoadPlayerData(TPlayerData *Slot);
 extern bool PlayerDataExists(uint32 CharacterID);
 extern void SavePlayerDataOrder(void);
-extern void SendMails(TPlayerData *PlayerData);
 extern void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer);
 extern void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer);
-
-// moveuse.cc
-extern void UseContainer(uint32 CreatureID, Object Con, uint8 ContainerNr);
-extern void UseChest(uint32 CreatureID, Object Chest);
-extern void UseLiquidContainer(uint32 CreatureID, Object Obj, Object Dest);
-extern void UseFood(uint32 CreatureID, Object Obj);
-extern void UseTextObject(uint32 CreatureID, Object Obj);
-extern void UseAnnouncer(uint32 CreatureID, Object Obj);
-extern void UseKeyDoor(uint32 CreatureID, Object Key, Object Door);
-extern void UseNameDoor(uint32 CreatureID, Object Door);
-extern void UseLevelDoor(uint32 CreatureID, Object Door);
-extern void UseQuestDoor(uint32 CreatureID, Object Door);
-extern void UseWeapon(uint32 CreatureID, Object Weapon, Object Target);
-extern void UseChangeObject(uint32 CreatureID, Object Obj);
-extern void UseObject(uint32 CreatureID, Object Obj);
-extern void UseObjects(uint32 CreatureID, Object Obj1, Object Obj2);
-extern void MovementEvent(Object Obj, Object Start, Object Dest);
-extern void CollisionEvent(Object Obj, Object Dest);
-extern void SeparationEvent(Object Obj, Object Start);
 
 #endif //TIBIA_STUBS_HH_

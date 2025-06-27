@@ -1,6 +1,7 @@
 #include "cr.hh"
 #include "config.hh"
 #include "info.hh"
+#include "moveuse.hh"
 #include "operate.hh"
 #include "query.hh"
 #include "threads.hh"
