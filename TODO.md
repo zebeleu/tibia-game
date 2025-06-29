@@ -1,5 +1,4 @@
 ## TODO NEXT
-- HOUSES.CC			<- GAME
 - QUERY.CC
 - READER.CC
 - WRITER.CC
@@ -9,7 +8,8 @@
 - The map container uses type id zero but it seems to also be used as a "no type"
   id which makes me want to add some `isNone()`, `isNull()`, `isVoid()` check to
   `ObjectType` to be used as an alias when pertinent.
-- Make some `TNonplayer` random step function? One version that does a random step and another that does a random step keeping some distance from a certain position.
+- Make some `TNonplayer` random step function? One version that does a random step
+  and another that does a random step keeping some distance from a certain position.
 
 - I realized that `Change` with an `ObjectType` parameter was being called where
   the version with `INSTANCEATTRIBUTE` parameter was expected due to `ObjectType`
@@ -17,7 +17,8 @@
   all converting constructors explicit to avoid these types of errors, although
   there aren't that many function overloads.
 
-- Define a few constants like `MAX_NAME_LENGTH`, `MAX_SKILLS`, and `MAX_OPEN_CONTAINERS` instead of relying on `NARRAY`.
+- Define a few constants like `MAX_NAME_LENGTH`, `MAX_SKILLS`, and `MAX_OPEN_CONTAINERS`
+  instead of relying on `NARRAY`.
 
 ## Stack allocations
 Any functions that use `alloca` or some other form of dynamic stack allocations will cause decompiled functions to be an absolute mess. It usually shows up in the decompiled code as both a size computation like `-(VAR + CONST & 0xfffffff0)`, followed by some assignment. It doesn't make total sense without looking at the disassembly. I've encountered ~30 such computations and expect the functions containing them to be amongt the most challenging/annoying to be properly decompiled.

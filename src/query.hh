@@ -20,6 +20,29 @@ struct TQueryManagerConnection{
 			char (*BuddyNames)[30], uint8 *Rights, bool *PremiumAccountActivated);
 	void decrementIsOnline(uint32 CharacterID);
 
+	int insertHouses(int NumberOfHouses, uint16 *HouseIDs, char **Names,
+			int *Rents, char **Descriptions, int *Sizes, int *PositionsX,
+			int *PositionsY, int *PositionsZ, char (*Towns)[30], bool *Guildhouses);
+
+	int finishAuctions(int *NumberOfAuctions, uint16 *HouseIDs,
+			uint32 *CharacterIDs, char (*CharacterNames)[30], int *Bids);
+	int excludeFromAuctions(uint32 CharacterIDs, bool Banish);
+
+	int transferHouses(int *NumberOfTransfers, uint16 *HouseIDs,
+			uint32 *NewOwnerIDs, char (*NewOwnerNames) [30], int *Prices);
+	int cancelHouseTransfer(uint16 HouseID);
+	int evictFreeAccounts(int *NumberOfEvictions, uint16 *HouseIDs, uint32 *OwnerIDs);
+	int evictDeletedCharacters(int *NumberOfEvictions, uint16 *HouseIDs);
+	int evictExGuildleaders(int NumberOfGuildhouses, int *NumberOfEvictions,
+			uint16 *HouseIDs, uint32 *Guildleaders);
+	int deleteHouseOwner(uint16 HouseID);
+
+	int getAuctions(int *NumberOfAuctions, uint16 *HouseIDs);
+	int startAuction(uint16 HouseID);
+	int getHouseOwners(int *NumberOfHouses, uint16 *HouseIDs,
+			uint32 *OwnerIDs, char (*OwnerNames)[30], int *PaidUntils);
+	int insertHouseOwner(uint16 HouseID, uint32 OwnerID, int PaidUntil);
+	int updateHouseOwner(uint16 HouseID, uint32 OwnerID, int PaidUntil);
 
 	bool isConnected(void){
 		return this->Socket >= 0;

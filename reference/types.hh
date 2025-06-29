@@ -25,48 +25,6 @@ struct TPreparedQuery {
     char *Name;
 };
 
-struct THouseGuest {
-    char Name[60];
-};
-
-struct THouse {
-    ushort ID;
-    char Name[50];
-    char Description[500];
-    int Size;
-    ulong Rent;
-    int DepotNr;
-    bool NoAuction;
-    bool GuildHouse;
-    int ExitX;
-    int ExitY;
-    int ExitZ;
-    int CenterX;
-    int CenterY;
-    int CenterZ;
-    ulong OwnerID;
-    char OwnerName[30];
-    int LastTransition;
-    int PaidUntil;
-    struct vector<THouseGuest> Subowner;
-    int Subowners;
-    struct vector<THouseGuest> Guest;
-    int Guests;
-    int Help;
-};
-
-struct THelpDepot {
-    ulong CharacterID;
-    struct Object Box;
-    int DepotNr;
-};
-
-struct THouseArea {
-    ushort ID;
-    int SQMPrice;
-    int DepotNr;
-};
-
 struct TDirectReplyData {
     ulong CharacterID;
     char Message[100];

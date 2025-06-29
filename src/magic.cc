@@ -1426,7 +1426,7 @@ void Teleport(TCreature *Actor, const char *Param){
 	int DestX = Actor->posx;
 	int DestY = Actor->posy;
 	int DestZ = Actor->posz;
-	uint16 HouseID = HOUSEID_ANY;
+	uint16 HouseID = 0xFFFF; // NOTE(fusion): See `SearchFreeField`.
 	int MDGoStrength = Actor->Skills[SKILL_GO_STRENGTH]->MDAct;
 
 	if(stricmp(Param, "up") == 0){

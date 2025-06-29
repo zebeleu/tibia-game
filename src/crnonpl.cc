@@ -1856,9 +1856,9 @@ void TNPC::GiveTo(ObjectType Type, int Amount){
 
 	if(Type.getFlag(CUMULATIVE)){
 		while(Amount > 0){
-			int StackSize = std::min<int>(Amount, 100);
-			CreateAtCreature(this->Interlocutor, Type, StackSize);
-			Amount -= StackSize;
+			int StackAmount = std::min<int>(Amount, 100);
+			CreateAtCreature(this->Interlocutor, Type, StackAmount);
+			Amount -= StackAmount;
 		}
 	}else{
 		while(Amount > 0){
@@ -1890,9 +1890,10 @@ void TNPC::GetMoney(int Amount){
 	int Gold     = CountInventoryObjects(this->Interlocutor, GetSpecialObject(MONEY_ONE), 0);
 	CalculateChange(Amount, &Gold, &Platinum, &Crystal);
 
-	ASSERT(Crystal >= 0);
-	if(Crystal > 0){
-		this->GetFrom(GetSpecialObject(MONEY_TENTHOUSAND), Crystal);
+	if(Gold > 0){
+		this->GetFrom(GetSpecialObject(MONEY_ONE), Gold);
+	}else if(Gold < 0){
+		this->GiveTo(GetSpecialObject(MONEY_ONE), -Gold);
 	}
 
 	if(Platinum > 0){
@@ -1901,10 +1902,9 @@ void TNPC::GetMoney(int Amount){
 		this->GiveTo(GetSpecialObject(MONEY_HUNDRED), -Platinum);
 	}
 
-	if(Gold > 0){
-		this->GetFrom(GetSpecialObject(MONEY_ONE), Gold);
-	}else if(Gold < 0){
-		this->GiveTo(GetSpecialObject(MONEY_ONE), -Gold);
+	ASSERT(Crystal >= 0);
+	if(Crystal > 0){
+		this->GetFrom(GetSpecialObject(MONEY_TENTHOUSAND), Crystal);
 	}
 }
 

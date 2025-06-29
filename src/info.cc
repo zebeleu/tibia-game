@@ -777,9 +777,8 @@ bool SearchFreeField(int *x, int *y, int *z, int Distance, uint16 HouseID, bool 
 		}
 
 		if(MovePossible){
-			if(HouseID == HOUSEID_ANY
-					|| !IsHouse(FieldX, FieldY, FieldZ)
-					|| GetHouseID(FieldX, FieldY, FieldZ) == HouseID){
+			if(HouseID == 0xFFFF || !IsHouse(FieldX, FieldY, FieldZ)
+			|| (HouseID != 0 && GetHouseID(FieldX, FieldY, FieldZ) == HouseID)){
 				*x = FieldX;
 				*y = FieldY;
 				return true;
@@ -831,7 +830,7 @@ static bool LoginPossible(int x, int y, int z, uint16 HouseID, bool Player){
 		return false;
 	}
 
-	if(IsHouse(x, y, z) && GetHouseID(x, y, z) != HouseID){
+	if(IsHouse(x, y, z) && (HouseID == 0 || GetHouseID(x, y, z) != HouseID)){
 		return false;
 	}
 
@@ -938,7 +937,7 @@ bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player){
 			int FieldX = *x + OffsetX;
 			int FieldY = *y + OffsetY;
 			int FieldZ = *z;
-			if(IsHouse(FieldX, FieldY, FieldZ) && GetHouseID(FieldX, FieldY, FieldZ) != HouseID){
+			if(IsHouse(FieldX, FieldY, FieldZ) && (HouseID == 0 || GetHouseID(FieldX, FieldY, FieldZ) != HouseID)){
 				continue;
 			}
 

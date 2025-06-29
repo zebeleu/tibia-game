@@ -268,6 +268,12 @@ enum GAMESTATE: int {
 	GAME_ENDING		= 3,
 };
 
+enum HouseList: uint8 {
+	GUESTLIST		= 1,
+	SUBOWNERLIST	= 2,
+	DOORLIST		= 3,
+};
+
 enum INSTANCEATTRIBUTE: int {
 	CONTENT						= 0,
 	CHESTQUESTNUMBER			= 1,

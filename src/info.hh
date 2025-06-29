@@ -4,14 +4,6 @@
 #include "common.hh"
 #include "map.hh"
 
-// TODO(fusion): Probably move to `houses.hh` when we implement it?
-constexpr uint16 HOUSEID_ANY = 0xFFFF;
-enum HouseList: uint8 {
-	GUESTLIST = 1,
-	SUBOWNERLIST = 2,
-	DOORLIST = 3,
-};
-
 const char *GetLiquidName(int LiquidType);
 uint8 GetLiquidColor(int LiquidType);
 const char *GetName(Object Obj);
