@@ -1,5 +1,6 @@
 #include "cr.hh"
 #include "config.hh"
+#include "houses.hh"
 #include "info.hh"
 #include "operate.hh"
 

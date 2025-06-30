@@ -4,8 +4,7 @@
 #include "info.hh"
 #include "moveuse.hh"
 #include "query.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 static vector<THelpDepot> HelpDepot(0, 9, 10);
 static int HelpDepots;
@@ -1904,6 +1903,6 @@ void InitHouses(void){
 	delete QueryManagerConnection;
 }
 
-void SaveHouses(void){
+void ExitHouses(void){
 	SaveOwners();
 }

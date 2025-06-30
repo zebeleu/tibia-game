@@ -2,8 +2,7 @@
 #include "cr.hh"
 #include "info.hh"
 #include "threads.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>

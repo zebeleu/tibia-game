@@ -1,10 +1,12 @@
 #include "cr.hh"
 #include "config.hh"
+#include "houses.hh"
 #include "info.hh"
 #include "moveuse.hh"
 #include "operate.hh"
 #include "query.hh"
 #include "threads.hh"
+#include "writer.hh"
 
 #include "stubs.hh"
 

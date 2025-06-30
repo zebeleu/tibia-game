@@ -1,9 +1,9 @@
 #include "magic.hh"
 #include "config.hh"
+#include "houses.hh"
 #include "info.hh"
 #include "operate.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 #include <fstream>
 #include <sstream>

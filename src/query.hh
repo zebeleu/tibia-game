@@ -18,7 +18,34 @@ struct TQueryManagerConnection{
 			bool GamemasterRequired, uint32 *CharacterID, int *Sex, char *Guild,
 			char *Rank, char *Title, int *NumberOfBuddies, uint32 *BuddyIDs,
 			char (*BuddyNames)[30], uint8 *Rights, bool *PremiumAccountActivated);
-	void decrementIsOnline(uint32 CharacterID);
+	int logoutGame(uint32 CharacterID, int Level, const char *Profession,
+			const char *Residence, time_t LastLoginTime, int TutorActivities);
+	int createPlayerlist(int NumberOfPlayers, const char **Names, int *Levels,
+			const char (*Professions)[30], bool *NewRecord);
+	int decrementIsOnline(uint32 CharacterID);
+	int clearIsOnline(int *NumberOfAffectedPlayers);
+	int addBuddy(uint32 AccountID, uint32 BuddyID);
+	int removeBuddy(uint32 AccountID, uint32 BuddyID);
+
+	int logKilledCreatures(int NumberOfRaces, const char **Names,
+			int *KilledPlayers,int *KilledCreatures);
+
+	int logCharacterDeath(uint32 CharacterID, int Level, uint32 OffenderID,
+			const char *Remark, bool Unjustified, time_t Time);
+
+	int setNotation(uint32 GamemasterID, const char *PlayerName, const char *IPAddress,
+			const char *Reason, const char *Comment, uint32 *BanishmentID);
+	int setNamelock(uint32 GamemasterID, const char *PlayerName, const char *IPAddress,
+			const char *Reason, const char *Comment);
+	int banishAccount(uint32 GamemasterID, const char *PlayerName, const char *IPAddress,
+			const char *Reason, const char *Comment, bool *FinalWarning, int *Days,
+			uint32 *BanishmentID);
+	int reportStatement(uint32 ReporterID, const char *PlayerName, const char *Reason,
+			const char *Comment, uint32 BanishmentID, uint32 StatementID, int NumberOfStatements,
+			uint32 *StatementIDs, int *TimeStamps, uint32 *CharacterIDs, char (*Channels)[30],
+			char (*Texts)[256]);
+	int banishIPAddress(uint32 GamemasterID, const char *PlayerName, const char *IPAddress,
+			const char *Reason, const char *Comment);
 
 	int insertHouses(int NumberOfHouses, uint16 *HouseIDs, char **Names,
 			int *Rents, char **Descriptions, int *Sizes, int *PositionsX,

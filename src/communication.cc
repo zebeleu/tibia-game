@@ -5,8 +5,7 @@
 #include "crypto.hh"
 #include "query.hh"
 #include "threads.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 #include <arpa/inet.h>
 #include <fcntl.h>

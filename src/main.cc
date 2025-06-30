@@ -1,6 +1,7 @@
 #include "common.hh"
 #include "communication.hh"
 #include "config.hh"
+#include "houses.hh"
 #include "info.hh"
 #include "map.hh"
 #include "magic.hh"
@@ -8,6 +9,7 @@
 #include "objects.hh"
 #include "operate.hh"
 #include "query.hh"
+#include "writer.hh"
 
 #include "stubs.hh"
 
@@ -217,13 +219,13 @@ static void InitAll(void){
 		LoadWorldConfig();
 		InitSHM(!BeADaemon);
 		LockGame();
-		//InitLog("game");
+		InitLog("game");
 		srand(time(NULL));
 		InitSignalHandler();
 		InitConnections();
 		InitCommunication();
 		InitStrings();
-		//InitWriter();
+		InitWriter();
 		//InitReader();
 		InitObjects();
 		InitMap();
@@ -231,7 +233,7 @@ static void InitAll(void){
 		InitMoveUse();
 		InitMagic();
 		InitCr();
-		//InitHouses();
+		InitHouses();
 		InitTime();
 		ApplyPatches();
 	}catch(const char *str){
@@ -249,11 +251,11 @@ static void ExitAll(void){
 	ExitMagic();
 	ExitMoveUse();
 	ExitInfo();
-	//ExitHouses();
+	ExitHouses();
 	ExitMap(SaveMapOn);
 	ExitObjects();
 	//ExitReader();
-	//ExitWriter();
+	ExitWriter();
 	ExitStrings();
 	ExitCommunication();
 	ExitConnections();

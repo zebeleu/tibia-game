@@ -3,7 +3,8 @@
 
 #include "common.hh"
 #include "connections.hh"
-#include "cr.hh"
+
+struct TPlayerData;
 
 struct TWaitinglistEntry {
     TWaitinglistEntry *Next;

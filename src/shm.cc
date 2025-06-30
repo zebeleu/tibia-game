@@ -2,8 +2,7 @@
 #include "config.hh"
 #include "enums.hh"
 #include "threads.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 #include <sys/shm.h>
 

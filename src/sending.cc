@@ -2,9 +2,9 @@
 #include "config.hh"
 #include "cr.hh"
 #include "info.hh"
+#include "magic.hh"
 #include "map.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 #include <signal.h>
 

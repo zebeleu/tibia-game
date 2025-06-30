@@ -1,7 +1,6 @@
 #include "info.hh"
 #include "cr.hh"
-
-#include "stubs.hh"
+#include "magic.hh"
 
 const char *GetLiquidName(int LiquidType){
 	const char *LiquidName;

@@ -3,6 +3,7 @@
 
 #include "common.hh"
 #include "cr.hh"
+#include "map.hh"
 
 enum : int {
 	FIELD_TYPE_FIRE = 1,

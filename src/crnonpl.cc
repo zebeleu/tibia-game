@@ -2,9 +2,9 @@
 #include "config.hh"
 #include "containers.hh"
 #include "info.hh"
+#include "magic.hh"
 #include "operate.hh"
-
-#include "stubs.hh"
+#include "writer.hh"
 
 #include <dirent.h>
 

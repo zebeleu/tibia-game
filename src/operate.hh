@@ -97,12 +97,12 @@ struct TListener {
 };
 
 struct TReportedStatement {
-    uint32 StatementID;
+	uint32 StatementID;
 	int TimeStamp;
-    uint32 CharacterID;
-    int Mode;
-    int Channel;
-    char Text[256];
+	uint32 CharacterID;
+	int Mode;
+	int Channel;
+	char Text[256];
 };
 
 void AnnounceMovingCreature(uint32 CreatureID, Object Con);

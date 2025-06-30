@@ -3,10 +3,12 @@
 
 #include "common.hh"
 #include "containers.hh"
-#include "cr.hh"
 #include "map.hh"
 
 #define MAX_HOUSE_GUEST_NAME 60
+
+struct TPlayer;
+struct TPlayerData;
 
 struct THelpDepot {
 	uint32 CharacterID;
@@ -99,6 +101,6 @@ void LoadOwners(void);
 void SaveOwners(void);
 void ProcessHouses(void);
 void InitHouses(void);
-void SaveHouses(void);
+void ExitHouses(void);
 
 #endif //TIBIA_HOUSES_HH_

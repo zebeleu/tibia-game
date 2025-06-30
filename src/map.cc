@@ -2,6 +2,7 @@
 #include "containers.hh"
 #include "config.hh"
 #include "enums.hh"
+#include "houses.hh"
 #include "script.hh"
 
 #include "stubs.hh"

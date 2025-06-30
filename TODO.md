@@ -1,8 +1,7 @@
 ## TODO NEXT
-- QUERY.CC
 - READER.CC
-- WRITER.CC
 - DBFUNCS.CC
+- QUERY.CC
 
 - Include `x == 0xFFFF` inside `CheckVisibility`?
 - The map container uses type id zero but it seems to also be used as a "no type"
@@ -21,7 +20,7 @@
   instead of relying on `NARRAY`.
 
 ## Stack allocations
-Any functions that use `alloca` or some other form of dynamic stack allocations will cause decompiled functions to be an absolute mess. It usually shows up in the decompiled code as both a size computation like `-(VAR + CONST & 0xfffffff0)`, followed by some assignment. It doesn't make total sense without looking at the disassembly. I've encountered ~30 such computations and expect the functions containing them to be amongt the most challenging/annoying to be properly decompiled.
+Any functions that use `alloca` or some other form of dynamic stack allocations will cause it to be an absolute mess. It usually shows up in the decompiled code as both a size computation like `-(VAR + CONST & 0xfffffff0)`, followed by some assignment. It doesn't make total sense without looking at the disassembly. I've encountered ~30 such computations and expect the functions containing them to be amongt the most challenging/annoying to be properly decompiled.
 
 ## Exceptions
 It's absolute hell.

@@ -1,6 +1,8 @@
 #include "operate.hh"
 #include "config.hh"
+#include "houses.hh"
 #include "info.hh"
+#include "magic.hh"
 #include "moveuse.hh"
 
 #include "stubs.hh"
