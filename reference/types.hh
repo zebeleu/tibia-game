@@ -38,20 +38,3 @@ struct TNotationOrderData {
     char CharacterName[30];
     char Comment[200];
 };
-
-struct TReaderThreadOrder {
-    enum TReaderThreadOrderType OrderType;
-    int SectorX;
-    int SectorY;
-    int SectorZ;
-    ulong CharacterID;
-};
-
-struct TReaderThreadReply {
-    enum TReaderThreadReplyType ReplyType;
-    int SectorX;
-    int SectorY;
-    int SectorZ;
-    uchar *Data;
-    int Size;
-};

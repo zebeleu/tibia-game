@@ -9,9 +9,8 @@
 #include "objects.hh"
 #include "operate.hh"
 #include "query.hh"
+#include "reader.hh"
 #include "writer.hh"
-
-#include "stubs.hh"
 
 #include <signal.h>
 #include <sys/stat.h>

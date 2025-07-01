@@ -4,8 +4,6 @@
 #include "info.hh"
 #include "operate.hh"
 
-#include "stubs.hh"
-
 // TShortway
 // =============================================================================
 struct TShortwayPoint {

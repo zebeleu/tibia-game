@@ -5,8 +5,6 @@
 #include "houses.hh"
 #include "script.hh"
 
-#include "stubs.hh"
-
 #include <dirent.h>
 
 int SectorXMin;

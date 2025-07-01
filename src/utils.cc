@@ -2,8 +2,9 @@
 
 #include <sys/stat.h>
 
-static void (*ErrorFunction)(const char *Text) = NULL;
-static void (*PrintFunction)(int Level, const char *Text) = NULL;
+static TErrorFunction *ErrorFunction;
+static TPrintFunction *PrintFunction;
+static char StandardLogFile[4096];
 
 void SetErrorFunction(TErrorFunction *Function){
 	ErrorFunction = Function;
@@ -11,6 +12,36 @@ void SetErrorFunction(TErrorFunction *Function){
 
 void SetPrintFunction(TPrintFunction *Function){
 	PrintFunction = Function;
+}
+
+void SetStandardLogFile(const char *FileName){
+	strcpy(StandardLogFile, FileName);
+}
+
+void SilentHandler(const char *Text){
+	// no-op
+}
+
+void SilentHandler(int Level, const char *Text){
+	// no-op
+}
+
+void LogFileHandler(const char *Text){
+	if(StandardLogFile[0] == 0){
+		return;
+	}
+
+	FILE *File = fopen(StandardLogFile, "at");
+	if(File != NULL){
+		fprintf(File, "%s", Text);
+		if(fclose(File) != 0){
+			error("LogfileHandler: Fehler %d beim Schließen der Datei.\n", errno);
+		}
+	}
+}
+
+void LogFileHandler(int Level, const char *Text){
+	LogFileHandler(Text);
 }
 
 void error(const char *Text, ...){

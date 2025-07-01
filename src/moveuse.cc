@@ -4,9 +4,8 @@
 #include "info.hh"
 #include "magic.hh"
 #include "operate.hh"
+#include "reader.hh"
 #include "writer.hh"
-
-#include "stubs.hh"
 
 static vector<TMoveUseCondition> MoveUseConditions(1, 1000, 1000);
 static int NumberOfMoveUseConditions;

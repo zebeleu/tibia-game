@@ -1,8 +1,6 @@
 #include "cr.hh"
 #include "operate.hh"
 
-#include "stubs.hh"
-
 #include <math.h>
 
 // TSkill REGULAR FUNCTIONS

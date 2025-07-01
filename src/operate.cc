@@ -4,8 +4,7 @@
 #include "info.hh"
 #include "magic.hh"
 #include "moveuse.hh"
-
-#include "stubs.hh"
+#include "reader.hh"
 
 #include <dirent.h>
 
@@ -2876,7 +2875,7 @@ void RefreshMap(void){
 		}
 
 		char FileName[4096];
-		snprintf(FileName, sizeof(FileName), "%s/%04u-%04u-%02u.sec",
+		snprintf(FileName, sizeof(FileName), "%s/%04d-%04d-%02d.sec",
 				ORIGMAPPATH, SectorX, SectorY, SectorZ);
 		if(!FileExists(FileName)){
 			continue;

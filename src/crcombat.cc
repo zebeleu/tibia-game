@@ -4,8 +4,6 @@
 #include "magic.hh"
 #include "operate.hh"
 
-#include "stubs.hh"
-
 TCombat::TCombat(void){
 	this->Master = NULL;
 	this->EarliestAttackTime = 0;

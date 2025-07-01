@@ -197,8 +197,7 @@ void InsertOrder(TWriterThreadOrderType OrderType, const void *Data){
 
 void GetOrder(TWriterThreadOrder *Order){
 	OrderBufferFull.down();
-	int ReadPos = OrderPointerRead % NARRAY(OrderBuffer);
-	*Order = OrderBuffer[ReadPos];
+	*Order = OrderBuffer[OrderPointerRead % NARRAY(OrderBuffer)];
 	OrderPointerRead += 1;
 	OrderBufferEmpty.up();
 }
@@ -857,6 +856,15 @@ void InsertReply(TWriterThreadReplyType ReplyType, const void *Data){
 	ReplyPointerWrite += 1;
 }
 
+bool GetReply(TWriterThreadReply *Reply){
+	bool Result = (ReplyPointerRead < ReplyPointerWrite);
+	if(Result){
+		*Reply = ReplyBuffer[ReplyPointerRead % NARRAY(ReplyBuffer)];
+		ReplyPointerRead += 1;
+	}
+	return Result;
+}
+
 void BroadcastReply(const char *Text, ...){
 	if(Text == NULL){
 		error("BroadcastReply: Kein Text angegeben.\n");
@@ -903,15 +911,6 @@ void LogoutReply(const char *PlayerName){
 	char *Data = new char[strlen(PlayerName) + 1];
 	strcpy(Data, PlayerName);
 	InsertReply(WRITER_REPLY_LOGOUT, Data);
-}
-
-bool GetReply(TWriterThreadReply *Reply){
-	bool Result = (ReplyPointerRead < ReplyPointerWrite);
-	if(Result){
-		*Reply = ReplyBuffer[ReplyPointerRead % NARRAY(ReplyBuffer)];
-		ReplyPointerRead += 1;
-	}
-	return Result;
 }
 
 void ProcessBroadcastReply(TBroadcastReplyData *Data){
@@ -981,7 +980,7 @@ void ProcessWriterThreadReplies(void){
 	}
 }
 
-// Writer Initialization
+// Initialization
 // =============================================================================
 void ClearPlayers(void){
 	int NumberOfAffectedPlayers;

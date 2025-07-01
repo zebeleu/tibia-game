@@ -3,8 +3,6 @@
 #include "containers.hh"
 #include "script.hh"
 
-#include "stubs.hh"
-
 #include <fstream>
 
 static vector<TObjectType> ObjectTypes(0, 5000, 1000);

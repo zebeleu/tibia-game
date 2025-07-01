@@ -1,8 +1,6 @@
 #include "config.hh"
 #include "script.hh"
 
-#include "stubs.hh"
-
 char BINPATH[4096];
 char DATAPATH[4096];
 char LOGPATH[4096];
