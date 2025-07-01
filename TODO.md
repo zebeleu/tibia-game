@@ -1,5 +1,4 @@
 ## TODO NEXT
-- DBFUNCS.CC
 - QUERY.CC
 
 - Include `x == 0xFFFF` inside `CheckVisibility`?

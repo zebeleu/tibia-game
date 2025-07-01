@@ -956,7 +956,7 @@ int GetRaceSummonCost(int Race);
 int GetRacePoison(int Race);
 bool GetRaceUnpushable(int Race);
 TOutfit ReadOutfit(TReadScriptFile *Script);
-void WriteOutfit(TReadScriptFile *Script, TOutfit Outfit);
+void WriteOutfit(TWriteScriptFile *Script, TOutfit Outfit);
 void LoadRace(const char *FileName);
 void LoadRaces(void);
 

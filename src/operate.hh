@@ -37,6 +37,20 @@ enum : int {
 	CHANNEL_LAST				= 0xFFFF,
 };
 
+#if 0
+// TODO(fusion): Use the original channel enum instead of the one above?
+enum CHANNEL: int {
+	GUILD_CHANNEL       = 0,
+	GAMEMASTER_CHANNEL  = 1,
+	TUTOR_CHANNEL       = 2,
+	REQUEST_QUEUE       = 3,
+	GAME_CHANNEL        = 4,
+	TRADE_CHANNEL       = 5,
+	REALLIFE_CHANNEL    = 6,
+	HELP_CHANNEL        = 7,
+};
+#endif
+
 struct TChannel {
 	TChannel(void);
 

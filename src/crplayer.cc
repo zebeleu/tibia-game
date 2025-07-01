@@ -2104,6 +2104,512 @@ void SendExistingRequests(TConnection *Connection){
 	delete []Players;
 }
 
+// Player Loader
+// =============================================================================
+void PlayerDataPath(char *Buffer, int BufferSize, uint32 CharacterID){
+	snprintf(Buffer, BufferSize, "%s/%02u/%u.usr",
+			USERPATH, (CharacterID % 100), CharacterID);
+}
+
+bool PlayerDataExists(uint32 CharacterID){
+	char FileName[4096];
+	PlayerDataPath(FileName, sizeof(FileName), CharacterID);
+	return FileExists(FileName);
+}
+
+bool LoadPlayerData(TPlayerData *Slot){
+	if(Slot == NULL){
+		error("LoadPlayerData: Slot ist NULL.\n");
+		return false;
+	}
+
+	if(Slot->CharacterID == 0){
+		error("LoadPlayerData: Slot enthält keinen Charakter.\n");
+		return false;
+	}
+
+	// IMPORTANT(fusion): This function is only called from `AssignPlayerPoolSlot`
+	// which zero initializes it before hand. Note that it would be a problem
+	// otherwise, since we shouldn't write to `CharacterID`, `Locked`, or `Sticky`
+	// outside a critical section, making `memset` not viable and turning this
+	// into an assignment fiesta for no good reason.
+	Slot->Race = 1;
+	Slot->Profession = PROFESSION_NONE;
+	for(int SkillNr = 0;
+			SkillNr < NARRAY(Slot->Minimum);
+			SkillNr += 1){
+		// NOTE(fusion): See `TPlayer::LoadData`.
+		Slot->Minimum[SkillNr] = INT_MIN;
+	}
+
+	// NOTE(fusion): First login. Use defaults.
+	char FileName[4096];
+	PlayerDataPath(FileName, sizeof(FileName), Slot->CharacterID);
+	if(!FileExists(FileName)){
+		return true;
+	}
+
+	bool Result = false;
+	try{
+		// TODO(fusion): Same thing as house loaders. Data is expected to be in
+		// an exact order and we don't check identifiers
+		TDynamicWriteBuffer HelpBuffer(KB(16));
+		TReadScriptFile Script;
+		Script.open(FileName);
+
+		Script.readIdentifier(); // "id"
+		Script.readSymbol('=');
+		Script.readNumber();
+
+		Script.readIdentifier(); // "name"
+		Script.readSymbol('=');
+		strcpy(Slot->Name, Script.readString());
+
+		Script.readIdentifier(); // "race"
+		Script.readSymbol('=');
+		Slot->Race = Script.readNumber();
+
+		Script.readIdentifier(); // "profession"
+		Script.readSymbol('=');
+		Slot->Profession = (uint8)Script.readNumber();
+
+		Script.readIdentifier(); // "originaloutfit"
+		Script.readSymbol('=');
+		Slot->OriginalOutfit = ReadOutfit(&Script);
+
+		Script.readIdentifier(); // "currentoutfit"
+		Script.readSymbol('=');
+		Slot->CurrentOutfit = ReadOutfit(&Script);
+
+		Script.readIdentifier(); // "lastlogin"
+		Script.readSymbol('=');
+		Slot->LastLoginTime = (time_t)Script.readNumber();
+
+		Script.readIdentifier(); // "lastlogout"
+		Script.readSymbol('=');
+		Slot->LastLogoutTime = (time_t)Script.readNumber();
+
+		Script.readIdentifier(); // "startposition"
+		Script.readSymbol('=');
+		Script.readCoordinate(&Slot->startx, &Slot->starty, &Slot->startz);
+
+		Script.readIdentifier(); // "currentposition"
+		Script.readSymbol('=');
+		Script.readCoordinate(&Slot->posx, &Slot->posy, &Slot->posz);
+
+		Script.readIdentifier(); // "playerkillerend"
+		Script.readSymbol('=');
+		Slot->PlayerkillerEnd = Script.readNumber();
+
+		while(strcmp(Script.readIdentifier(), "skill") == 0){
+			Script.readSymbol('=');
+			Script.readSymbol('(');
+			int SkillNr = Script.readNumber();
+			if(SkillNr < 0 || SkillNr >= NARRAY(Slot->Minimum)){
+				Script.error("illegal skill number");
+			}
+			Script.readSymbol(',');
+			Slot->Actual[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->Maximum[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->Minimum[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->DeltaAct[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->MagicDeltaAct[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->Cycle[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->MaxCycle[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->Count[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->MaxCount[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->AddLevel[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->Experience[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->FactorPercent[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->NextLevel[SkillNr] = Script.readNumber();
+			Script.readSymbol(',');
+			Slot->Delta[SkillNr] = Script.readNumber();
+			Script.readSymbol(')');
+		}
+
+		// "spells", already primed in the loop condition above
+		Script.readSymbol('=');
+		Script.readSymbol('{');
+		while(true){
+			Script.nextToken();
+			if(Script.Token == SPECIAL){
+				if(Script.getSpecial() == '}'){
+					break;
+				}else if(Script.getSpecial() == ','){
+					continue;
+				}
+			}
+
+			int SpellNr = Script.getNumber();
+			if(SpellNr < 0 || SpellNr >= NARRAY(Slot->SpellList)){
+				Script.error("illegal spell number");
+			}
+
+			Slot->SpellList[SpellNr] = 1;
+		}
+
+		Script.readIdentifier(); // "questvalues"
+		Script.readSymbol('=');
+		Script.readSymbol('{');
+		while(true){
+			char Special = Script.readSpecial();
+			if(Special == '}'){
+				break;
+			}else if(Special == ','){
+				continue;
+			}else if(Special != '('){
+				Script.error("'(' expected");
+			}
+
+			int QuestNr = Script.readNumber();
+			if(QuestNr < 0 || QuestNr >= NARRAY(Slot->QuestValues)){
+				Script.error("illegal quest number");
+			}
+			Script.readSymbol(',');
+			Slot->QuestValues[QuestNr] = Script.readNumber();
+			Script.readSymbol(')');
+		}
+
+		Script.readIdentifier(); // "murders"
+		Script.readSymbol('=');
+		Script.readSymbol('{');
+		while(true){
+			Script.nextToken();
+			if(Script.Token == SPECIAL){
+				if(Script.getSpecial() == '}'){
+					break;
+				}else if(Script.getSpecial() == ','){
+					continue;
+				}
+			}
+
+			for(int i = 1; i < NARRAY(Slot->MurderTimestamps); i += 1){
+				Slot->MurderTimestamps[i - 1] = Slot->MurderTimestamps[i];
+			}
+
+			Slot->MurderTimestamps[NARRAY(Slot->MurderTimestamps) - 1] = Script.getNumber();
+		}
+
+		HelpBuffer.Position = 0;
+		Script.readIdentifier(); // "inventory"
+		Script.readSymbol('=');
+		Script.readSymbol('{');
+		while(true){
+			Script.nextToken();
+			if(Script.Token == SPECIAL){
+				if(Script.getSpecial() == '}'){
+					break;
+				}else if(Script.getSpecial() == ','){
+					continue;
+				}
+			}
+
+			int Position = Script.readNumber();
+			if(Position < INVENTORY_FIRST || Position > INVENTORY_LAST){
+				Script.error("illegal inventory position");
+			}
+
+			Script.readIdentifier(); // "content"
+			Script.readSymbol('=');
+			HelpBuffer.writeByte((uint8)Position);
+			LoadObjects(&Script, &HelpBuffer, false);
+		}
+		HelpBuffer.writeByte(0xFF);
+		Slot->Inventory = new uint8[HelpBuffer.Position];
+		Slot->InventorySize = HelpBuffer.Position;
+		memcpy(Slot->Inventory, HelpBuffer.Data, HelpBuffer.Position);
+
+		Script.readIdentifier(); // "depots"
+		Script.readSymbol('=');
+		Script.readSymbol('{');
+		while(true){
+			Script.nextToken();
+			if(Script.Token == SPECIAL){
+				if(Script.getSpecial() == '}'){
+					break;
+				}else if(Script.getSpecial() == ','){
+					continue;
+				}
+			}
+
+			int DepotNr = Script.readNumber();
+			if(DepotNr < 0 || DepotNr >= NARRAY(Slot->Depot)){
+				Script.error("illegal depot number");
+			}
+
+			Script.readIdentifier(); // "content"
+			Script.readSymbol('=');
+			HelpBuffer.Position = 0;
+			LoadObjects(&Script, &HelpBuffer, false);
+			Slot->Depot[DepotNr] = new uint8[HelpBuffer.Position];
+			Slot->DepotSize[DepotNr] = HelpBuffer.Position;
+			memcpy(Slot->Depot[DepotNr], HelpBuffer.Data, HelpBuffer.Position);
+		}
+
+		Script.nextToken();
+		if(Script.Token != ENDOFFILE){
+			Script.error("end of file expected");
+		}
+
+		Result = true;
+	}catch(const char *str){
+		error("LoadPlayerData: Kann Gegenstände des Spielers %u nicht laden.\n",
+				Slot->CharacterID);
+		error("# Fehler: %s\n", str);
+	}catch(const std::bad_alloc &e){
+		error("LoadPlayerData: Kein Speicher frei beim Laden von Spieler %u.\n",
+				Slot->CharacterID);
+	}
+
+	if(!Result){
+		delete[] Slot->Inventory;
+		Slot->Inventory = NULL;
+		Slot->InventorySize = 0;
+
+		for(int DepotNr = 0;
+				DepotNr < NARRAY(Slot->Depot);
+				DepotNr += 1){
+			delete[] Slot->Depot[DepotNr];
+			Slot->Depot[DepotNr] = NULL;
+			Slot->DepotSize[DepotNr] = 0;
+		}
+	}
+
+	return Result;
+}
+
+void SavePlayerData(TPlayerData *Slot){
+	if(Slot == NULL){
+		error("SavePlayerData: Slot ist NULL.\n");
+		return;
+	}
+
+	if(Slot->CharacterID == 0){
+		error("SavePlayerData: Slot enthält keinen Charakter.\n");
+		return;
+	}
+
+	// TODO(fusion): This is prone to problems if we don't backup user files.
+	// Even if we did automatic backups, would only this user get rolled back?
+	// This is probably one of the sources of whole day rollbacks.
+	char FileName[4096];
+	PlayerDataPath(FileName, sizeof(FileName), Slot->CharacterID);
+	try{
+		TWriteScriptFile Script;
+		Script.open(FileName);
+
+		Script.writeText("ID              = ");
+		Script.writeNumber(Slot->CharacterID);
+		Script.writeLn();
+
+		Script.writeText("Name            = ");
+		Script.writeString(Slot->Name);
+		Script.writeLn();
+
+		Script.writeText("Race            = ");
+		Script.writeNumber(Slot->Race);
+		Script.writeLn();
+
+		Script.writeText("Profession      = ");
+		Script.writeNumber(Slot->Profession);
+		Script.writeLn();
+
+		Script.writeText("OriginalOutfit  = ");
+		WriteOutfit(&Script, Slot->OriginalOutfit);
+		Script.writeLn();
+
+		Script.writeText("CurrentOutfit   = ");
+		WriteOutfit(&Script, Slot->CurrentOutfit);
+		Script.writeLn();
+
+		Script.writeText("LastLogin       = ");
+		Script.writeNumber((int)Slot->LastLoginTime);
+		Script.writeLn();
+
+		Script.writeText("LastLogout      = ");
+		Script.writeNumber((int)Slot->LastLogoutTime);
+		Script.writeLn();
+
+		Script.writeText("StartPosition   = ");
+		Script.writeCoordinate(Slot->startx, Slot->starty, Slot->startz);
+		Script.writeLn();
+
+		Script.writeText("CurrentPosition = ");
+		Script.writeCoordinate(Slot->posx, Slot->posy, Slot->posz);
+		Script.writeLn();
+
+		Script.writeText("PlayerkillerEnd = ");
+		Script.writeNumber(Slot->PlayerkillerEnd);
+		Script.writeLn();
+		Script.writeLn();
+
+		for(int SkillNr = 0;
+				SkillNr < NARRAY(Slot->Minimum);
+				SkillNr += 1){
+			if(Slot->Minimum[SkillNr] == INT_MIN){
+				continue;
+			}
+
+			Script.writeText("Skill = (");
+			Script.writeNumber(SkillNr);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Actual[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Maximum[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Minimum[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->DeltaAct[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->MagicDeltaAct[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Cycle[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->MaxCycle[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Count[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->MaxCount[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->AddLevel[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Experience[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->FactorPercent[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->NextLevel[SkillNr]);
+			Script.writeText(",");
+			Script.writeNumber(Slot->Delta[SkillNr]);
+			Script.writeText(")");
+			Script.writeLn();
+		}
+		Script.writeLn();
+
+		bool FirstSpell = true;
+		Script.writeText("Spells      = {");
+		for(int SpellNr = 0;
+				SpellNr < NARRAY(Slot->SpellList);
+				SpellNr += 1){
+			if(Slot->SpellList[SpellNr] != 0){
+				if(!FirstSpell){
+					Script.writeText(",");
+				}
+				Script.writeNumber(SpellNr);
+				FirstSpell = false;
+			}
+		}
+		Script.writeText("}");
+		Script.writeLn();
+
+		bool FirstQuest = true;
+		Script.writeText("QuestValues = {");
+		for(int QuestNr = 0;
+				QuestNr < NARRAY(Slot->QuestValues);
+				QuestNr += 1){
+			if(Slot->QuestValues[QuestNr] != 0){
+				if(!FirstQuest){
+					Script.writeText(",");
+				}
+				Script.writeText("(");
+				Script.writeNumber(QuestNr);
+				Script.writeText(",");
+				Script.writeNumber(Slot->QuestValues[QuestNr]);
+				Script.writeText(")");
+				FirstQuest = false;
+			}
+		}
+		Script.writeText("}");
+		Script.writeLn();
+
+		bool FirstMurder = true;
+		int Now = (int)time(NULL);
+		Script.writeText("Murders     = {");
+		for(int i = 0; i < NARRAY(Slot->MurderTimestamps); i += 1){
+			// NOTE(fusion): Save murder timestamps for up to a month.
+			if((Now - Slot->MurderTimestamps[i]) < (30 * 24 * 60 * 60)){
+				if(FirstMurder){
+					Script.writeText(",");
+				}
+				Script.writeNumber(Slot->MurderTimestamps[i]);
+				FirstMurder = false;
+			}
+		}
+		Script.writeText("}");
+		Script.writeLn();
+		Script.writeLn();
+
+		bool FirstPosition = true;
+		Script.writeText("Inventory   = {");
+		if(Slot->Inventory != NULL){
+			TReadBuffer Buffer(Slot->Inventory, Slot->InventorySize);
+			while(true){
+				int Position = (int)Buffer.readByte();
+				if(Position == 0xFF){
+					break;
+				}
+
+				if(FirstPosition){
+					Script.writeText(",");
+					Script.writeLn();
+					Script.writeText("               ");
+				}
+				Script.writeNumber(Position);
+				Script.writeText(" Content=");
+				SaveObjects(&Buffer, &Script);
+				FirstPosition = false;
+			}
+		}
+		Script.writeText("}");
+		Script.writeLn();
+		Script.writeLn();
+
+		bool FirstDepot = true;
+		Script.writeText("Depots      = {");
+		for(int DepotNr = 0;
+				DepotNr < NARRAY(Slot->Depot);
+				DepotNr += 1){
+			if(Slot->Depot[DepotNr] != NULL){
+				TReadBuffer Buffer(Slot->Depot[DepotNr], Slot->DepotSize[DepotNr]);
+				if(FirstDepot){
+					Script.writeText(",");
+					Script.writeLn();
+					Script.writeText("               ");
+				}
+				Script.writeNumber(DepotNr);
+				Script.writeText(" Content=");
+				SaveObjects(&Buffer, &Script);
+				FirstDepot = false;
+			}
+		}
+		Script.writeText("}");
+		Script.writeLn();
+		Script.close();
+
+	}catch(const char *str){
+		error("SavePlayerData: Kann Gegenstände des Spielers %u nicht schreiben.\n", Slot->CharacterID);
+		error("# Fehler: %s\n", str);
+		unlink(FileName);
+	}
+}
+
+void UnlinkPlayerData(uint32 CharacterID){
+	char FileName[4096];
+	PlayerDataPath(FileName, sizeof(FileName), CharacterID);
+	unlink(FileName);
+}
+
 // Player Pool
 // =============================================================================
 void SavePlayerPoolSlot(TPlayerData *Slot){

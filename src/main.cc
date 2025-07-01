@@ -227,7 +227,7 @@ static void InitAll(void){
 		InitCommunication();
 		InitStrings();
 		InitWriter();
-		//InitReader();
+		InitReader();
 		InitObjects();
 		InitMap();
 		InitInfo();
@@ -244,8 +244,6 @@ static void InitAll(void){
 }
 
 static void ExitAll(void){
-	// TODO(fusion): Probably missing some inlined empty `Exit*` functions here.
-
 	EndGame();
 	ExitTime();
 	ExitCr();
@@ -255,7 +253,7 @@ static void ExitAll(void){
 	ExitHouses();
 	ExitMap(SaveMapOn);
 	ExitObjects();
-	//ExitReader();
+	ExitReader();
 	ExitWriter();
 	ExitStrings();
 	ExitCommunication();
