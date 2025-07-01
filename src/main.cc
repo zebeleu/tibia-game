@@ -85,13 +85,15 @@ static void DefaultHandler(int signr){
 	Reboot = false;
 }
 
+#if 0
 // TODO(fusion): This function was exported in the binary but not referenced anywhere.
 static void ErrorHandler(int signr){
 	error("ErrorHandler: SigNr. %d: %s\n", signr, sigdescr_np(signr));
 	EndGame();
 	LogoutAllPlayers();
-	exit(1);
+	exit(EXIT_FAILURE);
 }
+#endif
 
 static void InitSignalHandler(void){
 	int count = 0;

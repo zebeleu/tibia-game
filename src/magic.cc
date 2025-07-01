@@ -3312,16 +3312,6 @@ void HomeTeleport(TCreature *Actor, const char *Name){
 
 // Spell Casting
 // =============================================================================
-static void SpellFailed(uint32 CreatureID){
-	TCreature *Actor = GetCreature(CreatureID);
-	if(Actor == NULL){
-		error("SpellFailed: Kreatur existiert nicht.\n");
-		return;
-	}
-
-	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
-}
-
 static void CharacterRightSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512]){
 	TCreature *Actor = GetCreature(CreatureID);
 	if(Actor == NULL){
@@ -4288,12 +4278,13 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 			}
 		}
 	}catch(RESULT r){
-		// TODO(fusion): Same as with `CheckForSpell` except that `Actor` is
-		// already in scope.
 		if(r != ERROR){
 			GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
 		}
-		SendResult(Actor->Connection, r);
+
+		if(Actor->Type == PLAYER){
+			SendResult(Actor->Connection, r);
+		}
 		return;
 	}
 

@@ -554,32 +554,6 @@ char TReadScriptFile::getSpecial(void){
 	return this->Special;
 }
 
-// TODO(fusion): REMOVE. This is a snippet to test the script lexer.
-int main(int argc, char **argv){
-	TReadScriptFile Script;
-	Script.open("local/alexander.npc");
-	while(true){
-		Script.nextToken();
-		if(Script.Token == ENDOFFILE){
-			printf("EOF\n");
-			Script.close();
-			break;
-		}
-
-		switch(Script.Token){
-			case IDENTIFIER:	printf("IDENTIFIER     \"%s\"\n", Script.String); break;
-			case NUMBER:		printf("NUMBER         %d\n", Script.Number); break;
-			case STRING:		printf("STRING         \"%s\"\n", Script.String); break;
-			case BYTES:			printf("BYTES          %u-%u-%u-%u-%u\n", Script.Bytes[0], Script.Bytes[1], Script.Bytes[2], Script.Bytes[3], Script.Bytes[4]); break;
-			case COORDINATE:	printf("COORD          [%d,%d,%d]\n", Script.CoordX, Script.CoordY, Script.CoordZ); break;
-			case SPECIAL:		printf("SPECIAL        '%c'\n", Script.Special); break;
-			default:			printf("UNKNOWN TOKEN  %d\n", Script.Token); break;
-		}
-	}
-
-	return EXIT_FAILURE;
-}
-
 // TWriteScriptFile
 //==============================================================================
 TWriteScriptFile::TWriteScriptFile(void){
