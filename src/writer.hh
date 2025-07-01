@@ -5,42 +5,28 @@
 #include "containers.hh"
 #include "operate.hh"
 
-enum TWriterThreadReplyType: int {
-	REPLY_BROADCAST				= 0,
-	REPLY_DIRECT				= 1,
-	REPLY_LOGOUT				= 2,
+enum TWriterThreadOrderType: int {
+	WRITER_ORDER_TERMINATE			= 0,
+	WRITER_ORDER_LOGOUT				= 1,
+	WRITER_ORDER_PLAYERLIST			= 2,
+	WRITER_ORDER_KILLSTATISTICS		= 3,
+	WRITER_ORDER_PUNISHMENT			= 4,
+	WRITER_ORDER_CHARACTERDEATH		= 5,
+	WRITER_ORDER_ADDBUDDY			= 6,
+	WRITER_ORDER_REMOVEBUDDY		= 7,
+	WRITER_ORDER_DECREMENTISONLINE	= 8,
+	WRITER_ORDER_SAVEPLAYERDATA		= 9,
 };
 
-enum TWriterThreadOrderType: int {
-	ORDER_TERMINATE				= 0,
-	ORDER_LOGOUT				= 1,
-	ORDER_PLAYERLIST			= 2,
-	ORDER_KILLSTATISTICS		= 3,
-	ORDER_PUNISHMENT			= 4,
-	ORDER_CHARACTERDEATH		= 5,
-	ORDER_ADDBUDDY				= 6,
-	ORDER_REMOVEBUDDY			= 7,
-	ORDER_DECREMENTISONLINE		= 8,
-	ORDER_SAVEPLAYERDATA		= 9,
+enum TWriterThreadReplyType: int {
+	WRITER_REPLY_BROADCAST			= 0,
+	WRITER_REPLY_DIRECT				= 1,
+	WRITER_REPLY_LOGOUT				= 2,
 };
 
 struct TProtocolThreadOrder{
 	char ProtocolName[20];
 	char Text[256];
-};
-
-struct TWriterThreadReply{
-	TWriterThreadReplyType ReplyType;
-	const void *Data;
-};
-
-struct TBroadcastReplyData{
-	char Message[100];
-};
-
-struct TDirectReplyData{
-	uint32 CharacterID;
-	char Message[100];
 };
 
 struct TWriterThreadOrder{
@@ -97,6 +83,20 @@ struct TCharacterDeathOrderData{
 struct TBuddyOrderData{
 	uint32 AccountID;
 	uint32 Buddy;
+};
+
+struct TWriterThreadReply{
+	TWriterThreadReplyType ReplyType;
+	const void *Data;
+};
+
+struct TBroadcastReplyData{
+	char Message[100];
+};
+
+struct TDirectReplyData{
+	uint32 CharacterID;
+	char Message[100];
 };
 
 void InitProtocol(void);

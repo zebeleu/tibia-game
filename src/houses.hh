@@ -27,7 +27,7 @@ struct THouseGuest {
 };
 
 struct THouse {
-	THouse(void) : Subowner(0, 4, 5), Guest(0, 9, 10) {}
+	THouse(void);
 
 	// TODO(fusion): Same as `TChannel` in `operate.hh`.
 	THouse(const THouse &Other);

@@ -12,13 +12,13 @@ static TProtocolThreadOrder ProtocolBuffer[1000];
 static int ProtocolPointerWrite;
 static int ProtocolPointerRead;
 static Semaphore ProtocolMutex(1);
-static Semaphore ProtocolBufferEmpty(1000);
+static Semaphore ProtocolBufferEmpty(NARRAY(ProtocolBuffer));
 static Semaphore ProtocolBufferFull(0);
 
 static TWriterThreadOrder OrderBuffer[2000];
 static int OrderPointerWrite;
 static int OrderPointerRead;
-static Semaphore OrderBufferEmpty(2000);
+static Semaphore OrderBufferEmpty(NARRAY(OrderBuffer));
 static Semaphore OrderBufferFull(0);
 
 static TWriterThreadReply ReplyBuffer[100];
@@ -204,7 +204,7 @@ void GetOrder(TWriterThreadOrder *Order){
 }
 
 void TerminateWriterOrder(void){
-	InsertOrder(ORDER_TERMINATE, NULL);
+	InsertOrder(WRITER_ORDER_TERMINATE, NULL);
 }
 
 void LogoutOrder(TPlayer *Player){
@@ -252,7 +252,7 @@ void LogoutOrder(TPlayer *Player){
 		strcpy(Data->Residence, "Unknown");
 	}
 
-	InsertOrder(ORDER_LOGOUT, Data);
+	InsertOrder(WRITER_ORDER_LOGOUT, Data);
 }
 
 void PlayerlistOrder(int NumberOfPlayers, const char *PlayerNames,
@@ -278,7 +278,7 @@ void PlayerlistOrder(int NumberOfPlayers, const char *PlayerNames,
 	Data->PlayerLevels = PlayerLevels;
 	Data->PlayerProfessions = PlayerProfessions;
 
-	InsertOrder(ORDER_PLAYERLIST, Data);
+	InsertOrder(WRITER_ORDER_PLAYERLIST, Data);
 }
 
 void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames,
@@ -304,7 +304,7 @@ void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames,
 	Data->KilledPlayers = KilledPlayers;
 	Data->KilledCreatures = KilledCreatures;
 
-	InsertOrder(ORDER_KILLSTATISTICS, Data);
+	InsertOrder(WRITER_ORDER_KILLSTATISTICS, Data);
 }
 
 void PunishmentOrder(TCreature *Gamemaster, const char *Name, const char *IPAddress,
@@ -339,7 +339,7 @@ void PunishmentOrder(TCreature *Gamemaster, const char *Name, const char *IPAddr
 	Data->StatementID = StatementID;
 	Data->IPBanishment = IPBanishment;
 
-	InsertOrder(ORDER_PUNISHMENT, Data);
+	InsertOrder(WRITER_ORDER_PUNISHMENT, Data);
 }
 
 void CharacterDeathOrder(TCreature *Creature, int OldLevel,
@@ -362,7 +362,7 @@ void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 	Data->Unjustified = Unjustified;
 	Data->Time = time(NULL);
 
-	InsertOrder(ORDER_CHARACTERDEATH, Data);
+	InsertOrder(WRITER_ORDER_CHARACTERDEATH, Data);
 }
 
 void AddBuddyOrder(TCreature *Creature, uint32 BuddyID){
@@ -380,7 +380,7 @@ void AddBuddyOrder(TCreature *Creature, uint32 BuddyID){
 	Data->AccountID = ((TPlayer*)Creature)->AccountID;
 	Data->Buddy = BuddyID;
 
-	InsertOrder(ORDER_ADDBUDDY, Data);
+	InsertOrder(WRITER_ORDER_ADDBUDDY, Data);
 }
 
 void RemoveBuddyOrder(TCreature *Creature, uint32 BuddyID){
@@ -398,16 +398,16 @@ void RemoveBuddyOrder(TCreature *Creature, uint32 BuddyID){
 	Data->AccountID = ((TPlayer*)Creature)->AccountID;
 	Data->Buddy = BuddyID;
 
-	InsertOrder(ORDER_REMOVEBUDDY, Data);
+	InsertOrder(WRITER_ORDER_REMOVEBUDDY, Data);
 }
 
 void DecrementIsOnlineOrder(uint32 CharacterID){
 	void *Data = (void*)((uintptr)CharacterID);
-	InsertOrder(ORDER_DECREMENTISONLINE, Data);
+	InsertOrder(WRITER_ORDER_DECREMENTISONLINE, Data);
 }
 
 void SavePlayerDataOrder(void){
-	InsertOrder(ORDER_SAVEPLAYERDATA, NULL);
+	InsertOrder(WRITER_ORDER_SAVEPLAYERDATA, NULL);
 }
 
 void ProcessLogoutOrder(TLogoutOrderData *Data){
@@ -781,53 +781,53 @@ int WriterThreadLoop(void *Unused){
 	TWriterThreadOrder Order = {};
 	while(true){
 		GetOrder(&Order);
-		if(Order.OrderType == ORDER_TERMINATE){
+		if(Order.OrderType == WRITER_ORDER_TERMINATE){
 			break;
 		}
 
 		switch(Order.OrderType){
-			case ORDER_LOGOUT:{
+			case WRITER_ORDER_LOGOUT:{
 				ProcessLogoutOrder((TLogoutOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_PLAYERLIST:{
+			case WRITER_ORDER_PLAYERLIST:{
 				ProcessPlayerlistOrder((TPlayerlistOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_KILLSTATISTICS:{
+			case WRITER_ORDER_KILLSTATISTICS:{
 				ProcessKillStatisticsOrder((TKillStatisticsOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_PUNISHMENT:{
+			case WRITER_ORDER_PUNISHMENT:{
 				ProcessPunishmentOrder((TPunishmentOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_CHARACTERDEATH:{
+			case WRITER_ORDER_CHARACTERDEATH:{
 				ProcessCharacterDeathOrder((TCharacterDeathOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_ADDBUDDY:{
+			case WRITER_ORDER_ADDBUDDY:{
 				ProcessAddBuddyOrder((TBuddyOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_REMOVEBUDDY:{
+			case WRITER_ORDER_REMOVEBUDDY:{
 				ProcessRemoveBuddyOrder((TBuddyOrderData*)Order.Data);
 				break;
 			}
 
-			case ORDER_DECREMENTISONLINE:{
+			case WRITER_ORDER_DECREMENTISONLINE:{
 				uint32 CharacterID = (uint32)((uintptr)Order.Data);
 				ProcessDecrementIsOnlineOrder(CharacterID);
 				break;
 			}
 
-			case ORDER_SAVEPLAYERDATA:{
+			case WRITER_ORDER_SAVEPLAYERDATA:{
 				SavePlayerPoolSlots();
 				break;
 			}
@@ -870,7 +870,7 @@ void BroadcastReply(const char *Text, ...){
 	vsnprintf(Data->Message, sizeof(Data->Message), Text, ap);
 	va_end(ap);
 
-	InsertReply(REPLY_BROADCAST, Data);
+	InsertReply(WRITER_REPLY_BROADCAST, Data);
 }
 
 void DirectReply(uint32 CharacterID, const char *Text, ...){
@@ -891,7 +891,7 @@ void DirectReply(uint32 CharacterID, const char *Text, ...){
 	vsnprintf(Data->Message, sizeof(Data->Message), Text, ap);
 	va_end(ap);
 
-	InsertReply(REPLY_DIRECT, Data);
+	InsertReply(WRITER_REPLY_DIRECT, Data);
 }
 
 void LogoutReply(const char *PlayerName){
@@ -902,7 +902,7 @@ void LogoutReply(const char *PlayerName){
 	// TODO(fusion): Probably some string dup function?
 	char *Data = new char[strlen(PlayerName) + 1];
 	strcpy(Data, PlayerName);
-	InsertReply(REPLY_LOGOUT, Data);
+	InsertReply(WRITER_REPLY_LOGOUT, Data);
 }
 
 bool GetReply(TWriterThreadReply *Reply){
@@ -958,17 +958,17 @@ void ProcessWriterThreadReplies(void){
 	TWriterThreadReply Reply = {};
 	while(GetReply(&Reply)){
 		switch(Reply.ReplyType){
-			case REPLY_BROADCAST:{
+			case WRITER_REPLY_BROADCAST:{
 				ProcessBroadcastReply((TBroadcastReplyData*)Reply.Data);
 				break;
 			}
 
-			case REPLY_DIRECT:{
+			case WRITER_REPLY_DIRECT:{
 				ProcessDirectReply((TDirectReplyData*)Reply.Data);
 				break;
 			}
 
-			case REPLY_LOGOUT:{
+			case WRITER_REPLY_LOGOUT:{
 				ProcessLogoutReply((const char*)Reply.Data);
 				break;
 			}

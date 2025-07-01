@@ -29,12 +29,6 @@ typedef size_t usize;
 #define MB(x) ((usize)(x) << 20)
 #define GB(x) ((usize)(x) << 30)
 
-// TODO(fusion): We might not actually compile the output for the decompilation
-// step but if we did, we'd need to make sure we're compiling in 32 bits mode.
-STATIC_ASSERT(sizeof(bool) == 1);
-STATIC_ASSERT(sizeof(int) == 4);
-//STATIC_ASSERT(sizeof(void*) == 4);
-
 #if !OS_WINDOWS && !OS_LINUX
 #	if defined(_WIN32)
 #		define OS_WINDOWS 1
@@ -55,7 +49,6 @@ STATIC_ASSERT(sizeof(int) == 4);
 #	endif
 #endif
 
-// NOTE(fusion): Compiler attributes.
 #if COMPILER_GCC || COMPILER_CLANG
 #	define ATTR_FALLTHROUGH __attribute__((fallthrough))
 #	define ATTR_PRINTF(x, y) __attribute__((format(printf, x, y)))
@@ -83,8 +76,11 @@ STATIC_ASSERT(sizeof(int) == 4);
 // original code but only for reference. Making it compile on Windows shouldn't
 // be too difficult either. Overall this design is outdated and should be reviewed.
 //	Nevertheless, we should focus on getting it working as intended, on the target
-// platform (which is Linux 32-bits) before attempting to refine it.
+// platform (which is Linux 32-bit) before attempting to refine it.
 STATIC_ASSERT(OS_LINUX);
+STATIC_ASSERT(sizeof(bool) == 1);
+STATIC_ASSERT(sizeof(int) == 4);
+//STATIC_ASSERT(sizeof(void*) == 4);
 #include <errno.h>
 #include <unistd.h>
 

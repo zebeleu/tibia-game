@@ -8,14 +8,3 @@ enum CHANNEL: int {
     REALLIFE_CHANNEL=6,
     HELP_CHANNEL=7
 };
-
-enum TReaderThreadOrderType: int {
-    ORDER_TERMINATE=0,
-    ORDER_LOADSECTOR=1,
-    ORDER_LOADCHARACTER=2
-};
-
-enum TReaderThreadReplyType: int {
-    REPLY_SECTORDATA=0,
-    REPLY_CHARACTERDATA=1
-};

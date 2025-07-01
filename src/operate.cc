@@ -3357,6 +3357,9 @@ TChannel::TChannel(const TChannel &Other) : TChannel() {
 }
 
 void TChannel::operator=(const TChannel &Other){
+	this->Moderator = Other.Moderator;
+	memcpy(this->ModeratorName, Other.ModeratorName, sizeof(this->ModeratorName));
+
 	this->Subscribers = Other.Subscribers;
 	for(int i = 0; i < Other.Subscribers; i += 1){
 		*this->Subscriber.at(i) = Other.Subscriber.copyAt(i);
@@ -3814,6 +3817,8 @@ TParty::TParty(const TParty &Other) : TParty() {
 }
 
 void TParty::operator=(const TParty &Other){
+	this->Leader = Other.Leader;
+
 	this->Members = Other.Members;
 	for(int i = 0; i < Other.Members; i += 1){
 		*this->Member.at(i) = Other.Member.copyAt(i);

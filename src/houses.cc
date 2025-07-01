@@ -20,6 +20,46 @@ static int MaxHouseY;
 static TQueryManagerConnection *QueryManagerConnection;
 static int PaymentExtension;
 
+THouse::THouse(void) : Subowner(0, 4, 5), Guest(0, 9, 10) {
+	// no-op
+}
+
+THouse::THouse(const THouse &Other) : THouse() {
+	this->operator=(Other);
+}
+
+void THouse::operator=(const THouse &Other){
+	this->ID = Other.ID;
+	memcpy(this->Name, Other.Name, sizeof(this->Name));
+	memcpy(this->Description, Other.Description, sizeof(this->Description));
+	this->Size = Other.Size;
+	this->Rent = Other.Rent;
+	this->DepotNr = Other.DepotNr;
+	this->NoAuction = Other.NoAuction;
+	this->GuildHouse = Other.GuildHouse;
+	this->ExitX = Other.ExitX;
+	this->ExitY = Other.ExitY;
+	this->ExitZ = Other.ExitZ;
+	this->CenterX = Other.CenterX;
+	this->CenterY = Other.CenterY;
+	this->CenterZ = Other.CenterZ;
+	this->OwnerID = Other.OwnerID;
+	memcpy(this->OwnerName, Other.OwnerName, sizeof(this->OwnerName));
+	this->LastTransition = Other.LastTransition;
+	this->PaidUntil = Other.PaidUntil;
+	this->Help = Other.Help;
+
+	this->Subowners = Other.Subowners;
+	for(int i = 0; i < Other.Subowners; i += 1){
+		*this->Subowner.at(i) = Other.Subowner.copyAt(i);
+	}
+
+	this->Guests = Other.Guests;
+	for(int i = 0; i < Other.Guests; i += 1){
+		*this->Guest.at(i) = Other.Guest.copyAt(i);
+	}
+}
+
 THouseArea *GetHouseArea(uint16 ID){
 	THouseArea *Result = NULL;
 	for(int i = 0; i < HouseAreas; i += 1){
