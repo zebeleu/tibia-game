@@ -273,11 +273,11 @@ bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size){
 	int BytesToWrite = Size + 2;
 	uint8 *WritePtr = Buffer;
 	while(BytesToWrite > 0){
-		int ret = (int)write(Connection->GetSocket(), WritePtr, BytesToWrite);
-		if(ret > 0){
-			BytesToWrite -= ret;
-			WritePtr += ret;
-		}else if(ret == 0){
+		int BytesWritten = (int)write(Connection->GetSocket(), WritePtr, BytesToWrite);
+		if(BytesWritten > 0){
+			BytesToWrite -= BytesWritten;
+			WritePtr += BytesWritten;
+		}else if(BytesWritten == 0){
 			// TODO(fusion): Can this even happen without an error?
 			error("WriteToSocket: Fehler %d beim Senden an Socket %d.\n",
 					errno, Connection->GetSocket());

@@ -8,8 +8,6 @@
 #include "threads.hh"
 #include "writer.hh"
 
-#include "stubs.hh"
-
 static Semaphore PlayerMutex(1);
 static vector<TPlayer*> PlayerList(0, 100, 10, NULL);
 static int FirstFreePlayer;

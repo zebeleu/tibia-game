@@ -4,8 +4,43 @@
 #include "common.hh"
 #include "threads.hh"
 
+enum : int {
+	QUERY_OK		= 0,
+	QUERY_ERROR		= 1,
+	QUERY_FAILED	= 3,
+};
+
 struct TQueryManagerConnection{
 	TQueryManagerConnection(int QueryBufferSize);
+	~TQueryManagerConnection(void);
+
+	void connect(void);
+	void disconnect(void);
+	int write(const uint8 *Buffer, int Size);
+	int read(uint8 *Buffer, int Size, int Timeout);
+	bool isConnected(void){
+		return this->Socket != -1;
+	}
+
+	void prepareQuery(int QueryType);
+	void sendFlag(bool Flag);
+	void sendByte(uint8 Byte);
+	void sendWord(uint16 Word);
+	void sendQuad(uint32 Quad);
+	void sendString(const char *String);
+	void sendBytes(const uint8 *Buffer, int Count);
+
+	bool getFlag(void);
+	uint8 getByte(void);
+	uint16 getWord(void);
+	uint32 getQuad(void);
+	void getString(char *Buffer, int MaxLength);
+	void getBytes(uint8 *Buffer, int Count);
+
+	int executeQuery(int Timeout, bool AutoReconnect);
+
+//==
+
 	int loadWorldConfig(int *WorldType, int *RebootTime,
 				int *IPAddress, int *Port,
 				int *MaxPlayers, int *PremiumPlayerBuffer,
@@ -70,10 +105,6 @@ struct TQueryManagerConnection{
 			uint32 *OwnerIDs, char (*OwnerNames)[30], int *PaidUntils);
 	int insertHouseOwner(uint16 HouseID, uint32 OwnerID, int PaidUntil);
 	int updateHouseOwner(uint16 HouseID, uint32 OwnerID, int PaidUntil);
-
-	bool isConnected(void){
-		return this->Socket >= 0;
-	}
 
 	// DATA
 	// =================
