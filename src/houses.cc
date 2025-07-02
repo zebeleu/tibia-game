@@ -1670,16 +1670,16 @@ void LoadHouses(void){
 		Houses += 1;
 	}
 
-	uint16 *HouseIDs    = (uint16*)alloca(Houses * sizeof(uint16));
-	char **Names        = (char**)alloca(Houses * sizeof(char*));
-	int *Rents          = (int*)alloca(Houses * sizeof(int));
-	char **Descriptions = (char**)alloca(Houses * sizeof(char*));
-	int *Sizes          = (int*)alloca(Houses * sizeof(int));
-	int *PositionsX     = (int*)alloca(Houses * sizeof(int));
-	int *PositionsY     = (int*)alloca(Houses * sizeof(int));
-	int *PositionsZ     = (int*)alloca(Houses * sizeof(int));
-	char (*Towns)[30]   = (char(*)[30])alloca(Houses * 30);
-	bool *Guildhouses   = (bool*)alloca(Houses * sizeof(bool));
+	uint16 *HouseIDs          = (uint16*)alloca(Houses * sizeof(uint16));
+	const char **Names        = (const char**)alloca(Houses * sizeof(const char*));
+	int *Rents                = (int*)alloca(Houses * sizeof(int));
+	const char **Descriptions = (const char**)alloca(Houses * sizeof(const char*));
+	int *Sizes                = (int*)alloca(Houses * sizeof(int));
+	int *PositionsX           = (int*)alloca(Houses * sizeof(int));
+	int *PositionsY           = (int*)alloca(Houses * sizeof(int));
+	int *PositionsZ           = (int*)alloca(Houses * sizeof(int));
+	char (*Towns)[30]         = (char(*)[30])alloca(Houses * 30);
+	bool *Guildhouses         = (bool*)alloca(Houses * sizeof(bool));
 	for(int HouseNr = 0; HouseNr < Houses; HouseNr += 1){
 		THouse *H = House.at(HouseNr);
 		HouseIDs[HouseNr] = H->ID;

@@ -427,7 +427,7 @@ bool SendData(TConnection *Connection, const uint8 *Data, int Size){
 
 // Waiting List
 // =============================================================================
-bool GetWaitinglistEntry(const char *Name, int *NextTry, bool *FreeAccount, bool *Newbie){
+bool GetWaitinglistEntry(const char *Name, uint32 *NextTry, bool *FreeAccount, bool *Newbie){
 	bool Result = false;
 	CommunicationThreadMutex.down();
 	TWaitinglistEntry *Entry = WaitinglistHead;

@@ -120,9 +120,9 @@ uint32 CronInfo(Object Obj, bool Delete);
 uint32 CronStop(Object Obj);
 
 // NOTE(fusion): Map management functions. Most for internal use.
-void SwapObject(TWriteBinaryFile *File, Object Obj, uint32 FileNumber);
+void SwapObject(TWriteBinaryFile *File, Object Obj, uintptr FileNumber);
 void SwapSector(void);
-void UnswapSector(uint32 FileNumber);
+void UnswapSector(uintptr FileNumber);
 void DeleteSwappedSectors(void);
 void LoadObjects(TReadScriptFile *Script, TWriteStream *Stream, bool Skip);
 void LoadObjects(TReadStream *Stream, Object Con);
