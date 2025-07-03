@@ -21,11 +21,13 @@ var (
 		"-Wno-unused-parameter",
 		"-Wno-format-truncation",
 		"-std=c++11",
+		"-pthread",
 		"-DOS_LINUX=1",
 		"-DARCH_X64=1",
 	}
 	linkerOptions = []string{
 		"-Wl,-t",
+		"-lcrypto",
 	}
 )
 
@@ -93,7 +95,7 @@ func main() {
 		fmt.Fprintf(&output, " $(BUILDDIR)/%v", object.obj)
 	}
 	fmt.Fprint(&output, "\n")
-	fmt.Fprint(&output, "\t$(CC) $(CFLAGS) $(LFLAGS) -o $@ $^\n\n")
+	fmt.Fprint(&output, "\t$(CC) $(CFLAGS) -o $@ $^ $(LFLAGS)\n\n")
 
 	// OBJECTS
 	for _, object := range objectFiles {

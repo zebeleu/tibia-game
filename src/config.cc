@@ -106,6 +106,7 @@ void ReadConfig(void){
 	MANAGER_DATABASE.Database[0] = 0;
 
 	char FileName[4096];
+#if 0
 	if(const char *Home = getenv("home")){
 		snprintf(FileName, sizeof(FileName), "%s/.tibia", Home);
 	}else if(const char *Home = getenv("HOME")){
@@ -113,6 +114,9 @@ void ReadConfig(void){
 	}else{
 		snprintf(FileName, sizeof(FileName), ".tibia");
 	}
+#else
+	snprintf(FileName, sizeof(FileName), ".tibia");
+#endif
 
 	if(!FileExists(FileName)){
 		throw "cannot find config-file";
@@ -130,7 +134,7 @@ void ReadConfig(void){
 		}
 
 		char Identifier[MAX_IDENT_LENGTH];
-		strcpy(Identifier, Script.readIdentifier());
+		strcpy(Identifier, Script.getIdentifier());
 		Script.readSymbol('=');
 
 		// TODO(fusion): Ughh... Get rid of all `strcpy`s. A malicious configuration

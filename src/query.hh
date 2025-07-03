@@ -187,4 +187,6 @@ struct TQueryManagerPoolConnection{
 	TQueryManagerConnection *QueryManagerConnection;
 };
 
+void SetQueryManagerLoginData(int Type, const char *Data);
+
 #endif //TIBIA_QUERY_HH_

@@ -23,16 +23,6 @@
 #define MAX_COMMUNICATION_THREADS 1100
 #define COMMUNICATION_THREAD_STACK_SIZE ((int)KB(64))
 
-static const char RSA_PRIME_P[] =
-		"1201758001370723323398753778257470257713354828752713123415294815"
-		"0506251412291888866940292054989907714155267326586216043845592229"
-		"084368540020196135619327879";
-
-static const char RSA_PRIME_Q[] =
-		"1189892136861686835188050824611210139447876026576932541274639840"
-		"5473436969889506919017477758618276066588858607419440134394668095"
-		"105156501566867770737187273";
-
 static int TERMINALVERSION[3] = {770, 770, 770};
 static int TCPSocket;
 static ThreadHandle AcceptorThread;
@@ -1533,7 +1523,9 @@ void InitCommunication(void){
 	AcceptorThreadPID = 0;
 	ActiveConnections = 0;
 	QueryManagerConnectionPool.init();
-	PrivateKey.init(RSA_PRIME_P, RSA_PRIME_Q);
+
+	// TODO(fusion): This is arbitrary, should probably be set in the config.
+	PrivateKey.initFromFile("tibia.pem");
 
 	OpenSocket();
 	if(TCPSocket == -1){

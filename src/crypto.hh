@@ -2,52 +2,20 @@
 #define TIBIA_CRYPTO_HH_ 1
 
 #include "common.hh"
-
-// TODO(fusion): We might want to scrap this implementation and use OpenSSL instead.
-
-struct vlong_flex_unit{
-	uint32 n;
-	uint32 *a;
-	uint32 z;
-};
-
-struct vlong_value: vlong_flex_unit {
-	uint32 share;
-};
-
-struct vlong{
-	vlong_value *value;
-	int negative;
-};
-
-struct vlong_montgomery{
-	vlong R;
-	vlong R1;
-	vlong m;
-	vlong n1;
-	vlong T;
-	vlong k;
-	uint32 N;
-};
+#include <openssl/rsa.h>
 
 struct TRSAPrivateKey{
 	TRSAPrivateKey(void);
 	~TRSAPrivateKey(void);
-	void init(const char *PrimeP, const char *PrimeQ);
+	void initFromFile(const char *FileName);
 	void decrypt(uint8 *Data); // single 128 bytes block
 
 	// DATA
 	// =================
-	vlong m_PrimeP;
-	vlong m_PrimeQ;
-	vlong m_U;
-	vlong m_DP;
-	vlong m_DQ;
+	RSA *m_RSA;
 };
 
 struct TXTEASymmetricKey{
-	TXTEASymmetricKey(void);
-	~TXTEASymmetricKey(void);
 	void init(TReadBuffer *Buffer);
 	void encrypt(uint8 *Data); // single 8 bytes block
 	void decrypt(uint8 *Data); // single 8 bytes block
