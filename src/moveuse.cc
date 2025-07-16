@@ -2543,7 +2543,7 @@ void LoadParameters(TReadScriptFile *Script, int *Parameters, int NumberOfParame
 			}
 
 			case MOVEUSE_PARAMETER_RIGHT:{
-				const char *Right = Script->getIdentifier();
+				const char *Right = Script->readIdentifier();
 				if(strcmp(Right, "premium_account") == 0){
 					Parameters[i] = PREMIUM_ACCOUNT;
 				}else if(strcmp(Right, "special_moveuse") == 0){
@@ -2968,22 +2968,24 @@ void LoadDataBase(void){
 
 		if(strcmp(Identifier, "begin") == 0){
 			Script.readString();
+			Script.nextToken();
 			continue;
 		}else if(strcmp(Identifier, "end") == 0){
+			Script.nextToken();
 			continue;
 		}
 
 		int EventType;
 		if(strcmp(Identifier, "use") == 0){
-			EventType = MOVEUSE_EVENT_MULTIUSE;
+			EventType = MOVEUSE_EVENT_USE;
 		}else if(strcmp(Identifier, "multiuse") == 0){
 			EventType = MOVEUSE_EVENT_MULTIUSE;
 		}else if(strcmp(Identifier, "movement") == 0){
-			EventType = MOVEUSE_EVENT_MULTIUSE;
+			EventType = MOVEUSE_EVENT_MOVEMENT;
 		}else if(strcmp(Identifier, "collision") == 0){
-			EventType = MOVEUSE_EVENT_MULTIUSE;
+			EventType = MOVEUSE_EVENT_COLLISION;
 		}else if(strcmp(Identifier, "separation") == 0){
-			EventType = MOVEUSE_EVENT_MULTIUSE;
+			EventType = MOVEUSE_EVENT_SEPARATION;
 		}else{
 			Script.error("Unknown event type");
 		}

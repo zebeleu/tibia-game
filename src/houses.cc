@@ -21,7 +21,27 @@ static TQueryManagerConnection *QueryManagerConnection;
 static int PaymentExtension;
 
 THouse::THouse(void) : Subowner(0, 4, 5), Guest(0, 9, 10) {
-	// no-op
+	this->ID = 0;
+	this->Name[0] = 0;
+	this->Description[0] = 0;
+	this->Size = 0;
+	this->Rent = 0;
+	this->DepotNr = 0;
+	this->NoAuction = 0;
+	this->GuildHouse = 0;
+	this->ExitX = 0;
+	this->ExitY = 0;
+	this->ExitZ = 0;
+	this->CenterX = 0;
+	this->CenterY = 0;
+	this->CenterZ = 0;
+	this->OwnerID = 0;
+	this->OwnerName[30] = 0;
+	this->LastTransition = 0;
+	this->PaidUntil = 0;
+	this->Subowners = 0;
+	this->Guests = 0;
+	this->Help = 0;
 }
 
 THouse::THouse(const THouse &Other) : THouse() {
@@ -1121,7 +1141,7 @@ bool EvictFreeAccounts(void){
 	uint16 *HouseIDs      = (uint16*)alloca(NumberOfEvictions * sizeof(uint16));
 	uint32 *OwnerIDs      = (uint32*)alloca(NumberOfEvictions * sizeof(uint32));
 	int Ret = QueryManagerConnection->evictFreeAccounts(&NumberOfEvictions, HouseIDs, OwnerIDs);
-	if(Ret == 0){
+	if(Ret != 0){
 		error("CollectRents: Kann Zahlungsdaten nicht ermitteln.\n");
 		return false;
 	}
@@ -1154,7 +1174,7 @@ bool EvictDeletedCharacters(void){
 	int NumberOfEvictions = Houses;
 	uint16 *HouseIDs      = (uint16*)alloca(NumberOfEvictions * sizeof(uint16));
 	int Ret = QueryManagerConnection->evictDeletedCharacters(&NumberOfEvictions, HouseIDs);
-	if(Ret == 0){
+	if(Ret != 0){
 		error("CollectRents: Kann gelöschte Charaktere nicht ermitteln.\n");
 		return false;
 	}
@@ -1193,7 +1213,7 @@ bool EvictExGuildLeaders(void){
 		int NumberOfEvictions;
 		int Ret = QueryManagerConnection->evictExGuildleaders(
 				NumberOfGuildHouses, &NumberOfEvictions, HouseIDs, GuildLeaders);
-		if(Ret == 0){
+		if(Ret != 0){
 			error("CollectRents: Kann Gildenränge nicht ermitteln.\n");
 			return false;
 		}
@@ -1310,7 +1330,6 @@ void ProcessRent(void){
 
 	CollectRent();
 }
-
 
 bool StartAuctions(void){
 	Log("houses", "Starte neue Versteigerungen...\n");
@@ -1533,7 +1552,7 @@ void LoadHouseAreas(void){
 		Script.readSymbol('(');
 		Area->ID = (uint16)Script.readNumber();
 		Script.readSymbol(',');
-		Script.readNumber(); // area name
+		Script.readString(); // area name
 		Script.readSymbol(',');
 		Area->SQMPrice = Script.readNumber();
 		Script.readSymbol(',');
@@ -1772,7 +1791,7 @@ void LoadOwners(void){
 					}
 				}
 
-				strcpy(House->Guest.at(House->Guests)->Name, Script.readString());
+				strcpy(House->Guest.at(House->Guests)->Name, Script.getString());
 				House->Guests += 1;
 			}
 
@@ -1789,7 +1808,7 @@ void LoadOwners(void){
 					}
 				}
 
-				strcpy(House->Subowner.at(House->Subowners)->Name, Script.readString());
+				strcpy(House->Subowner.at(House->Subowners)->Name, Script.getString());
 				House->Subowners += 1;
 			}
 
@@ -1924,9 +1943,8 @@ void SaveOwners(void){
 void ProcessHouses(void){
 	FinishAuctions();
 	ProcessRent();
-	if(StartAuctions()){
-		UpdateHouseOwners();
-	}
+	StartAuctions();
+	UpdateHouseOwners();
 }
 
 void InitHouses(void){

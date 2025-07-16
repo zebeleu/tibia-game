@@ -1204,6 +1204,7 @@ Object Create(Object Con, ObjectType Type, uint32 Value){
 			SetObject(Obj, ObjectType(Position), 0);
 		}
 
+		Creature->CrObject = Obj;
 		Creature->NotifyCreate();
 	}
 
@@ -1535,7 +1536,7 @@ void Merge(uint32 CreatureID, Object Obj, Object Dest, int Count, Object Ignore)
 }
 
 void Change(Object Obj, ObjectType NewType, uint32 Value){
-	if(Obj.exists()){
+	if(!Obj.exists()){
 		error("Change: Übergebenes Objekt existiert nicht.\n");
 		throw ERROR;
 	}
@@ -1563,7 +1564,7 @@ void Change(Object Obj, ObjectType NewType, uint32 Value){
 		if(NewType.getFlag(CONTAINER)){
 			int ObjectCount = CountObjectsInContainer(Obj);
 			int NewCapacity = (int)NewType.getAttribute(CAPACITY);
-			if(ObjectCount < NewCapacity){
+			if(ObjectCount > NewCapacity){
 				error("Change: Zielobjekt %d für %d ist kleinerer Container.\n",
 						NewType.TypeID, OldType.TypeID);
 				throw EMPTYCONTAINER;
@@ -2751,18 +2752,29 @@ void ProcessCronSystem(void){
 			break;
 		}
 
-		ObjectType ObjType = Obj.getObjectType();
-		ObjectType ExpireTarget = (int)ObjType.getAttribute(EXPIRETARGET);
-		if(ObjType.getFlag(CONTAINER)){
-			int Remainder = 0;
-			if(!ExpireTarget.isMapContainer() && ExpireTarget.getFlag(CONTAINER)){
-				Remainder = (int)ExpireTarget.getAttribute(CAPACITY);
+		try{
+			ObjectType ObjType = Obj.getObjectType();
+			ObjectType ExpireTarget = (int)ObjType.getAttribute(EXPIRETARGET);
+			if(ObjType.getFlag(CONTAINER)){
+				int Remainder = 0;
+				if(!ExpireTarget.isMapContainer() && ExpireTarget.getFlag(CONTAINER)){
+					Remainder = (int)ExpireTarget.getAttribute(CAPACITY);
+				}
+
+				Empty(Obj, Remainder);
 			}
 
-			Empty(Obj, Remainder);
-		}
+			Change(Obj, ExpireTarget, 0);
+		}catch(RESULT r){
+			error("ProcessCronSystem: Exception %d beim Verwesen von %d.\n",
+					r, Obj.getObjectType().TypeID);
 
-		Change(Obj, ExpireTarget, 0);
+			try{
+				Delete(Obj, -1);
+			}catch(RESULT r){
+				error("ProcessCronSystem: Kann Objekt nicht löschen - Exception %d.\n", r);
+			}
+		}
 	}
 }
 

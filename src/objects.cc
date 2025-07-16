@@ -98,8 +98,8 @@ static FLAG InstanceAttributeFlags[18] = {
 };
 
 static const char FlagNames[66][30] = {
-	"Bank"						// BANK
-	"Clip"						// CLIP
+	"Bank",						// BANK
+	"Clip",						// CLIP
 	"Bottom",					// BOTTOM
 	"Top",						// TOP
 	"Container",				// CONTAINER

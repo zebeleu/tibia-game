@@ -222,6 +222,7 @@ static void CronSet(Object Obj, uint32 Delay){
 	Entry->RoundNr = RoundNr + Delay;
 	Entry->Previous = -1;
 	Entry->Next = CronHashTable[Obj.ObjectID % NARRAY(CronHashTable)];
+	CronHashTable[Obj.ObjectID % NARRAY(CronHashTable)] = Position;
 	if(Entry->Next != -1){
 		CronEntry.at(Entry->Next)->Previous = Position;
 	}
@@ -370,7 +371,7 @@ static void ReadMapConfig(void){
 		}
 
 		char Identifier[MAX_IDENT_LENGTH];
-		strcpy(Identifier, Script.readIdentifier());
+		strcpy(Identifier, Script.getIdentifier());
 		Script.readSymbol('=');
 
 		if(strcmp(Identifier, "sectorxmin") == 0){
@@ -807,6 +808,7 @@ void LoadObjects(TReadScriptFile *Script, TWriteStream *Stream, bool Skip){
 					}
 
 					Depth -= 1;
+					ProcessObjects = false;
 					if(Depth <= 0){
 						break;
 					}
@@ -868,10 +870,6 @@ void LoadObjects(TReadStream *Stream, Object Con){
 				ObjectType ObjType(TypeID);
 
 				if(ObjType.isBodyContainer()){
-					// TODO(fusion): I couldn't find if a creature's body containers
-					// are properly initialized or if we need to create them here.
-					// Either way we should come back to this function to check it
-					// is working properly.
 					Obj = GetContainerObject(Con, (TypeID - 1));
 				}else{
 					Obj = AppendObject(Con, ObjType);
@@ -895,14 +893,14 @@ void LoadObjects(TReadStream *Stream, Object Con){
 					char String[4096];
 					Stream->readString(String, sizeof(String));
 					Obj.setAttribute((INSTANCEATTRIBUTE)Attribute, AddDynamicString(String));
-				}else if(Attribute != REMAININGEXPIRETIME){
-					uint32 Value = Stream->readQuad();
-					Obj.setAttribute((INSTANCEATTRIBUTE)Attribute, Value);
-				}else{
+				}else if(Attribute == REMAININGEXPIRETIME){
 					uint32 Value = Stream->readQuad();
 					if(Value != 0){
 						CronChange(Obj, (int)Value);
 					}
+				}else{
+					uint32 Value = Stream->readQuad();
+					Obj.setAttribute((INSTANCEATTRIBUTE)Attribute, Value);
 				}
 			}else{
 				Obj = NONE;
@@ -1037,7 +1035,7 @@ void LoadMap(void){
 
 		int SectorX, SectorY, SectorZ;
 		if(sscanf(DirEntry->d_name, "%d-%d-%d.sec", &SectorX, &SectorY, &SectorZ) == 3){
-			snprintf(FileName, sizeof(FileName), "%s/%s", SAVEPATH, DirEntry->d_name);
+			snprintf(FileName, sizeof(FileName), "%s/%s", MAPPATH, DirEntry->d_name);
 			LoadSector(FileName, SectorX, SectorY, SectorZ);
 			SectorCounter += 1;
 		}
@@ -1157,8 +1155,11 @@ void SaveObjects(TReadStream *Stream, TWriteScriptFile *Script){
 
 				Script->writeNumber(TypeID);
 			}else{
-				Depth -= 1;
 				Script->writeText("}");
+				Depth -= 1;
+				if(Depth <= 0){
+					break;
+				}
 			}
 
 			ProcessObjects = false;
@@ -1924,9 +1925,8 @@ void ChangeObject(Object Obj, ObjectType NewType){
 		}
 
 		if(OldType.getFlag(EXPIRESTOP)){
-			uint32 Value = Obj.getAttribute(SAVEDEXPIRETIME);
-			if(Value != 0){
-				Delay = (int)Value;
+			if(Obj.getAttribute(SAVEDEXPIRETIME) != 0){
+				Delay = (int)Obj.getAttribute(SAVEDEXPIRETIME);
 			}
 		}
 
@@ -1938,7 +1938,7 @@ void ChangeObject(Object Obj, ObjectType NewType){
 	Obj.setObjectType(NewType);
 
 	if(NewType.getFlag(CUMULATIVE)){
-		if(Amount == 0){
+		if(Amount <= 0){
 			Amount = 1;
 		}
 		Obj.setAttribute(AMOUNT, Amount);
@@ -1952,7 +1952,7 @@ void ChangeObject(Object Obj, ObjectType NewType){
 
 	if(NewType.getFlag(LIQUIDPOOL)){
 		if(Obj.getAttribute(POOLLIQUIDTYPE) == 0){
-			Obj.setAttribute(POOLLIQUIDTYPE, 1); // LIQUID_TYPE_NONE (?)
+			Obj.setAttribute(POOLLIQUIDTYPE, LIQUID_WATER);
 		}
 	}
 
@@ -2014,7 +2014,7 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 	}
 
 	ObjectType ConType = Con.getObjectType();
-	if(!ConType.getFlag(CONTAINER) || !ConType.getFlag(CHEST)){
+	if(!ConType.getFlag(CONTAINER) && !ConType.getFlag(CHEST)){
 		error("PlaceObject: Con (%d) ist kein Container.\n", ConType.TypeID);
 		return;
 	}

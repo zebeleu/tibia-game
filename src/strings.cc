@@ -183,8 +183,8 @@ void CleanupDynamicStrings(void){
 			if(Block->EntryType[i] == DYNAMIC_STRING_DELETED){
 				int StringOffset = Block->StringOffset[i];
 				char *String = &Block->Text[StringOffset];
-				int StringLen = (int)strlen(String);
-				int StringEnd = StringOffset + StringLen + 1;
+				int StringSize = (int)strlen(String) + 1;
+				int StringEnd = StringOffset + StringSize;
 				Block->EntryType[i] = DYNAMIC_STRING_FREE;
 
 				if(StringEnd > DynamicBlockSize){
@@ -193,13 +193,14 @@ void CleanupDynamicStrings(void){
 				}
 
 				if(StringEnd < DynamicBlockSize){
-					memmove(String, String + StringEnd, DynamicBlockSize - StringEnd);
+					memmove(String, String + StringSize, DynamicBlockSize - StringEnd);
 				}
 
 				for(int j = 0; j < DynamicBlockEntries; j += 1){
 					if(Block->EntryType[j] != DYNAMIC_STRING_FREE
-					&& Block->StringOffset[j] > StringOffset){
-						Block->StringOffset[j] -= StringLen + 1;
+							&& Block->StringOffset[j] > StringOffset){
+						ASSERT(Block->StringOffset[j] >= StringEnd);
+						Block->StringOffset[j] -= StringSize;
 					}
 				}
 			}

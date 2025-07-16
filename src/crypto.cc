@@ -27,16 +27,16 @@ TRSAPrivateKey::~TRSAPrivateKey(void){
 	}
 }
 
-void TRSAPrivateKey::initFromFile(const char *FileName){
+bool TRSAPrivateKey::initFromFile(const char *FileName){
 	if(m_RSA != NULL){
 		error("TRSAPrivateKey::init: Key already initialized.\n");
-		return;
+		return false;
 	}
 
 	FILE *File = fopen(FileName, "rb");
 	if(File == NULL){
 		error("TRSAPrivateKey::initFromFile: Failed to open \"%s\".\n", FileName);
-		return;
+		return false;
 	}
 
 	m_RSA = PEM_read_RSAPrivateKey(File, NULL, NULL, NULL);
@@ -50,12 +50,14 @@ void TRSAPrivateKey::initFromFile(const char *FileName){
 		RSA_free(m_RSA);
 		m_RSA = NULL;
 	}
+
+	return (m_RSA != NULL);
 }
 
-void TRSAPrivateKey::decrypt(uint8 *Data){
+bool TRSAPrivateKey::decrypt(uint8 *Data){
 	if(m_RSA == NULL){
 		error("TRSAPrivateKey::decrypt: Key not initialized.\n");
-		return;
+		return false;
 	}
 
 	// TODO(fusion): Pass in the length of `Data` for checking.
@@ -63,7 +65,10 @@ void TRSAPrivateKey::decrypt(uint8 *Data){
 
 	if(RSA_private_decrypt(128, Data, Data, m_RSA, RSA_NO_PADDING) == -1){
 		DumpOpenSSLErrors("TRSAPrivateKey::decrypt", "RSA_private_decrypt");
+		return false;
 	}
+
+	return true;
 }
 
 // TXTEASymmetricKey

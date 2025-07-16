@@ -7,8 +7,8 @@
 struct TRSAPrivateKey{
 	TRSAPrivateKey(void);
 	~TRSAPrivateKey(void);
-	void initFromFile(const char *FileName);
-	void decrypt(uint8 *Data); // single 128 bytes block
+	bool initFromFile(const char *FileName);
+	bool decrypt(uint8 *Data); // single 128 bytes block
 
 	// DATA
 	// =================

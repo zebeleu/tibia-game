@@ -1140,7 +1140,6 @@ void AddKillStatistics(int AttackerRace, int DefenderRace){
 		KilledCreatures[DefenderRace] += 1;
 	}
 
-	// NOTE(fusion): This seems to track how many players are killed by
 	if(strcmp(RaceData[DefenderRace].Name, "human") == 0){
 		KilledPlayers[AttackerRace] += 1;
 	}
@@ -1458,7 +1457,7 @@ void LoadRace(const char *FileName){
 		}else if(strcmp(Identifier, "flags") == 0){
 			Script.readSymbol('{');
 			do{
-				const char *Flag = Script.getIdentifier();
+				const char *Flag = Script.readIdentifier();
 				if(strcmp(Flag, "kickboxes") == 0){
 					Race->KickBoxes = true;
 				}else if(strcmp(Flag, "kickcreatures") == 0){
@@ -1800,17 +1799,17 @@ void LoadMonsterRaid(const char *FileName, int Start,
 	Script.nextToken();
 	if(strcmp(Script.getIdentifier(), "date") == 0){
 		Script.readSymbol('=');
-		*Date = Script.getNumber();
+		*Date = Script.readNumber();
 	}else if(strcmp(Script.getIdentifier(), "interval") == 0){
 		Script.readSymbol('=');
-		*Interval = Script.getNumber();
+		*Interval = Script.readNumber();
 	}else{
 		Script.error("date or interval expected");
 	}
 
 	Script.nextToken();
 	while(Script.Token != ENDOFFILE){
-		if(strcmp(Script.getIdentifier(), "delay") == 0){
+		if(strcmp(Script.getIdentifier(), "delay") != 0){
 			Script.error("delay expected");
 		}
 
@@ -1928,7 +1927,7 @@ void LoadMonsterRaids(void){
 		SecondsToReboot += 86400;
 	}
 
-	char BigRaidName[4096];
+	char BigRaidName[4096] = {};
 	int BigRaidDuration = 0;
 	int BigRaidTieBreaker = -1;
 

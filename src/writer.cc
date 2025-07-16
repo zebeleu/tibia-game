@@ -146,11 +146,13 @@ void Log(const char *ProtocolName, const char *Text, ...){
 
 	if(Line[0] != 0){
 		int LineEnd = (int)strlen(Line);
-		if(LineEnd < (int)(sizeof(Line) - 1)){
-			Line[LineEnd] = '\n';
-			Line[LineEnd + 1] = 0;
-		}else{
-			Line[LineEnd - 1] = '\n';
+		if(Line[LineEnd - 1] != '\n'){
+			if(LineEnd < (int)(sizeof(Line) - 1)){
+				Line[LineEnd] = '\n';
+				Line[LineEnd + 1] = 0;
+			}else{
+				Line[LineEnd - 1] = '\n';
+			}
 		}
 
 		if(ProtocolThread != INVALID_THREAD_HANDLE){

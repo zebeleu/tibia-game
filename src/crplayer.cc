@@ -2314,7 +2314,7 @@ bool LoadPlayerData(TPlayerData *Slot){
 				}
 			}
 
-			int Position = Script.readNumber();
+			int Position = Script.getNumber();
 			if(Position < INVENTORY_FIRST || Position > INVENTORY_LAST){
 				Script.error("illegal inventory position");
 			}
@@ -2342,7 +2342,7 @@ bool LoadPlayerData(TPlayerData *Slot){
 				}
 			}
 
-			int DepotNr = Script.readNumber();
+			int DepotNr = Script.getNumber();
 			if(DepotNr < 0 || DepotNr >= NARRAY(Slot->Depot)){
 				Script.error("illegal depot number");
 			}
@@ -2361,6 +2361,7 @@ bool LoadPlayerData(TPlayerData *Slot){
 			Script.error("end of file expected");
 		}
 
+		Script.close();
 		Result = true;
 	}catch(const char *str){
 		error("LoadPlayerData: Kann Gegenstände des Spielers %u nicht laden.\n",

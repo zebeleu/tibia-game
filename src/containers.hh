@@ -323,9 +323,11 @@ struct matrix3d{
 
 		this->xmin = xmin;
 		this->ymin = ymin;
+		this->zmin = zmin;
 		this->dx = dx;
 		this->dy = dy;
-		this->entry = new T[dx * dy];
+		this->dz = dz;
+		this->entry = new T[dx * dy * dz];
 	}
 
 	matrix3d(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax, T init)

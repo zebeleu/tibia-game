@@ -303,7 +303,6 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 
 				if(!Ok){
 					TBehaviourNode *Left = this->readTerm(Script);
-					Script->nextToken();
 					if(Script->Token != SPECIAL){
 						Script->error("relational operator expected");
 					}
@@ -326,9 +325,10 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 					TBehaviourNode *Right = this->readTerm(Script);
 					Behaviour->addCondition(BEHAVIOUR_CONDITION_EXPRESSION,
 							NewBehaviourNode(Operator, Right, Left));
+				}else{
+					Script->nextToken();
 				}
 
-				Script->nextToken();
 				if(Script->Token == SPECIAL && Script->getSpecial() == ','){
 					Script->nextToken();
 				}else{
@@ -346,6 +346,7 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 		while(true){
 			if(Script->Token == STRING){
 				Behaviour->addAction(BEHAVIOUR_ACTION_REPLY, Script->getString(), NULL, NULL, NULL);
+				Script->nextToken();
 			}else if(Script->Token == IDENTIFIER){
 				int Type = -1;
 				int Data = 0;
@@ -423,7 +424,7 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 
 				switch(Type){
 					case BEHAVIOUR_ACTION_NONE:{
-						// no-op
+						Script->nextToken();
 						break;
 					}
 
@@ -432,7 +433,6 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 						Script->readSymbol('=');
 						Script->nextToken();
 						TBehaviourNode *Value = this->readTerm(Script);
-
 						Behaviour->addAction(Type, &Data, Value, NULL, NULL);
 						break;
 					}
@@ -444,7 +444,7 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 						if(Script->Token != SPECIAL || Script->getSpecial() != ')'){
 							Script->error(") expected");
 						}
-
+						Script->nextToken();
 						Behaviour->addAction(Type, &Data, Param, NULL, NULL);
 						break;
 					}
@@ -452,50 +452,46 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 					case BEHAVIOUR_ACTION_FUNCTION2:
 					case BEHAVIOUR_ACTION_SET_SKILL_TIMER:{
 						Script->readSymbol('(');
-
 						Script->nextToken();
 						TBehaviourNode *Param1 = this->readTerm(Script);
 						if(Script->Token != SPECIAL || Script->getSpecial() != ','){
 							Script->error(", expected");
 						}
-
 						Script->nextToken();
 						TBehaviourNode *Param2 = this->readTerm(Script);
 						if(Script->Token != SPECIAL || Script->getSpecial() != ')'){
 							Script->error(") expected");
 						}
-
+						Script->nextToken();
 						Behaviour->addAction(Type, &Data, Param1, Param2, NULL);
 						break;
 					}
 
 					case BEHAVIOUR_ACTION_FUNCTION0:
 					case BEHAVIOUR_ACTION_CHANGESTATE:{
+						Script->nextToken();
 						Behaviour->addAction(Type, &Data, NULL, NULL, NULL);
 						break;
 					}
 
 					case BEHAVIOUR_ACTION_FUNCTION3:{
 						Script->readSymbol('(');
-
 						Script->nextToken();
 						TBehaviourNode *Param1 = this->readTerm(Script);
 						if(Script->Token != SPECIAL || Script->getSpecial() != ','){
 							Script->error(", expected");
 						}
-
 						Script->nextToken();
 						TBehaviourNode *Param2 = this->readTerm(Script);
 						if(Script->Token != SPECIAL || Script->getSpecial() != ','){
 							Script->error(", expected");
 						}
-
 						Script->nextToken();
 						TBehaviourNode *Param3 = this->readTerm(Script);
 						if(Script->Token != SPECIAL || Script->getSpecial() != ')'){
 							Script->error(") expected");
 						}
-
+						Script->nextToken();
 						Behaviour->addAction(Type, &Data, Param1, Param2, Param3);
 						break;
 					}
@@ -505,16 +501,17 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 						break;
 					}
 				}
+
 			}else if(Script->Token == SPECIAL && Script->getSpecial() == '*'){
 				if(this->Behaviours == 0){
 					Script->error("no previous pattern");
 				}
+				Script->nextToken();
 				Behaviour->addAction(BEHAVIOUR_ACTION_REPEAT, NULL, NULL, NULL, NULL);
 			}else{
 				Script->error("illegal action");
 			}
 
-			Script->nextToken();
 			if(Script->Token == SPECIAL && Script->getSpecial() == ','){
 				Script->nextToken();
 			}else{
@@ -529,7 +526,7 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 TBehaviourNode *TBehaviourDatabase::readValue(TReadScriptFile *Script){
 	TBehaviourNode *Node = NULL;
 	if(Script->Token == NUMBER){
-		Node = NewBehaviourNode(BEHAVIOUR_NODE_NUMBER, Script->readNumber());
+		Node = NewBehaviourNode(BEHAVIOUR_NODE_NUMBER, Script->getNumber());
 	}else if(Script->Token == IDENTIFIER){
 		const char *Identifier = Script->getIdentifier();
 		if(strcmp(Identifier, "topic") == 0){
@@ -1597,7 +1594,7 @@ TNPC::TNPC(const char *FileName) :
 			this->OrgOutfit = ReadOutfit(&Script);
 			this->Outfit = this->OrgOutfit;
 		}else if(strcmp(Identifier, "home") == 0){
-			Script.readCoordinate(&this->startx, &this->starty, &this->startx);
+			Script.readCoordinate(&this->startx, &this->starty, &this->startz);
 			this->posx = this->startx;
 			this->posy = this->starty;
 			this->posz = this->startz;
@@ -2025,7 +2022,7 @@ TMonster::TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID) :
 			Object Bag = Create(GetBodyContainer(this->ID, INVENTORY_BAG),
 								GetSpecialObject(DEFAULT_CONTAINER),
 								0);
-			for(int i = 0; i < RaceData[Race].Items; i += 1){
+			for(int i = 1; i <= RaceData[Race].Items; i += 1){
 				TItemData *ItemData = RaceData[Race].Item.at(i);
 				if(random(0, 999) > ItemData->Probability){
 					continue;
@@ -2381,7 +2378,7 @@ void TMonster::IdleStimulus(void){
 
 	// NOTE(fusion): TALKING.
 	if(RaceData[this->Race].Talks > 0 && (rand() % 50) == 0){
-		int TalkNr = rand() % (RaceData[this->Race].Talks + 1);
+		int TalkNr = random(1, RaceData[this->Race].Talks);
 		const char *Text = GetDynamicString(*RaceData[this->Race].Talk.at(TalkNr));
 		if(Text != 0 && Text[0] != 0){
 			// TODO(fusion): We were only checking for a `#` but it could be

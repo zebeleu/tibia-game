@@ -137,5 +137,5 @@ $(BUILDDIR)/writer.obj: $(SRCDIR)/writer.cc $(HEADERS)
 .PHONY: clean
 
 clean:
-	@rm -r $(BUILDDIR)
+	@rm -rf $(BUILDDIR)
 

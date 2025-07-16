@@ -23,7 +23,7 @@
 #define MAX_COMMUNICATION_THREADS 1100
 #define COMMUNICATION_THREAD_STACK_SIZE ((int)KB(64))
 
-static int TERMINALVERSION[3] = {770, 770, 770};
+static int TERMINALVERSION[] = {770, 770, 770};
 static int TCPSocket;
 static ThreadHandle AcceptorThread;
 static pid_t AcceptorThreadPID;
@@ -710,12 +710,12 @@ TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
 	char BuddyNames[100][30];	// MAX_BUDDIES, MAX_NAME_LENGTH ?
 	uint8 Rights[12];			// MAX_RIGHT_BYTES ?
 	bool PremiumAccountActivated;
-	int Status = QueryManagerConnection->loginGame(AccountID, PlayerName,
+	int LoginCode = QueryManagerConnection->loginGame(AccountID, PlayerName,
 			PlayerPassword, Connection->GetIPAddress(), PrivateWorld, false,
 			GamemasterClient, &CharacterID, &Sex, Guild, Rank, Title,
 			&NumberOfBuddies, BuddyIDs, BuddyNames, Rights,
 			&PremiumAccountActivated);
-	switch(Status){
+	switch(LoginCode){
 		case 0:{
 			// NOTE(fusion): Login successful.
 			break;
@@ -845,6 +845,8 @@ TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
 		return NULL;
 	}
 
+	// TODO(fusion): This should probably checked beforehand or also dispatch
+	// `decrementIsOnline`.
 	if(AccountID == 0){
 		error("PerformRegistration: Spieler %s wurde noch keinem Account zugewiesen.\n", PlayerName);
 		SendLoginMessage(Connection, 20,
@@ -925,22 +927,20 @@ bool HandleLogin(TConnection *Connection){
 	char PlayerName[30];
 	char PlayerPassword[30];
 	try{
-		uint8 AssymmetricData[128];
-		InputBuffer.readBytes(AssymmetricData, 128);
+		uint8 AsymmetricData[128];
+		InputBuffer.readBytes(AsymmetricData, 128);
 		RSAMutex.down();
-		try{
-			PrivateKey.decrypt(AssymmetricData);
-		}catch(const char *str){
+		if(!PrivateKey.decrypt(AsymmetricData)){
 			RSAMutex.up();
-			error("HandleLogin: Fehler beim Entschlüsseln (%s).\n", str);
+			error("HandleLogin: Fehler beim Entschlüsseln.\n");
 			SendLoginMessage(Connection, 20,
 					"Login failed due to corrupt data.",-1);
 			return false;
 		}
 		RSAMutex.up();
 
-		TReadBuffer ReadBuffer(AssymmetricData, 128);
-		ReadBuffer.readByte();
+		TReadBuffer ReadBuffer(AsymmetricData, 128);
+		ReadBuffer.readByte(); // always zero
 		Connection->SymmetricKey.init(&ReadBuffer);
 		TerminalType = (int)ReadBuffer.readWord();
 		TerminalVersion = (int)ReadBuffer.readWord();
@@ -1037,7 +1037,7 @@ bool HandleLogin(TConnection *Connection){
 		return false;
 	}
 
-	bool SlotLocked = Slot->Locked == getpid();
+	bool SlotLocked = (Slot->Locked == getpid());
 
 	// NOTE(fusion): These checks would have been already made if the player was
 	// in the waiting list so they'd be redundant.
@@ -1425,9 +1425,7 @@ int AcceptorThreadLoop(void *Unused){
 	AcceptorThreadPID = getpid();
 	print(1, "Warte auf Clients...\n");
 	while(GameRunning()){
-		struct sockaddr_in RemoteAddr = {};
-		socklen_t RemoteAddrLen = sizeof(RemoteAddr);
-		int Socket = accept(TCPSocket, (struct sockaddr*)&RemoteAddr, &RemoteAddrLen);
+		int Socket = accept(TCPSocket, NULL, NULL);
 		if(Socket == -1){
 			error("AcceptorThreadLoop: Fehler %d beim Accept.\n", errno);
 			continue;
@@ -1525,7 +1523,9 @@ void InitCommunication(void){
 	QueryManagerConnectionPool.init();
 
 	// TODO(fusion): This is arbitrary, should probably be set in the config.
-	PrivateKey.initFromFile("tibia.pem");
+	if(!PrivateKey.initFromFile("tibia.pem")){
+		throw "cannot load RSA key";
+	}
 
 	OpenSocket();
 	if(TCPSocket == -1){

@@ -846,7 +846,7 @@ int TQueryManagerConnection::reportStatement(uint32 ReporterID, const char *Play
 		}
 	}
 
-	this->sendQuad((uint32)NonZeroStatements);
+	this->sendWord((uint16)NonZeroStatements);
 	for(int i = 0; i < NumberOfStatements; i += 1){
 		if(StatementIDs[i] != 0){
 			this->sendQuad(StatementIDs[i]);
@@ -1253,7 +1253,7 @@ int TQueryManagerConnection::createPlayerlist(int NumberOfPlayers, const char **
 }
 
 int TQueryManagerConnection::logKilledCreatures(int NumberOfRaces, const char **Names,
-		int *KilledPlayers,int *KilledCreatures){
+		int *KilledPlayers, int *KilledCreatures){
 	this->prepareQuery(48);
 
 	this->sendWord((uint16)NumberOfRaces);

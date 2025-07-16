@@ -132,12 +132,24 @@ Semaphore::Semaphore(int Value){
 }
 
 Semaphore::~Semaphore(void){
-	if(pthread_mutex_destroy(&this->mutex) != 0){
-		error("Semaphore::~Semaphore: Kann Mutex nicht freigeben.\n");
-	}
+	// IMPORTANT(fusion): Due to how initialization is rolled out, `exit` may be
+	// called after threads are spawned but before `ExitAll` is registered as an
+	// exit handler. This means such threads may still be running or left global
+	// semaphores in an inconsistent state if abruptly terminated. Either way,
+	// they are still considered "in use".
+	//  In this case, calling `destroy` on either mutex or condition variable is
+	// undefined behaviour as per the manual but the actual implementation would
+	// fail on `mutex_destroy` with `EBUSY` and hang on `cond_destroy`.
+	//	The temporary solution is to check the result from `mutex_destroy` before
+	// attempting to call `cond_destroy` to avoid hanging at exit.
 
-	if(pthread_cond_destroy(&this->condition) != 0){
-		error("Semaphore::~Semaphore: Kann Wartebedingung nicht freigeben.\n");
+	int ErrorCode;
+	if((ErrorCode = pthread_mutex_destroy(&this->mutex)) != 0){
+		error("Semaphore::~Semaphore: Kann Mutex nicht freigeben: (%d) %s.\n",
+				ErrorCode, strerrordesc_np(ErrorCode));
+	}else if((ErrorCode = pthread_cond_destroy(&this->condition)) != 0){
+		error("Semaphore::~Semaphore: Kann Wartebedingung nicht freigeben: (%d) %s.\n",
+				ErrorCode, strerrordesc_np(ErrorCode));
 	}
 }
 
