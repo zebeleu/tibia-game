@@ -34,16 +34,11 @@ static sighandler_t handler(int signr, sighandler_t sighandler){
 	// signals that share the same handler.
 	sigemptyset(&act.sa_mask);
 
-	// TODO(fusion): We had this weird logic in the decompiled version of this
-	// function but it looks like some GLIBC internal thing, since these values
-	// would mask signals 1020 and 1021 which don't really make sense.
-	//
-	//if(signr == SIGALRM){
-	//	act.sa_mask.__val[0x1f] = 0x20000000;
-	//}else{
-	//	act.sa_mask.__val[0x1f] = 0x10000000;
-	//}
-	//
+	if(signr == SIGALRM){
+		act.sa_flags = SA_INTERRUPT;
+	}else{
+		act.sa_flags = SA_RESTART;
+	}
 
 	if(sigaction(signr, &act, &oldact) == 0){
 		return oldact.sa_handler;

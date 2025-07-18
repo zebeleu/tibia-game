@@ -17,13 +17,13 @@
 // NOTE(fusion): We seem to add this value of 48 every time `NetLoad` is called,
 // and I assume it is to account for IPv4 (20 bytes) and TCP (20 bytes) headers
 // although there are still 8 bytes on the table that I'm not sure where are
-// comming from.
+// coming from.
 #define PACKET_AVERAGE_SIZE_OVERHEAD 48
 
 #define MAX_COMMUNICATION_THREADS 1100
 #define COMMUNICATION_THREAD_STACK_SIZE ((int)KB(64))
 
-static int TERMINALVERSION[] = {770, 770, 770};
+static const int TERMINALVERSION[] = {770, 770, 770};
 static int TCPSocket;
 static ThreadHandle AcceptorThread;
 static pid_t AcceptorThreadPID;

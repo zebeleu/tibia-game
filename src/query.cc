@@ -93,9 +93,9 @@ void TQueryManagerConnection::connect(void){
 			this->sendString(LoginData);
 		}
 
-		int Ret = this->executeQuery(30, false);
-		if(Ret != 0){
-			print(2, "TQueryManagerConnection::connect: Anmeldung fehlgeschlagen (%d).\n", Ret);
+		int Status = this->executeQuery(30, false);
+		if(Status != QUERY_STATUS_OK){
+			print(2, "TQueryManagerConnection::connect: Anmeldung fehlgeschlagen (%d).\n", Status);
 			this->disconnect();
 			continue;
 		}
@@ -299,7 +299,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		PacketSize += 4;
 		if(PacketSize > this->BufferSize){
 			error("TQueryManagerConnection::executeQuery: Puffer zu klein.\n");
-			return QUERY_FAILED;
+			return QUERY_STATUS_FAILED;
 		}
 
 		memmove(&this->Buffer[6], &this->Buffer[2], PayloadSize);
@@ -309,13 +309,13 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 
 	if(!this->QueryOk){
 		error("TQueryManagerConnection::executeQuery: Fehler beim Zusammenbauen der Anfrage.\n");
-		return QUERY_FAILED;
+		return QUERY_STATUS_FAILED;
 	}
 
 	for(int Attempt = 0; true; Attempt += 1){
 		if(!this->isConnected()){
 			if(!AutoReconnect){
-				return QUERY_FAILED;
+				return QUERY_STATUS_FAILED;
 			}
 
 			// TODO(fusion): There was also a "fast" path that allocated on the
@@ -329,7 +329,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 			delete[] TempBuffer;
 
 			if(!this->isConnected()){
-				return QUERY_FAILED;
+				return QUERY_STATUS_FAILED;
 			}
 		}
 
@@ -337,7 +337,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 			this->disconnect();
 			if(Attempt > 0){
 				error("TQueryManagerConnection::executeQuery: Fehler beim Abschicken der Anfrage.\n");
-				return QUERY_FAILED;
+				return QUERY_STATUS_FAILED;
 			}
 			continue;
 		}
@@ -347,7 +347,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		if(BytesRead != 2){
 			this->disconnect();
 			if(BytesRead == -2 || Attempt > 0){
-				return QUERY_FAILED;
+				return QUERY_STATUS_FAILED;
 			}
 			continue;
 		}
@@ -356,7 +356,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		if(ResponseSize == 0xFFFF){
 			if(this->read(Help, 4, Timeout) != 4){
 				this->disconnect();
-				return QUERY_FAILED;
+				return QUERY_STATUS_FAILED;
 			}
 
 			ResponseSize = ((int)Help[0]) | ((int)Help[1] << 8)
@@ -366,19 +366,19 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		if(ResponseSize <= 0 || ResponseSize > this->BufferSize){
 			this->disconnect();
 			error("TQueryManagerConnection::executeQuery: Ungültige Datengröße %d.\n", ResponseSize);
-			return QUERY_FAILED;
+			return QUERY_STATUS_FAILED;
 		}
 
 		if(this->read(this->Buffer, ResponseSize, Timeout) != ResponseSize){
 			this->disconnect();
 			error("TQueryManagerConnection::executeQuery: Fehler beim Auslesen der Daten.\n");
-			return QUERY_FAILED;
+			return QUERY_STATUS_FAILED;
 		}
 
 		this->ReadBuffer.Size = ResponseSize;
 		this->ReadBuffer.Position = 0;
 		int Status = this->getByte();
-		if(Status == QUERY_FAILED){
+		if(Status == QUERY_STATUS_FAILED){
 			error("TQueryManagerConnection::executeQuery: Anfrage fehlgeschlagen.\n");
 		}
 
@@ -393,8 +393,8 @@ int TQueryManagerConnection::checkAccountPassword(uint32 AccountID,
 	this->sendString(Password);
 	this->sendString(IPAddress);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_ERROR){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 4){
 			Result = ErrorCode;
@@ -412,8 +412,8 @@ int TQueryManagerConnection::loginAdmin(uint32 AccountID, bool PrivateWorld,
 	this->sendQuad(AccountID);
 	this->sendFlag(PrivateWorld);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*NumberOfCharacters = this->getByte();
 		for(int i = 0; i < *NumberOfCharacters; i += 1){
 			this->getString(Characters[i], 30);
@@ -422,7 +422,7 @@ int TQueryManagerConnection::loginAdmin(uint32 AccountID, bool PrivateWorld,
 			Ports[i] = this->getWord();
 		}
 		*PremiumDaysLeft = this->getWord();
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode == 1){
 			Result = ErrorCode;
@@ -438,8 +438,8 @@ int TQueryManagerConnection::loadWorldConfig(int *WorldType, int *RebootTime,
 		int *MaxNewbies, int *PremiumNewbieBuffer){
 	this->prepareQuery(53);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*WorldType = this->getByte();
 		*RebootTime = (int)this->getByte() * 60;
 		IPAddress[0] = this->getByte();
@@ -679,8 +679,8 @@ int TQueryManagerConnection::loginGame(uint32 AccountID, char *PlayerName,
 	this->sendFlag(PremiumAccountRequired);
 	this->sendFlag(GamemasterRequired);
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*CharacterID = this->getQuad();
 		this->getString(PlayerName, 30);
 		*Sex = this->getByte();
@@ -723,7 +723,7 @@ int TQueryManagerConnection::loginGame(uint32 AccountID, char *PlayerName,
 		}
 
 		*PremiumAccountActivated = this->getFlag();
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 15){
 			Result = ErrorCode;
@@ -744,7 +744,7 @@ int TQueryManagerConnection::logoutGame(uint32 CharacterID, int Level, const cha
 	this->sendQuad((uint32)LastLoginTime);
 	this->sendWord((uint16)TutorActivities);
 	int Status = this->executeQuery(120, true);
-	return (Status == QUERY_OK ? 0 : -1);
+	return (Status == QUERY_STATUS_OK ? 0 : -1);
 }
 
 int TQueryManagerConnection::setNotation(uint32 GamemasterID, const char *PlayerName,
@@ -756,10 +756,10 @@ int TQueryManagerConnection::setNotation(uint32 GamemasterID, const char *Player
 	this->sendString(Reason);
 	this->sendString(Comment);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*BanishmentID = this->getQuad();
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
@@ -781,15 +781,15 @@ int TQueryManagerConnection::setNamelock(uint32 GamemasterID, const char *Player
 	this->sendString(Reason);
 	this->sendString(Comment);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_ERROR){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 4){
 			Result = ErrorCode;
 		}else{
 			error("TQueryManagerConnection::setNamelock: Ungültiger Fehlercode %d.\n", ErrorCode);
 		}
-	}else if(Status != QUERY_OK){
+	}else if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::setNamelock: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -806,15 +806,15 @@ int TQueryManagerConnection::banishAccount(uint32 GamemasterID, const char *Play
 	this->sendString(Comment);
 	this->sendFlag(*FinalWarning);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*BanishmentID = this->getQuad();
 		*Days = this->getByte();
 		*FinalWarning = this->getFlag();
 		if(*Days == 0xFF){
 			*Days = -1;
 		}
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 3){
 			Result = ErrorCode;
@@ -858,15 +858,15 @@ int TQueryManagerConnection::reportStatement(uint32 ReporterID, const char *Play
 	}
 
 	int Status = this->executeQuery(180, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_ERROR){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
 			error("TQueryManagerConnection::reportStatement: Ungültiger Fehlercode %d.\n", ErrorCode);
 		}
-	}else if(Status != QUERY_OK){
+	}else if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::reportStatement: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -881,15 +881,15 @@ int TQueryManagerConnection::banishIPAddress(uint32 GamemasterID, const char *Pl
 	this->sendString(Reason);
 	this->sendString(Comment);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_ERROR){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
 			error("TQueryManagerConnection::banishIPAddress: Ungültiger Fehlercode %d.\n", ErrorCode);
 		}
-	}else if(Status != QUERY_OK){
+	}else if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::banishIPAddress: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -905,8 +905,8 @@ int TQueryManagerConnection::logCharacterDeath(uint32 CharacterID, int Level,
 	this->sendFlag(Unjustified);
 	this->sendQuad((uint32)Time);
 	int Status = this->executeQuery(90, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::logCharacterDeath: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -917,8 +917,8 @@ int TQueryManagerConnection::addBuddy(uint32 AccountID, uint32 Buddy){
 	this->sendQuad(AccountID);
 	this->sendQuad(Buddy);
 	int Status = this->executeQuery(90, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::addBuddy: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -929,8 +929,8 @@ int TQueryManagerConnection::removeBuddy(uint32 AccountID, uint32 Buddy){
 	this->sendQuad(AccountID);
 	this->sendQuad(Buddy);
 	int Status = this->executeQuery(90, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::removeBuddy: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -940,8 +940,8 @@ int TQueryManagerConnection::decrementIsOnline(uint32 CharacterID){
 	this->prepareQuery(32);
 	this->sendQuad(CharacterID);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::decrementIsOnline: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -951,8 +951,8 @@ int TQueryManagerConnection::finishAuctions(int *NumberOfAuctions, uint16 *House
 		uint32 *CharacterIDs, char (*CharacterNames)[30], int *Bids){
 	this->prepareQuery(33);
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		int MaxNumberOfAuctions = *NumberOfAuctions;
 		*NumberOfAuctions = this->getWord();
 		if(*NumberOfAuctions > MaxNumberOfAuctions){
@@ -978,8 +978,8 @@ int TQueryManagerConnection::excludeFromAuctions(uint32 CharacterID, bool Banish
 	this->sendQuad(CharacterID);
 	this->sendFlag(Banish);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::excludeFromAuctions: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -989,8 +989,8 @@ int TQueryManagerConnection::transferHouses(int *NumberOfTransfers, uint16 *Hous
 		uint32 *NewOwnerIDs, char (*NewOwnerNames)[30], int *Prices){
 	this->prepareQuery(35);
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		int MaxNumberOfTransfers = *NumberOfTransfers;
 		*NumberOfTransfers = this->getWord();
 		if(*NumberOfTransfers > MaxNumberOfTransfers){
@@ -1015,8 +1015,8 @@ int TQueryManagerConnection::cancelHouseTransfer(uint16 HouseID){
 	this->prepareQuery(52);
 	this->sendWord(HouseID);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::cancelHouseTransfer: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1026,8 +1026,8 @@ int TQueryManagerConnection::evictFreeAccounts(int *NumberOfEvictions,
 		uint16 *HouseIDs, uint32 *OwnerIDs){
 	this->prepareQuery(36);
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		int MaxNumberOfEvictions = *NumberOfEvictions;
 		*NumberOfEvictions = this->getWord();
 		if(*NumberOfEvictions > MaxNumberOfEvictions){
@@ -1049,8 +1049,8 @@ int TQueryManagerConnection::evictFreeAccounts(int *NumberOfEvictions,
 int TQueryManagerConnection::evictDeletedCharacters(int *NumberOfEvictions, uint16 *HouseIDs){
 	this->prepareQuery(37);
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		int MaxNumberOfEvictions = *NumberOfEvictions;
 		*NumberOfEvictions = this->getWord();
 		if(*NumberOfEvictions > MaxNumberOfEvictions){
@@ -1079,8 +1079,8 @@ int TQueryManagerConnection::evictExGuildleaders(int NumberOfGuildhouses,
 	}
 
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*NumberOfEvictions = this->getWord();
 		for(int i = 0; i < *NumberOfEvictions; i += 1){
 			HouseIDs[i] = this->getWord();
@@ -1097,8 +1097,8 @@ int TQueryManagerConnection::insertHouseOwner(uint16 HouseID, uint32 OwnerID, in
 	this->sendQuad(OwnerID);
 	this->sendQuad((uint32)PaidUntil);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::insertHouseOwner: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1110,8 +1110,8 @@ int TQueryManagerConnection::updateHouseOwner(uint16 HouseID, uint32 OwnerID, in
 	this->sendQuad(OwnerID);
 	this->sendQuad((uint32)PaidUntil);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::updateHouseOwner: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1121,8 +1121,8 @@ int TQueryManagerConnection::deleteHouseOwner(uint16 HouseID){
 	this->prepareQuery(41);
 	this->sendWord(HouseID);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::deleteHouseOwner: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1132,8 +1132,8 @@ int TQueryManagerConnection::getHouseOwners(int *NumberOfOwners, uint16 *HouseID
 		uint32 *OwnerIDs, char (*OwnerNames)[30], int *PaidUntils){
 	this->prepareQuery(42);
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		int MaxNumberOfOwners = *NumberOfOwners;
 		*NumberOfOwners = this->getWord();
 		if(*NumberOfOwners > MaxNumberOfOwners){
@@ -1157,8 +1157,8 @@ int TQueryManagerConnection::getHouseOwners(int *NumberOfOwners, uint16 *HouseID
 int TQueryManagerConnection::getAuctions(int *NumberOfAuctions, uint16 *HouseIDs){
 	this->prepareQuery(43);
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		int MaxNumberOfAuctions = *NumberOfAuctions;
 		*NumberOfAuctions = this->getWord();
 		if(*NumberOfAuctions > MaxNumberOfAuctions){
@@ -1180,8 +1180,8 @@ int TQueryManagerConnection::startAuction(uint16 HouseID){
 	this->prepareQuery(44);
 	this->sendWord(HouseID);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::startAuction: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1208,8 +1208,8 @@ int TQueryManagerConnection::insertHouses(int NumberOfHouses, uint16 *HouseIDs,
 	}
 
 	int Status = this->executeQuery(60, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::insertHouses: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1218,8 +1218,8 @@ int TQueryManagerConnection::insertHouses(int NumberOfHouses, uint16 *HouseIDs,
 int TQueryManagerConnection::clearIsOnline(int *NumberOfAffectedPlayers){
 	this->prepareQuery(46);
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*NumberOfAffectedPlayers = this->getWord();
 	}else{
 		error("TQueryManagerConnection::clearIsOnline: Anfrage fehlgeschlagen.\n");
@@ -1243,8 +1243,8 @@ int TQueryManagerConnection::createPlayerlist(int NumberOfPlayers, const char **
 	}
 
 	int Status = this->executeQuery(240, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*NewRecord = this->getFlag();
 	}else{
 		error("TQueryManagerConnection::createPlayerlist: Anfrage fehlgeschlagen.\n");
@@ -1264,8 +1264,8 @@ int TQueryManagerConnection::logKilledCreatures(int NumberOfRaces, const char **
 	}
 
 	int Status = this->executeQuery(240, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::logKilledCreatures: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1276,8 +1276,8 @@ int TQueryManagerConnection::loadPlayers(uint32 MinimumCharacterID, int *NumberO
 	this->prepareQuery(50);
 	this->sendQuad(MinimumCharacterID);
 	int Status = this->executeQuery(900, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		// TODO(fusion): This is called to fill the player index in `InitPlayerIndex`
 		// but there is no explicit parameter that limits how many results are returned
 		// which could be a problem.
@@ -1297,8 +1297,8 @@ int TQueryManagerConnection::getKeptCharacters(uint32 MinimumCharacterID,
 	this->prepareQuery(200);
 	this->sendQuad(MinimumCharacterID);
 	int Status = this->executeQuery(1800, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		// TODO(fusion): Same as `loadPlayers`.
 		*NumberOfPlayers = (int)this->getQuad();
 		for(int i = 0; i < *NumberOfPlayers; i += 1){
@@ -1315,8 +1315,8 @@ int TQueryManagerConnection::getDeletedCharacters(uint32 MinimumCharacterID,
 	this->prepareQuery(201);
 	this->sendQuad(MinimumCharacterID);
 	int Status = this->executeQuery(900, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		// TODO(fusion): Same as `loadPlayers`.
 		*NumberOfPlayers = (int)this->getQuad();
 		for(int i = 0; i < *NumberOfPlayers; i += 1){
@@ -1332,8 +1332,8 @@ int TQueryManagerConnection::deleteOldCharacter(uint32 CharacterID){
 	this->prepareQuery(202);
 	this->sendQuad(CharacterID);
 	int Status = this->executeQuery(30, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::deleteOldCharacter: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1344,8 +1344,8 @@ int TQueryManagerConnection::getHiddenCharacters(uint32 MinimumCharacterID,
 	this->prepareQuery(203);
 	this->sendQuad(MinimumCharacterID);
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		// TODO(fusion): Same as `loadPlayers`.
 		*NumberOfPlayers = (int)this->getQuad();
 		for(int i = 0; i < *NumberOfPlayers; i += 1){
@@ -1378,8 +1378,8 @@ int TQueryManagerConnection::createHighscores(int NumberOfPlayers, uint32 *Chara
 	}
 
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::createHighscores: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1388,8 +1388,8 @@ int TQueryManagerConnection::createHighscores(int NumberOfPlayers, uint32 *Chara
 int TQueryManagerConnection::createCensus(void){
 	this->prepareQuery(205);
 	int Status = this->executeQuery(600, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::createCensus: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1398,8 +1398,8 @@ int TQueryManagerConnection::createCensus(void){
 int TQueryManagerConnection::createKillStatistics(void){
 	this->prepareQuery(206);
 	int Status = this->executeQuery(300, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status != QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status != QUERY_STATUS_OK){
 		error("TQueryManagerConnection::createKillStatistics: Anfrage fehlgeschlagen.\n");
 	}
 	return Result;
@@ -1408,8 +1408,8 @@ int TQueryManagerConnection::createKillStatistics(void){
 int TQueryManagerConnection::getPlayersOnline(int *NumberOfWorlds, char (*Names)[30], uint16 *Players){
 	this->prepareQuery(207);
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*NumberOfWorlds = this->getByte();
 		for(int i = 0; i < *NumberOfWorlds; i += 1){
 			this->getString(Names[i], 30);
@@ -1424,8 +1424,8 @@ int TQueryManagerConnection::getPlayersOnline(int *NumberOfWorlds, char (*Names)
 int TQueryManagerConnection::getWorlds(int *NumberOfWorlds, char (*Names)[30]){
 	this->prepareQuery(208);
 	int Status = this->executeQuery(120, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*NumberOfWorlds = this->getByte();
 		for(int i = 0; i < *NumberOfWorlds; i += 1){
 			this->getString(Names[i], 30);
@@ -1441,8 +1441,8 @@ int TQueryManagerConnection::getServerLoad(const char *World, int Period, int *D
 	this->sendString(World);
 	this->sendByte((uint8)Period);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		// TODO(fusion): Another hardcoded constant?
 		for(int i = 0; i < 600; i += 0){
 			Data[i] = this->getWord();
@@ -1481,10 +1481,10 @@ int TQueryManagerConnection::insertPaymentDataOld(uint32 PurchaseNr, uint32 Refe
 	this->sendString(Registrant);
 	this->sendQuad(AccountID);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*PaymentID = this->getQuad();
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode == 1){
 			Result = ErrorCode;
@@ -1505,10 +1505,10 @@ int TQueryManagerConnection::addPaymentOld(uint32 AccountID, const char *Descrip
 	this->sendQuad(PaymentID);
 	this->sendWord((uint16)Days);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*ActionTaken = this->getByte();
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
@@ -1528,11 +1528,11 @@ int TQueryManagerConnection::cancelPaymentOld(uint32 PurchaseNr, uint32 Referenc
 	this->sendQuad(ReferenceNr);
 	this->sendQuad(AccountID);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*IllegalUse = this->getFlag();
 		this->getString(EMailAddress, 50);
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
@@ -1570,10 +1570,10 @@ int TQueryManagerConnection::insertPaymentDataNew(uint32 PurchaseNr, uint32 Refe
 	this->sendString(Registrant);
 	this->sendString(PaymentKey);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*PaymentID = this->getQuad();
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode == 1){
 			Result = ErrorCode;
@@ -1592,13 +1592,13 @@ int TQueryManagerConnection::addPaymentNew(const char *PaymentKey, uint32 Paymen
 	this->sendString(PaymentKey);
 	this->sendQuad(PaymentID);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*ActionTaken = this->getByte();
 		if(*ActionTaken == 5){
 			this->getString(EMailReceiver, 100);
 		}
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode >= 1 && ErrorCode <= 3){
 			Result = ErrorCode;
@@ -1618,12 +1618,12 @@ int TQueryManagerConnection::cancelPaymentNew(uint32 PurchaseNr, uint32 Referenc
 	this->sendQuad(ReferenceNr);
 	this->sendString(PaymentKey);
 	int Status = this->executeQuery(360, true);
-	int Result = (Status == QUERY_OK ? 0 : -1);
-	if(Status == QUERY_OK){
+	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
+	if(Status == QUERY_STATUS_OK){
 		*IllegalUse = this->getFlag();
 		*Present = this->getFlag();
 		this->getString(EMailAddress, 50);
-	}else if(Status == QUERY_ERROR){
+	}else if(Status == QUERY_STATUS_ERROR){
 		int ErrorCode = this->getByte();
 		if(ErrorCode == 1){
 			Result = ErrorCode;

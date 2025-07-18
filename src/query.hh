@@ -5,9 +5,9 @@
 #include "threads.hh"
 
 enum : int {
-	QUERY_OK		= 0,
-	QUERY_ERROR		= 1,
-	QUERY_FAILED	= 3,
+	QUERY_STATUS_OK			= 0,
+	QUERY_STATUS_ERROR		= 1,
+	QUERY_STATUS_FAILED		= 3,
 };
 
 struct TQueryManagerConnection{
