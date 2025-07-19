@@ -135,11 +135,11 @@ void ProcessLoadCharacterOrder(uint32 CharacterID){
 			break;
 		}
 
-		if(Slot->Locked == GetGameThreadPID()){
+		if(Slot->Locked == GetGameThreadID()){
 			break;
 		}
 
-		if(Slot->Locked == getpid()){
+		if(Slot->Locked == gettid()){
 			IncreasePlayerPoolSlotSticky(Slot);
 			ReleasePlayerPoolSlot(Slot);
 			CharacterReply(CharacterID);

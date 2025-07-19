@@ -861,7 +861,7 @@ void SendMails(TPlayerData *PlayerData){
 		return;
 	}
 
-	if(PlayerData->Locked != getpid()){
+	if(PlayerData->Locked != gettid()){
 		error("SendMails: Slot ist nicht vom GameThread gesperrt.\n");
 		return;
 	}

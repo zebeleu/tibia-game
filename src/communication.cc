@@ -26,7 +26,7 @@
 static const int TERMINALVERSION[] = {770, 770, 770};
 static int TCPSocket;
 static ThreadHandle AcceptorThread;
-static pid_t AcceptorThreadPID;
+static pid_t AcceptorThreadID;
 static int ActiveConnections;
 
 static Semaphore RSAMutex(1);
@@ -65,7 +65,7 @@ void GetCommunicationThreadStack(int *StackNumber, void **Stack){
 	for(int i = 0; i < NumberOfFreeCommunicationThreadStacks; i += 1){
 		int FreeStack = FreeCommunicationThreadStacks[i];
 		if(LastUsingCommunicationThread[FreeStack] == 0
-				|| kill(LastUsingCommunicationThread[FreeStack], 0) == -1){
+				|| tgkill(GetGameProcessID(), LastUsingCommunicationThread[FreeStack], 0) == -1){
 			// NOTE(fusion): A little swap and pop action.
 			NumberOfFreeCommunicationThreadStacks -= 1;
 			FreeCommunicationThreadStacks[i] = FreeCommunicationThreadStacks[NumberOfFreeCommunicationThreadStacks];
@@ -79,7 +79,7 @@ void GetCommunicationThreadStack(int *StackNumber, void **Stack){
 }
 
 void AttachCommunicationThreadStack(int StackNumber){
-	LastUsingCommunicationThread[StackNumber] = getpid();
+	LastUsingCommunicationThread[StackNumber] = gettid();
 }
 
 void ReleaseCommunicationThreadStack(int StackNumber){
@@ -663,8 +663,9 @@ bool DrainSocket(TConnection *Connection, int Size){
 bool CallGameThread(TConnection *Connection){
 	if(GameRunning()){
 		Connection->WaitingForACK = true;
-		if(kill(GetGameThreadPID(), SIGUSR1) != 0){
-			error("CallGameThread: Can't send SIGUSR1 to pid %d\n", GetGameThreadPID());
+		if(tgkill(GetGameProcessID(), GetGameThreadID(), SIGUSR1) == -1){
+			error("CallGameThread: Can't send SIGUSR1 to thread %d/%d: (%d) %s\n",
+					GetGameProcessID(), GetGameThreadID(), errno, strerrordesc_np(errno));
 			SendLoginMessage(Connection, 20,
 					"The server is not online.\nPlease try again later.", -1);
 			return false;
@@ -880,7 +881,7 @@ TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
 		return NULL;
 	}
 
-	bool Locked = PlayerData->Locked == getpid();
+	bool Locked = (PlayerData->Locked == gettid());
 
 	// TODO(fusion): How come this isn't a race condition? Perhaps these are
 	// constant and can only change when loaded from the database?
@@ -1037,7 +1038,7 @@ bool HandleLogin(TConnection *Connection){
 		return false;
 	}
 
-	bool SlotLocked = (Slot->Locked == getpid());
+	bool SlotLocked = (Slot->Locked == gettid());
 
 	// NOTE(fusion): These checks would have been already made if the player was
 	// in the waiting list so they'd be redundant.
@@ -1183,7 +1184,7 @@ bool ReceiveCommand(TConnection *Connection){
 		}
 
 		if(Connection->State == CONNECTION_CONNECTED){
-			alarm(0);
+			Connection->StopLoginTimer();
 			Connection->InDataSize = Size;
 			if(!HandleLogin(Connection)){
 				return false;
@@ -1219,8 +1220,8 @@ bool ReceiveCommand(TConnection *Connection){
 	}
 
 	// NOTE(fusion): We set `SigIOPending` here to signal that there could be more
-	// packets already queued up, so `CommunicationThread` can attempt to read them
-	// without waiting for another `SIGIO`.
+	// packets already queued up, in which case `CommunicationThread` will attempt
+	// to read without waiting for another `SIGIO`.
 	//	The only way to know there is no more data on a socket's receive buffer is
 	// when `read` returns `EAGAIN` which is handled when `ReadFromSocket` returns
 	// a negative value.
@@ -1252,10 +1253,15 @@ void CommunicationThread(int Socket){
 		return;
 	}
 
+	ASSERT(Connection->ThreadID == gettid());
 	Connection->Connect(Socket);
 	Connection->WaitingForACK = false;
-	if(fcntl(Socket, F_SETOWN, getpid()) == -1){
-		error("CommunicationThread: F_SETOWN fehlgeschlagen für Socket %d.\n", Socket);
+
+	struct f_owner_ex FOwnerEx = {};
+	FOwnerEx.type = F_OWNER_TID;
+	FOwnerEx.pid = Connection->ThreadID;
+	if(fcntl(Socket, F_SETOWN_EX, &FOwnerEx) == -1){
+		error("CommunicationThread: F_SETOWN_EX fehlgeschlagen für Socket %d.\n", Socket);
 		if(close(Socket) == -1){
 			error("CommunicationThread: Fehler %d beim Schließen der Socket (2).\n", errno);
 		}
@@ -1275,7 +1281,14 @@ void CommunicationThread(int Socket){
 	sigset_t SignalSet;
 	sigfillset(&SignalSet);
 	sigprocmask(SIG_SETMASK, &SignalSet, NULL);
-	alarm(5);
+	if(!Connection->SetLoginTimer(5)){
+		error("CommunicationThread: Failed to set login timer.\n");
+		if(close(Socket) == -1){
+			error("CommunicationThread: Fehler %d beim Schließen der Socket (4).\n", errno);
+		}
+		Connection->Free();
+		return;
+	}
 
 	if(!ReceiveCommand(Connection)){
 		Connection->Close(true);
@@ -1315,7 +1328,8 @@ void CommunicationThread(int Socket){
 			}
 
 			case SIGALRM:{
-				// NOTE(fusion): Login deadline.
+				// NOTE(fusion): Login timeout.
+				Connection->StopLoginTimer();
 				if(Connection->State == CONNECTION_CONNECTED){
 					print(2, "Login-TimeOut für Socket %d.\n", Socket);
 					Connection->Close(false);
@@ -1380,7 +1394,7 @@ int HandleConnection(void *Data){
 // =============================================================================
 bool OpenSocket(void){
 	print(1, "Starte Game-Server...\n");
-	print(1, "Pid %d - horche an Port %d\n", getpid(), GamePort);
+	print(1, "Pid=%d, Tid=%d - horche an Port %d\n", getpid(), gettid(), GamePort);
 	TCPSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if(TCPSocket == -1){
 		error("LaunchServer: Kann Socket nicht öffnen.\n");
@@ -1422,7 +1436,7 @@ bool OpenSocket(void){
 }
 
 int AcceptorThreadLoop(void *Unused){
-	AcceptorThreadPID = getpid();
+	AcceptorThreadID = gettid();
 	print(1, "Warte auf Clients...\n");
 	while(GameRunning()){
 		int Socket = accept(TCPSocket, NULL, NULL);
@@ -1485,7 +1499,7 @@ int AcceptorThreadLoop(void *Unused){
 		}
 	}
 
-	AcceptorThreadPID = 0;
+	AcceptorThreadID = 0;
 	if(ActiveConnections > 0){
 		print(3, "Warte auf Beendigung von %d Communication-Threads...\n", ActiveConnections);
 		while(ActiveConnections > 0){
@@ -1518,7 +1532,7 @@ void InitCommunication(void){
 	WaitinglistHead = NULL;
 	TCPSocket = -1;
 	AcceptorThread = INVALID_THREAD_HANDLE;
-	AcceptorThreadPID = 0;
+	AcceptorThreadID = 0;
 	ActiveConnections = 0;
 	QueryManagerConnectionPool.init();
 
@@ -1539,10 +1553,12 @@ void InitCommunication(void){
 }
 
 void ExitCommunication(void){
+	// NOTE(fusion): `SIGHUP` is used to signal the connection thread to close
+	// the connection and terminate.
 	print(3, "Beende alle Verbindungen...\n");
 	TConnection *Connection = GetFirstConnection();
 	while(Connection != NULL){
-		kill(Connection->GetPID(), SIGHUP);
+		tgkill(GetGameProcessID(), Connection->GetThreadID(), SIGHUP);
 		Connection = GetNextConnection();
 	}
 
@@ -1557,8 +1573,8 @@ void ExitCommunication(void){
 	}
 
 	if(AcceptorThread != INVALID_THREAD_HANDLE){
-		if(AcceptorThreadPID != 0){
-			kill(AcceptorThreadPID, SIGHUP);
+		if(AcceptorThreadID != 0){
+			tgkill(GetGameProcessID(), AcceptorThreadID, SIGHUP);
 		}
 		JoinThread(AcceptorThread);
 		AcceptorThread = INVALID_THREAD_HANDLE;

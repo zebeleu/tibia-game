@@ -14,37 +14,53 @@
 
 #include <signal.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <fstream>
 
 static bool BeADaemon = false;
 static bool Reboot = false;
 static bool SaveMapOn = false;
 
+static timer_t BeatTimer;
 static int SigAlarmCounter = 0;
 static int SigUsr1Counter = 0;
 
-static sighandler_t handler(int signr, sighandler_t sighandler){
-	struct sigaction act;
-	struct sigaction oldact;
+static sighandler_t SigHandler(int SigNr, sighandler_t Handler){
+	struct sigaction Action;
+	struct sigaction OldAction;
 
-	act.sa_handler = sighandler;
+	Action.sa_handler = Handler;
 
 	// TODO(fusion): I feel we should probably use `sigfillset` specially for
 	// signals that share the same handler.
-	sigemptyset(&act.sa_mask);
+	sigemptyset(&Action.sa_mask);
 
-	if(signr == SIGALRM){
-		act.sa_flags = SA_INTERRUPT;
+	if(SigNr == SIGALRM){
+		Action.sa_flags = SA_INTERRUPT;
 	}else{
-		act.sa_flags = SA_RESTART;
+		Action.sa_flags = SA_RESTART;
 	}
 
-	if(sigaction(signr, &act, &oldact) == 0){
-		return oldact.sa_handler;
+	if(sigaction(SigNr, &Action, &OldAction) == 0){
+		return OldAction.sa_handler;
 	}else{
 		return SIG_ERR;
 	}
+}
+
+static void SigBlock(int SigNr){
+	sigset_t Set;
+	sigemptyset(&Set);
+	sigaddset(&Set, SigNr);
+	if(sigprocmask(SIG_BLOCK, &Set, NULL) == -1){
+		error("SigBlock: Failed to block signal %d (%s): (%d) %s\n",
+				SigNr, sigdescr_np(SigNr), errno, strerrordesc_np(errno));
+	}
+}
+
+static void SigWaitAny(void){
+	sigset_t Set;
+	sigemptyset(&Set);
+	sigsuspend(&Set);
 }
 
 static void SigHupHandler(int signr){
@@ -60,12 +76,12 @@ static void DefaultHandler(int signr){
 	print(1, "DefaultHandler: Beende Game-Server (SigNr. %d: %s).\n",
 			signr, sigdescr_np(signr));
 
-	handler(SIGINT, SIG_IGN);
-	handler(SIGQUIT, SIG_IGN);
-	handler(SIGTERM, SIG_IGN);
-	handler(SIGXCPU, SIG_IGN);
-	handler(SIGXFSZ, SIG_IGN);
-	handler(SIGPWR, SIG_IGN);
+	SigHandler(SIGINT, SIG_IGN);
+	SigHandler(SIGQUIT, SIG_IGN);
+	SigHandler(SIGTERM, SIG_IGN);
+	SigHandler(SIGXCPU, SIG_IGN);
+	SigHandler(SIGXFSZ, SIG_IGN);
+	SigHandler(SIGPWR, SIG_IGN);
 
 	SaveMapOn = (signr == SIGQUIT) || (signr == SIGTERM) || (signr == SIGPWR);
 	if(signr == SIGTERM){
@@ -91,55 +107,72 @@ static void ErrorHandler(int signr){
 #endif
 
 static void InitSignalHandler(void){
-	int count = 0;
-	count += (handler(SIGHUP, SigHupHandler) != SIG_ERR);
-	count += (handler(SIGINT, DefaultHandler) != SIG_ERR);
-	count += (handler(SIGQUIT, DefaultHandler) != SIG_ERR);
-	count += (handler(SIGABRT, SigAbortHandler) != SIG_ERR);
-	count += (handler(SIGUSR1, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGUSR2, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGPIPE, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGALRM, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGTERM, DefaultHandler) != SIG_ERR);
-	count += (handler(SIGSTKFLT, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGCHLD, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGTSTP, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGTTIN, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGTTOU, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGURG, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGXCPU, DefaultHandler) != SIG_ERR);
-	count += (handler(SIGXFSZ, DefaultHandler) != SIG_ERR);
-	count += (handler(SIGVTALRM, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGWINCH, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGPOLL, SIG_IGN) != SIG_ERR);
-	count += (handler(SIGPWR, DefaultHandler) != SIG_ERR);
-	print(1, "InitSignalHandler: %d Signalhandler eingerichtet (Soll=%d)\n", count, 0x1c);
+	int Count = 0;
+	Count += (SigHandler(SIGHUP, SigHupHandler) != SIG_ERR);
+	Count += (SigHandler(SIGINT, DefaultHandler) != SIG_ERR);
+	Count += (SigHandler(SIGQUIT, DefaultHandler) != SIG_ERR);
+	Count += (SigHandler(SIGABRT, SigAbortHandler) != SIG_ERR);
+	Count += (SigHandler(SIGUSR1, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGUSR2, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGPIPE, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGALRM, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGTERM, DefaultHandler) != SIG_ERR);
+	Count += (SigHandler(SIGSTKFLT, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGCHLD, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGTSTP, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGTTIN, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGTTOU, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGURG, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGXCPU, DefaultHandler) != SIG_ERR);
+	Count += (SigHandler(SIGXFSZ, DefaultHandler) != SIG_ERR);
+	Count += (SigHandler(SIGVTALRM, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGWINCH, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGPOLL, SIG_IGN) != SIG_ERR);
+	Count += (SigHandler(SIGPWR, DefaultHandler) != SIG_ERR);
+	print(1, "InitSignalHandler: %d Signalhandler eingerichtet (Soll=%d)\n", Count, 0x1c);
 }
 
 static void ExitSignalHandler(void){
 	// no-op
 }
 
-static void SigAlarmHandler(int signr){
-	SigAlarmCounter += 1;
-
-	struct itimerval new_timer = {};
-	struct itimerval old_timer = {};
-	new_timer.it_value.tv_usec = Beat * 1000;
-	setitimer(ITIMER_REAL, &new_timer, &old_timer);
+static void SigAlarmHandler(int SigNr){
+	SigAlarmCounter += (1 + timer_getoverrun(BeatTimer));
 }
 
 static void InitTime(void){
+	ASSERT(Beat > 0);
 	SigAlarmCounter = 0;
-	handler(SIGALRM, SigAlarmHandler);
-	SigAlarmHandler(SIGALRM);
+	SigHandler(SIGALRM, SigAlarmHandler);
+
+	struct sigevent SigEvent = {};
+	SigEvent.sigev_notify = SIGEV_THREAD_ID;
+	SigEvent.sigev_signo = SIGALRM;
+	SigEvent.sigev_notify_thread_id = gettid();
+	if(timer_create(CLOCK_MONOTONIC, &SigEvent, &BeatTimer) == -1){
+		error("InitTime: Failed to create beat timer: (%d) %s\n",
+				errno, strerrordesc_np(errno));
+		throw "cannot create beat timer";
+	}
+
+	struct itimerspec TimerSpec = {};
+	TimerSpec.it_interval.tv_sec = Beat / 1000;
+	TimerSpec.it_interval.tv_nsec = (Beat % 1000) * 1000000;
+	TimerSpec.it_value = TimerSpec.it_interval;
+	if(timer_settime(BeatTimer, 0, &TimerSpec, NULL) == -1){
+		error("InitTime: Failed to start beat timer: (%d) %s\n",
+				errno, strerrordesc_np(errno));
+		throw "cannot start beat timer";
+	}
 }
 
 static void ExitTime(void){
-	struct itimerval new_timer = {};
-	struct itimerval old_timer = {};
-	setitimer(ITIMER_REAL, &new_timer, &old_timer);
-	handler(SIGALRM, SIG_IGN);
+	if(timer_delete(BeatTimer) == -1){
+		error("ExitTime: Failed to delete beat timer: (%d) %s\n",
+				errno, strerrordesc_np(errno));
+	}
+
+	SigHandler(SIGALRM, SIG_IGN);
 }
 
 static void UnlockGame(void){
@@ -178,7 +211,7 @@ static void LockGame(void){
 
 	{
 		std::ofstream OutputFile(FileName, std::ios_base::out | std::ios_base::trunc);
-		OutputFile << (int)getpid();
+		OutputFile << getpid();
 	}
 
 	atexit(UnlockGame);
@@ -420,28 +453,29 @@ static void SigUsr1Handler(int signr){
 }
 
 static void LaunchGame(void){
+	SaveMapOn = true;
 	SigUsr1Counter = 0;
-	handler(SIGUSR1, SigUsr1Handler);
+	SigAlarmCounter = 0;
+
+	SigBlock(SIGUSR1);
+	SigHandler(SIGUSR1, SigUsr1Handler);
 	StartGame();
 
-	print(1, "LaunchGame: Game-Server ist bereit (Pid=%d).\n", getpid());
+	print(1, "LaunchGame: Game-Server ist bereit (Pid=%d, Tid=%d).\n", getpid(), gettid());
 
-	// IMPORTANT(fusion): The whole design of the server is to run across a few
-	// different processes and communicate via shared memory and signals. Each
-	// of these processes are single threaded, meaning that signal handlers are
-	// executed concurrently on the SAME thread. You'd still require to synchronize
-	// access to large structures to avoid race conditions BUT accessing a few
-	// independent integers and booleans like we're doing with `SigAlarmCounter`,
-	// `SigUsr1Counter`, and `SaveMapOn` is perfectly safe.
+	// IMPORTANT(fusion): In general signal handlers can execute on any thread in
+	// the process group but the design of the server is to use signals directed
+	// at different threads to communicate certain events (see `CommunicationThread`
+	// for example).
+	//	Even if that wasn't the case, loads/stores on x86 are always ATOMIC and when
+	// there is a single writer (signal handlers), even a read-modify-write will be
+	// atomic.
+	//	This is to say, there should be no problem with reading from `SigUsr1Counter`,
+	// `SigAlarmCounter`, or `SaveMapOn`, which may be modified from signal handlers.
 
-	SaveMapOn = true;
-	SigAlarmCounter = 0;
 	while(GameRunning()){
-		// TODO(fusion): `sigblock` and `sigpause` are deprecated in favour of
-		// `sigprocmask` and `sigsuspend`.
-		sigblock(sigmask(SIGUSR1));
 		while(SigUsr1Counter == 0 && SigAlarmCounter == 0){
-			sigpause(0);
+			SigWaitAny();
 		}
 
 		if(SigUsr1Counter > 0){

@@ -1,11 +1,6 @@
 ## Synchronization
 I'm not sure whether synchronization is done properly. The implementation of the first few `crplayer.cc` functions left me with a taste of race conditions although integer loads on x86 are generally atomic.
 
-## Threading
-After some initial dive into `communication.cc`, it has become clear that the original codebase relied on `LinuxThreads` which, among its quirks, assigns different PIDs to different threads, explaining the usage of `getpid()`. It also seems it could lack automatically managed thread stacks which explains `CommunicationThreadStacks`.
-
-We'll have to address this BEFORE trying to run the server.
-
 ## TODO (LEFTOVER)
 - Include `x == 0xFFFF` inside `CheckVisibility`?
 - The map container uses type id zero but it seems to also be used as a "no type"

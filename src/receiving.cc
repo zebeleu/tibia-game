@@ -1800,9 +1800,12 @@ void ReceiveData(void){
 		if(Connection->Live() && Connection->WaitingForACK){
 			ReceiveData(Connection);
 			Connection->WaitingForACK = false;
-			// TODO(fusion): It could have been disconnected inside `ReceiveData`?
+			// NOTE(fusion): `SIGUSR1` is used to signal the connection thread
+			// that we parsed all received data and that it may resume reading.
+			// We check if the connection is still live because it may have been
+			// disconnected inside `ReceiveData`.
 			if(Connection->Live()){
-				kill(Connection->GetPID(), SIGUSR1);
+				tgkill(GetGameProcessID(), Connection->GetThreadID(), SIGUSR1);
 			}
 		}
 		Connection = GetNextConnection();

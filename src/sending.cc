@@ -20,8 +20,10 @@ void SendAll(void){
 	while(Connection != NULL){
 		if(Connection->WillingToSend){
 			Connection->WillingToSend = false;
+			// NOTE(fusion): `SIGUSR2` is used to signal the connection thread
+			// that there is pending data in the connection's output buffer.
 			if(Connection->Live() && Connection->NextToCommit > Connection->NextToSend){
-				kill(Connection->GetPID(), SIGUSR2);
+				tgkill(GetGameProcessID(), Connection->GetThreadID(), SIGUSR2);
 			}
 		}else{
 			error("SendAll: Verbindung ist nicht sendewillig.\n");
@@ -274,6 +276,7 @@ void SendMapPoint(TConnection *Connection, int x, int y, int z){
 		while(Obj != NONE && ObjCount < MAX_OBJECTS_PER_POINT){
 			SendMapObject(Connection, Obj);
 			Obj = Obj.getNextObject();
+			ObjCount += 1;
 		}
 	}
 	Skip += 1;
@@ -445,7 +448,7 @@ void SendFullScreen(TConnection *Connection){
 	SendByte(Connection, (uint8)PlayerZ);
 
 	Skip = -1;
-	for(int PointZ = StartZ; PointZ != EndZ; EndZ += StepZ){
+	for(int PointZ = StartZ; PointZ != EndZ; PointZ += StepZ){
 		int ZOffset = (PlayerZ - PointZ);
 		for(int PointX = MinX; PointX <= MaxX; PointX += 1)
 		for(int PointY = MinY; PointY <= MaxY; PointY += 1){
@@ -499,7 +502,7 @@ void SendRow(TConnection *Connection, int Direction){
 	}
 
 	Skip = -1;
-	for(int PointZ = StartZ; PointZ != EndZ; EndZ += StepZ){
+	for(int PointZ = StartZ; PointZ != EndZ; PointZ += StepZ){
 		int ZOffset = (PlayerZ - PointZ);
 		for(int PointX = MinX; PointX <= MaxX; PointX += 1)
 		for(int PointY = MinY; PointY <= MaxY; PointY += 1){
@@ -561,7 +564,7 @@ void SendFloors(TConnection *Connection, bool Up){
 		int MaxY = MinY + Connection->TerminalHeight - 1;
 
 		Skip = -1;
-		for(int PointZ = StartZ; PointZ != EndZ; EndZ += StepZ){
+		for(int PointZ = StartZ; PointZ != EndZ; PointZ += StepZ){
 			int ZOffset = (PlayerZ - PointZ);
 			for(int PointX = MinX; PointX <= MaxX; PointX += 1)
 			for(int PointY = MinY; PointY <= MaxY; PointY += 1){

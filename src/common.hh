@@ -78,11 +78,15 @@ typedef size_t usize;
 //	Nevertheless, we should focus on getting it working as intended, on the target
 // platform (which is Linux 32-bit) before attempting to refine it.
 STATIC_ASSERT(OS_LINUX);
-STATIC_ASSERT(sizeof(bool) == 1);
-STATIC_ASSERT(sizeof(int) == 4);
-//STATIC_ASSERT(sizeof(void*) == 4);
 #include <errno.h>
 #include <unistd.h>
+
+// NOTE(fusion): This is the member name for the thread id in `struct sigevent`
+// when `sigev_notify` is `SIGEV_THREAD_ID` but for whatever reason glibc doesn't
+// define it.
+#ifndef sigev_notify_thread_id
+#	define sigev_notify_thread_id _sigev_un._tid
+#endif
 
 // shm.cc
 // =============================================================================
@@ -93,7 +97,8 @@ bool LoginAllowed(void);
 bool GameRunning(void);
 bool GameStarting(void);
 bool GameEnding(void);
-pid_t GetGameThreadPID(void);
+pid_t GetGameProcessID(void);
+pid_t GetGameThreadID(void);
 int GetPrintlogPosition(void);
 char *GetPrintlogLine(int Line);
 void IncrementObjectCounter(void);

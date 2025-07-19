@@ -732,7 +732,7 @@ void TPlayer::TakeOver(TConnection *Connection){
 		return;
 	}
 
-	if(PlayerData->Locked != getpid()){
+	if(PlayerData->Locked != gettid()){
 		error("TPlayer::TakeOver: PlayerData-Slot ist nicht korrekt gesperrt (%d).\n", PlayerData->Locked);
 	}
 
@@ -2639,7 +2639,7 @@ void FreePlayerPoolSlot(TPlayerData *Slot){
 		return;
 	}
 
-	if(Slot->Locked != 0 && Slot->Locked != getpid()){
+	if(Slot->Locked != 0 && Slot->Locked != gettid()){
 		error("FreePlayerPoolSlot: Slot ist von einem anderen Thread gesperrt.\n");
 		return;
 	}
@@ -2693,7 +2693,7 @@ TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 		}
 
 		if(Slot->Locked == 0){
-			Slot->Locked = getpid();
+			Slot->Locked = gettid();
 			PlayerDataPoolMutex.up();
 			return Slot;
 		}
@@ -2753,7 +2753,7 @@ TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 
 	memset(Slot, 0, sizeof(TPlayerData));
 	Slot->CharacterID = CharacterID;
-	Slot->Locked = getpid();
+	Slot->Locked = gettid();
 	PlayerDataPoolMutex.up();
 
 	print(3, "Lade Daten für Spieler %u.\n", CharacterID);
@@ -2792,7 +2792,7 @@ TPlayerData *AttachPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 		}
 
 		if(Slot->Locked == 0){
-			Slot->Locked = getpid();
+			Slot->Locked = gettid();
 			PlayerDataPoolMutex.up();
 			return Slot;
 		}
@@ -2817,7 +2817,7 @@ void AttachPlayerPoolSlot(TPlayerData *Slot, bool DontWait){
 	while(true){
 		PlayerDataPoolMutex.down();
 		if(Slot->Locked == 0){
-			Slot->Locked = getpid();
+			Slot->Locked = gettid();
 			PlayerDataPoolMutex.up();
 			return;
 		}
@@ -2882,7 +2882,7 @@ void ReleasePlayerPoolSlot(TPlayerData *Slot){
 		return;
 	}
 
-	if(Slot->Locked != getpid()){
+	if(Slot->Locked != gettid()){
 		error("ReleasePlayerPoolSlot: Slot ist von einem anderen Thread gesperrt.\n");
 		return;
 	}
@@ -2908,7 +2908,7 @@ void SavePlayerPoolSlots(void){
 		}
 
 		AttachPlayerPoolSlot(Slot, true);
-		if(Slot->Locked == getpid()){
+		if(Slot->Locked == gettid()){
 			SavePlayerPoolSlot(Slot);
 			ReleasePlayerPoolSlot(Slot);
 		}

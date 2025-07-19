@@ -23,7 +23,8 @@ struct TSharedMemory {
 	int PrintBufferPosition;
 	char PrintBuffer[200][128];
 	GAMESTATE GameState;
-	pid_t GameThreadPID;
+	pid_t GameProcessID;
+	pid_t GameThreadID;
 };
 
 static TSharedMemory *SHM = NULL;
@@ -101,10 +102,18 @@ bool GameEnding(void){
 	return Result;
 }
 
-pid_t GetGameThreadPID(void){
+pid_t GetGameProcessID(void){
 	pid_t Pid = 0;
 	if(SHM != NULL){
-		Pid = SHM->GameThreadPID;
+		Pid = SHM->GameProcessID;
+	}
+	return Pid;
+}
+
+pid_t GetGameThreadID(void){
+	pid_t Pid = 0;
+	if(SHM != NULL){
+		Pid = SHM->GameThreadID;
 	}
 	return Pid;
 }
@@ -372,7 +381,8 @@ void InitSHM(bool Verbose){
 
 	SHM->PrintBufferPosition = 1;
 	SHM->GameState = GAME_STARTING;
-	SHM->GameThreadPID = getpid();
+	SHM->GameProcessID = getpid();
+	SHM->GameThreadID = gettid();
 }
 
 void ExitSHM(void){

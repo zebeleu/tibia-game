@@ -79,13 +79,64 @@ void TConnection::EmergencyPing(void){
 	}
 }
 
-pid_t TConnection::GetPID(void){
+pid_t TConnection::GetThreadID(void){
 	if(this->State == CONNECTION_FREE){
-		error("TConnection::GetPID: Verbindung ist nicht zugewiesen.\n");
+		error("TConnection::GetThreadID: Verbindung ist nicht zugewiesen.\n");
 		return 0;
 	}
 
-	return this->PID;
+	return this->ThreadID;
+}
+
+bool TConnection::SetLoginTimer(int Timeout){
+	if(this->State == CONNECTION_FREE){
+		error("TConnection::SetLoginTimer: Verbindung ist nicht zugewiesen.\n");
+		return false;
+	}
+
+	if(this->LoginTimer != 0){
+		error("TConnection::SetLoginTimer: Timer already set.\n");
+		return false;
+	}
+
+	struct sigevent SigEvent = {};
+	SigEvent.sigev_notify = SIGEV_THREAD_ID;
+	SigEvent.sigev_signo = SIGALRM;
+	SigEvent.sigev_notify_thread_id = this->ThreadID;
+	if(timer_create(CLOCK_MONOTONIC, &SigEvent, &this->LoginTimer) == -1){
+		error("TConnection::SetLoginTimer: Failed to create timer: (%d) %s\n",
+				errno, strerrordesc_np(errno));
+		return false;
+	}
+
+	struct itimerspec TimerSpec = {};
+	TimerSpec.it_value.tv_sec = Timeout;
+	if(timer_settime(this->LoginTimer, 0, &TimerSpec, NULL) == -1){
+		error("TConnection::SetLoginTimer: Failed to start timer: (%d) %s\n",
+				errno, strerrordesc_np(errno));
+		return false;
+	}
+
+	return true;
+}
+
+void TConnection::StopLoginTimer(void){
+	if(this->State == CONNECTION_FREE){
+		error("TConnection::SetLoginTimer: Verbindung ist nicht zugewiesen.\n");
+		return;
+	}
+
+	if(this->LoginTimer == 0){
+		error("TConnection::StopLoginTimer: Timer not set.\n");
+		return;
+	}
+
+	if(timer_delete(this->LoginTimer) == -1){
+		error("TConnection::StopLoginTimer: Failed to delete timer: (%d) %s\n",
+				errno, strerrordesc_np(errno));
+	}
+
+	this->LoginTimer = 0;
 }
 
 int TConnection::GetSocket(void){
@@ -116,7 +167,8 @@ void TConnection::Assign(void){
 	}
 
 	this->State = CONNECTION_ASSIGNED;
-	this->PID = getpid();
+	this->ThreadID = gettid();
+	this->LoginTimer = 0;
 }
 
 void TConnection::Connect(int Socket){
@@ -264,7 +316,7 @@ void TConnection::Disconnect(void){
 	this->ClearKnownCreatureTable(true);
 	this->ConnectionIsOk = false;
 	this->State = CONNECTION_DISCONNECTED;
-	kill(this->PID, SIGHUP);
+	tgkill(GetGameProcessID(), this->ThreadID, SIGHUP);
 }
 
 TPlayer *TConnection::GetPlayer(void){

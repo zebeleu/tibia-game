@@ -154,7 +154,9 @@ struct TConnection {
 	void Process(void);
 	void ResetTimer(int Command);
 	void EmergencyPing(void);
-	pid_t GetPID(void);
+	pid_t GetThreadID(void);
+	bool SetLoginTimer(int Timeout);
+	void StopLoginTimer(void);
 	int GetSocket(void);
 	const char *GetIPAddress(void);
 	void Free(void);
@@ -203,7 +205,8 @@ struct TConnection {
 	TConnection *NextSendingConnection;
 	uint32 RandomSeed;
 	CONNECTIONSTATE State;
-	pid_t PID;
+	pid_t ThreadID;
+	timer_t LoginTimer;
 	int Socket;
 	char IPAddress[16];
 	TXTEASymmetricKey SymmetricKey;
