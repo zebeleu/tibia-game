@@ -28,10 +28,9 @@ void NetLoadCheck(void);
 void InitLoadHistory(void);
 void ExitLoadHistory(void);
 
-bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size);
+bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size, int MaxSize);
 bool SendLoginMessage(TConnection *Connection, int Type, const char *Message, int WaitingTime);
 bool SendData(TConnection *Connection);
-bool SendData(TConnection *Connection, const uint8 *Data, int Size);
 
 bool GetWaitinglistEntry(const char *Name, uint32 *NextTry, bool *FreeAccount, bool *Newbie);
 void InsertWaitinglistEntry(const char *Name, uint32 NextTry, bool FreeAccount, bool Newbie);

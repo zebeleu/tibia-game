@@ -2146,7 +2146,7 @@ bool TMonster::MovePossible(int x, int y, int z, bool Execute, bool Jump){
 	// objects away.
 	for(int Attempt = 0; Attempt < 100; Attempt += 1){
 		Object Obj = GetFirstObject(x, y, z);
-		if(!Obj.getObjectType().getFlag(BANK)){
+		if(Obj == NONE || !Obj.getObjectType().getFlag(BANK)){
 			return false;
 		}
 

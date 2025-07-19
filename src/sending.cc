@@ -452,7 +452,7 @@ void SendFullScreen(TConnection *Connection){
 		int ZOffset = (PlayerZ - PointZ);
 		for(int PointX = MinX; PointX <= MaxX; PointX += 1)
 		for(int PointY = MinY; PointY <= MaxY; PointY += 1){
-			SendMapPoint(Connection, PointX + ZOffset, PointY + ZOffset, PlayerZ);
+			SendMapPoint(Connection, PointX + ZOffset, PointY + ZOffset, PointZ);
 		}
 	}
 	SkipFlush(Connection);
@@ -506,7 +506,7 @@ void SendRow(TConnection *Connection, int Direction){
 		int ZOffset = (PlayerZ - PointZ);
 		for(int PointX = MinX; PointX <= MaxX; PointX += 1)
 		for(int PointY = MinY; PointY <= MaxY; PointY += 1){
-			SendMapPoint(Connection, PointX + ZOffset, PointY + ZOffset, PlayerZ);
+			SendMapPoint(Connection, PointX + ZOffset, PointY + ZOffset, PointZ);
 		}
 	}
 	SkipFlush(Connection);
@@ -568,7 +568,7 @@ void SendFloors(TConnection *Connection, bool Up){
 			int ZOffset = (PlayerZ - PointZ);
 			for(int PointX = MinX; PointX <= MaxX; PointX += 1)
 			for(int PointY = MinY; PointY <= MaxY; PointY += 1){
-				SendMapPoint(Connection, PointX + ZOffset, PointY + ZOffset, PlayerZ);
+				SendMapPoint(Connection, PointX + ZOffset, PointY + ZOffset, PointZ);
 			}
 		}
 		SkipFlush(Connection);

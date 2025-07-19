@@ -1513,7 +1513,7 @@ void TCreature::NotifyChangeInventory(void){
 
 	this->Combat.CheckCombatValues();
 	if(this->Type == PLAYER){
-		int NewDelta[NARRAY(this->Skills)];
+		int NewDelta[NARRAY(this->Skills)] = {};
 		for(int Position = INVENTORY_FIRST;
 				Position <= INVENTORY_LAST;
 				Position += 1){

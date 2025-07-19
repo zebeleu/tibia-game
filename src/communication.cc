@@ -241,26 +241,53 @@ void ExitLoadHistory(void){
 
 // Connection Output
 // =============================================================================
-bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size){
-	// IMPORTANT(fusion): The caller must ensure `Buffer` have two extra bytes
-	// at the beginning and enough room at the end to properly add padding for
-	// XTEA encryption when needed. `Size` refers to the payload size which
-	// starts after the first two extra bytes. See note in `SendData`.
+static constexpr int GetPacketSize(int DataSize){
+	// NOTE(fusion): This can be annoying but we're compiling with C++11 which
+	// means constexpr functions can only have a single return statement.
+#if __cplusplus > 201103L
+	int EncryptedSize = ((DataSize + 2) + 7) & ~7;
+	int PacketSize = EncryptedSize + 2;
+	return PacketSize;
+#else
+	return (((DataSize + 2) + 7) & ~7) + 2;
+#endif
+}
 
-	while((Size % 8) != 0){
-		Buffer[Size + 2] = rand_r(&Connection->RandomSeed);
+bool WriteToSocket(TConnection *Connection, uint8 *Buffer, int Size, int MaxSize){
+	// IMPORTANT(fusion): The final packet will have the following layout:
+	//	PLAIN:
+	//		0 .. 2 => Encrypted Size
+	//	ENCRYPTED:
+	//		2 .. 4 => Data Size
+	//		4 ..   => Data + Padding
+	//
+	//	The caller must ensure `Buffer` has four extra bytes at the beginning so
+	// the packet and payload sizes can be written. It should also ensure that
+	// `(MaxSize % 8) == 2` so we can always add the necessary amount of padding
+	// for encryption.
+	ASSERT(Size >= 4 && Size <= MaxSize && MaxSize <= UINT16_MAX);
+
+	int DataSize = Size - 4;
+	while((Size % 8) != 2 && Size < MaxSize){
+		Buffer[Size] = rand_r(&Connection->RandomSeed);
 		Size += 1;
 	}
 
-	for(int i = 0; i < Size; i += 8){
-		Connection->SymmetricKey.encrypt(&Buffer[i + 2]);
+	if((Size % 8) != 2){
+		error("WriteToSocket: Failed to add padding (Size: %d, MaxSize: %d)\n",
+				Size, MaxSize);
+		return false;
 	}
 
-	TWriteBuffer WriteBuffer(Buffer, 2);
-	WriteBuffer.writeWord((uint16)Size);
+	TWriteBuffer WriteBuffer(Buffer, 4);
+	WriteBuffer.writeWord((uint16)(Size - 2));
+	WriteBuffer.writeWord((uint16)(DataSize));
+	for(int i = 2; i < Size; i += 8){
+		Connection->SymmetricKey.encrypt(&Buffer[i]);
+	}
 
 	int Attempts = 50;
-	int BytesToWrite = Size + 2;
+	int BytesToWrite = Size;
 	uint8 *WritePtr = Buffer;
 	while(BytesToWrite > 0){
 		int BytesWritten = (int)write(Connection->GetSocket(), WritePtr, BytesToWrite);
@@ -324,19 +351,22 @@ bool SendLoginMessage(TConnection *Connection, int Type, const char *Message, in
 	// IMPORTANT(fusion): This is doing the same thing as `SendData` but in a
 	// smaller scale and building the packet directly instead of using the
 	// connection's write buffer.
-	uint8 Data[302]; // 2 + 300
-	TWriteBuffer WriteBuffer(Data + 2, sizeof(Data) - 2);
-	WriteBuffer.writeWord(0);
-	WriteBuffer.writeByte((uint8)Type);
-	WriteBuffer.writeString(Message);
-	if(Type == 22){
-		WriteBuffer.writeByte(WaitingTime);
-	}
+	try{
+		uint8 Data[GetPacketSize(300)];
+		TWriteBuffer WriteBuffer(Data, sizeof(Data));
+		WriteBuffer.writeWord(0); // EncryptedSize
+		WriteBuffer.writeWord(0); // DataSize
+		WriteBuffer.writeByte((uint8)Type);
+		WriteBuffer.writeString(Message);
+		if(Type == 22){
+			WriteBuffer.writeByte(WaitingTime);
+		}
 
-	int Size = WriteBuffer.Position;
-	WriteBuffer.Position = 0;
-	WriteBuffer.writeWord((uint16)(Size - 2));
-	return WriteToSocket(Connection, Data, Size);
+		return WriteToSocket(Connection, Data, WriteBuffer.Position, WriteBuffer.Size);
+	}catch(const char *str){
+		error("SendLoginMessage: Fehler beim Füllen des Puffers (%s)\n", str);
+		return true;
+	}
 }
 
 bool SendData(TConnection *Connection){
@@ -345,24 +375,8 @@ bool SendData(TConnection *Connection){
 		return false;
 	}
 
-	//
-	// IMPORTANT(fusion): The final packet will have this layout:
-	//	PLAIN:
-	//		0 .. 2 => Encrypted Size
-	//	ENCRYPTED:
-	//		2 .. 4 => Data Size
-	//		4 ..   => Data + Padding
-	//
-	//	The ENCRYPTED size needs to be a multiple of 8 for XTEA encryption and
-	// `WriteToSocket` will add padding to ensure it is. This also requires us
-	// to ensure the passed buffer has enough room for it, so we don't write out
-	// of bounds.
-	//
-
 	int DataSize = Connection->NextToCommit - Connection->NextToSend;
-	int EncryptedSize = (DataSize + 2);
-	int EncryptedSizeAligned = (EncryptedSize + 7) & ~7;
-	int PacketSize = EncryptedSizeAligned + 2;
+	int PacketSize = GetPacketSize(DataSize);
 
 	// TODO(fusion): The maximum size of a packet depends on the size of
 	// `Connection->OutData` and I don't think we'd have a problem with
@@ -371,8 +385,8 @@ bool SendData(TConnection *Connection){
 	// problem.
 	uint8 *Buffer = (uint8*)alloca(PacketSize);
 	TWriteBuffer WriteBuffer(Buffer, PacketSize);
-	WriteBuffer.writeWord(0);
-	WriteBuffer.writeWord((uint16)DataSize);
+	WriteBuffer.writeWord(0); // EncryptedSize
+	WriteBuffer.writeWord(0); // DataSize
 
 	// NOTE(fusion): `Connection->OutData` is a ring buffer so we need to check
 	// if the data we're currently sending is wrapping around, in which case we'd
@@ -387,32 +401,11 @@ bool SendData(TConnection *Connection){
 		WriteBuffer.writeBytes(&Connection->OutData[0],         DataEnd - OutDataSize);
 	}
 
-	bool Result = WriteToSocket(Connection, Buffer, DataSize);
+	bool Result = WriteToSocket(Connection, Buffer, WriteBuffer.Position, WriteBuffer.Size);
 	if(Result){
 		Connection->NextToSend += DataSize;
 	}
 	return Result;
-}
-
-bool SendData(TConnection *Connection, const uint8 *Data, int Size){
-	if(Connection == NULL){
-		error("SendData: Connection ist NULL.\n");
-		return false;
-	}
-
-	// TODO(fusion): Why are we returning true for invalid parameters?
-	if(Data == NULL){
-		error("SendData: Data ist NULL.\n");
-		return true;
-	}
-
-	// TODO(fusion): Why do we leave extra two bytes unassigned at the beginning?
-	// `SendData` should already take care of building the packet properly so this
-	// is something else or a bug, if this function is even used.
-	memcpy(&Connection->OutData[2], Data, Size);
-	Connection->NextToSend = 0;
-	Connection->NextToCommit = Size + 2;
-	return SendData(Connection);
 }
 
 // Waiting List
