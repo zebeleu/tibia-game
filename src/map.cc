@@ -623,7 +623,7 @@ void SwapObject(TWriteBinaryFile *File, Object Obj, uintptr FileNumber){
 
 	File->writeBytes((const uint8*)Entry, sizeof(TObject));
 	if(Entry->Type.getFlag(CONTAINER) || Entry->Type.getFlag(CHEST)){
-		Object Current = Obj.getAttribute(CONTENT);
+		Object Current = Object(Obj.getAttribute(CONTENT));
 		while(Current != NONE){
 			Object Next = Current.getNextObject();
 			SwapObject(File, Current, FileNumber);
@@ -1116,7 +1116,7 @@ void SaveObjects(Object Obj, TWriteStream *Stream, bool Stop){
 
 			Object First = NONE;
 			if(ObjType.getAttributeOffset(CONTENT) != -1){
-				First = Obj.getAttribute(CONTENT);
+				First = Object(Obj.getAttribute(CONTENT));
 			}
 
 			if(First != NONE){
@@ -1330,7 +1330,7 @@ void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
 				// TODO(fusion): This loop was done a bit differently but I suppose
 				// iterating it directly is clearer and as long as we don't access
 				// the object after `DeleteObject`, it should work the same.
-				Object Obj = Con.getAttribute(CONTENT);
+				Object Obj = Object(Con.getAttribute(CONTENT));
 				while(Obj != NONE){
 					Object Next = Obj.getNextObject();
 					if(!Obj.getObjectType().isCreatureContainer()){
@@ -1419,7 +1419,7 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 
 				// NOTE(fusion): Similar to `RefreshSector`.
 				Object Con = Sec->MapCon[OffsetX][OffsetY];
-				Object Obj = Con.getAttribute(CONTENT);
+				Object Obj = Object(Con.getAttribute(CONTENT));
 				while(Obj != NONE){
 					Object Next = Obj.getNextObject();
 					if(!Obj.getObjectType().isCreatureContainer()){
@@ -1511,7 +1511,7 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 
 			// NOTE(fusion): Same as in the parsing loop above.
 			Object Con = Sec->MapCon[OffsetX][OffsetY];
-			Object Obj = Con.getAttribute(CONTENT);
+			Object Obj = Object(Con.getAttribute(CONTENT));
 			while(Obj != NONE){
 				Object Next = Obj.getNextObject();
 				if(!Obj.getObjectType().isCreatureContainer()){
@@ -1641,7 +1641,7 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 		}
 
 		Object Con = Sec->MapCon[OffsetX][OffsetY];
-		Object First = Con.getAttribute(CONTENT);
+		Object First = Object(Con.getAttribute(CONTENT));
 		uint8 Flags = GetMapContainerFlags(Con);
 		if(First != NONE || Flags != 0){
 			OUT.writeNumber(OffsetX);
@@ -1853,7 +1853,7 @@ static void DestroyObject(Object Obj){
 
 	if(ObjType.getFlag(CONTAINER) || ObjType.getFlag(CHEST)){
 		while(true){
-			Object Inner = Obj.getAttribute(CONTENT);
+			Object Inner = Object(Obj.getAttribute(CONTENT));
 			if(Inner == NONE){
 				break;
 			}
@@ -2020,7 +2020,7 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 	}
 
 	Object Prev = NONE;
-	Object Cur(Con.getAttribute(CONTENT));
+	Object Cur = Object(Con.getAttribute(CONTENT));
 	if(ConType.isMapContainer()){
 		// TODO(fusion): Review. The loop below was a bit rough but it seems that
 		// append is forced for non PRIORITY_CREATURE and PRIORITY_LOW.
@@ -2358,7 +2358,7 @@ Object GetFirstSpecObject(int x, int y, int z, ObjectType Type){
 		}
 		Obj = Obj.getNextObject();
 	}
-	return NONE;
+	return Obj;
 }
 
 uint8 GetMapContainerFlags(Object Obj){

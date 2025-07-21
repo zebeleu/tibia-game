@@ -657,10 +657,10 @@ void TPlayer::LoadInventory(bool SetStandardInventory){
 			Create(GetBodyContainer(this->ID, INVENTORY_LEFTHAND),
 					GetSpecialObject(DEFAULT_LEFTHAND), 0);
 			if(this->Sex == 1){
-				Create(GetBodyContainer(this->ID, INVENTORY_LEFTHAND),
+				Create(GetBodyContainer(this->ID, INVENTORY_TORSO),
 						GetSpecialObject(DEFAULT_BODY_MALE), 0);
 			}else{
-				Create(GetBodyContainer(this->ID, INVENTORY_LEFTHAND),
+				Create(GetBodyContainer(this->ID, INVENTORY_TORSO),
 						GetSpecialObject(DEFAULT_BODY_FEMALE), 0);
 			}
 
@@ -2559,7 +2559,7 @@ void SavePlayerData(TPlayerData *Slot){
 					break;
 				}
 
-				if(FirstPosition){
+				if(!FirstPosition){
 					Script.writeText(",");
 					Script.writeLn();
 					Script.writeText("               ");
@@ -2581,7 +2581,7 @@ void SavePlayerData(TPlayerData *Slot){
 				DepotNr += 1){
 			if(Slot->Depot[DepotNr] != NULL){
 				TReadBuffer Buffer(Slot->Depot[DepotNr], Slot->DepotSize[DepotNr]);
-				if(FirstDepot){
+				if(!FirstDepot){
 					Script.writeText(",");
 					Script.writeLn();
 					Script.writeText("               ");

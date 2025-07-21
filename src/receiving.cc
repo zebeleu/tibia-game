@@ -646,7 +646,7 @@ void CEditText(TConnection *Connection, TReadBuffer *Buffer){
 		return;
 	}
 
-	Object Obj = Buffer->readQuad();
+	Object Obj = Object(Buffer->readQuad());
 	if(!Obj.exists()){
 		SendResult(Connection, NOTACCESSIBLE);
 		return;
@@ -697,7 +697,7 @@ void CEditList(TConnection *Connection, TReadBuffer *Buffer){
 	}else if(Type == SUBOWNERLIST){
 		ChangeSubowners((uint16)ID, Player, Text);
 	}else if(Type == DOORLIST){
-		Object Door = ID;
+		Object Door = Object(ID);
 		if(!Door.exists()){
 			SendResult(Connection, NOTACCESSIBLE);
 			return;

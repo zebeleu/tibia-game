@@ -1176,7 +1176,7 @@ void ExecuteAction(MoveUseEventType EventType, TMoveUseAction *Action,
 				}
 
 				// TODO(fusion): Some helper function to format text?
-				char Text[256];
+				char Text[256] = {};
 				{
 					int ReadPos = 0;
 					int WritePos = 0;
@@ -1331,12 +1331,13 @@ void ExecuteAction(MoveUseEventType EventType, TMoveUseAction *Action,
 			}
 
 			case MOVEUSE_ACTION_MOVEREL:{
-				int ObjX, ObjY, ObjZ, RelX, RelY, RelZ;
-				Object Obj = GetEventObject(Action->Parameters[0], User, Obj1, Obj2, *Temp);
-				UnpackRelativeCoordinate(Action->Parameters[1], &RelX, &RelY, &RelZ);
-				GetObjectCoordinates(Obj, &ObjX, &ObjY, &ObjZ);
-				Object Dest = GetMapContainer((ObjX + RelX), (ObjY + RelY), (ObjZ + RelZ));
-				MoveOneObject(Obj, Dest);
+				int RefX, RefY, RefZ, RelX, RelY, RelZ;
+				Object MovObj = GetEventObject(Action->Parameters[0], User, Obj1, Obj2, *Temp);
+				Object RefObj = GetEventObject(Action->Parameters[1], User, Obj1, Obj2, *Temp);
+				UnpackRelativeCoordinate(Action->Parameters[2], &RelX, &RelY, &RelZ);
+				GetObjectCoordinates(RefObj, &RefX, &RefY, &RefZ);
+				Object Dest = GetMapContainer((RefX + RelX), (RefY + RelY), (RefZ + RelZ));
+				MoveOneObject(MovObj, Dest);
 				break;
 			}
 
@@ -1520,9 +1521,10 @@ bool HandleEvent(MoveUseEventType EventType, Object User, Object Obj1, Object Ob
 					ActionNr <= Rule->LastAction;
 					ActionNr += 1){
 				TMoveUseAction *Action = MoveUseActions.at(ActionNr);
-				ExecuteAction(EventType, Action, User, Obj2, Obj2, &Temp);
+				ExecuteAction(EventType, Action, User, Obj1, Obj2, &Temp);
 			}
 			Result = true;
+			break;
 		}
 	}
 	RecursionDepth -= 1;
@@ -1842,7 +1844,7 @@ void UseFood(uint32 CreatureID, Object Obj){
 	}
 
 	Player->SetTimer(SKILL_FED, (CurFoodTime + ObjFoodTime), 0, 0, -1);
-	Delete(Obj, -1);
+	Delete(Obj, 1);
 }
 
 void UseTextObject(uint32 CreatureID, Object Obj){

@@ -1201,20 +1201,18 @@ bool TSkillBase::SetSkills(int Race){
 
 void TSkillBase::ProcessSkills(void){
 	int Index = 0;
-	int End = this->FirstFreeTimer;
-	while(Index < End){
+	while(Index < this->FirstFreeTimer){
 		// TODO(fusion): Probably remove if `Skill == NULL`?
 		TSkill *Skill = this->TimerList[Index];
-		if(Skill && !Skill->Process()){
+		if(Skill != NULL && Skill->Process()){
 			// NOTE(fusion): A little swap and pop action.
-			End -= 1;
-			this->TimerList[Index] = this->TimerList[End];
-			this->TimerList[End] = NULL;
+			this->FirstFreeTimer -= 1;
+			this->TimerList[Index] = this->TimerList[this->FirstFreeTimer];
+			this->TimerList[this->FirstFreeTimer] = NULL;
 		}else{
 			Index += 1;
 		}
 	}
-	this->FirstFreeTimer = (uint16)End;
 }
 
 bool TSkillBase::SetTimer(uint16 SkNr, int Cycle, int Count, int MaxCount, int AdditionalValue){
@@ -1229,9 +1227,10 @@ bool TSkillBase::SetTimer(uint16 SkNr, int Cycle, int Count, int MaxCount, int A
 	TSkill *Skill = this->Skills[SkNr];
 	bool Result = Skill->SetTimer(Cycle, Count, MaxCount, AdditionalValue);
 	if(Result){
-		// NOTE(fusion): A little push back action.
-		// BUG(fusion): We don't check if there is room in `TimerList`. I'd assume
-		// it is naturally bound by the maximum number of skills?
+		// NOTE(fusion): A little push back action. We don't check if there is
+		// room in `TimerList` because it should be naturally bound by the max
+		// number of skills.
+		ASSERT(this->FirstFreeTimer < NARRAY(this->TimerList));
 		this->TimerList[this->FirstFreeTimer] = Skill;
 		this->FirstFreeTimer += 1;
 	}
@@ -1249,13 +1248,12 @@ void TSkillBase::DelTimer(uint16 SkNr){
 	if(Skill != NULL){
 		Skill->DelTimer();
 
-		int End = this->FirstFreeTimer;
-		for(int Index = 0; Index < End; Index += 1){
+		for(int Index = 0; Index < this->FirstFreeTimer; Index += 1){
 			if(Skill == this->TimerList[Index]){
 				// NOTE(fusion): A little swap and pop action.
-				End -= 1;
-				this->TimerList[Index] = this->TimerList[End];
-				this->TimerList[End] = NULL;
+				this->FirstFreeTimer -= 1;
+				this->TimerList[Index] = this->TimerList[this->FirstFreeTimer];
+				this->TimerList[this->FirstFreeTimer] = NULL;
 				break;
 			}
 		}

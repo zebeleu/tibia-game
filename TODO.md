@@ -1,3 +1,5 @@
+## TODO
+
 ## Synchronization
 I'm not sure whether synchronization is done properly. The implementation of the first few `crplayer.cc` functions left me with a taste of race conditions although integer loads on x86 are generally atomic.
 

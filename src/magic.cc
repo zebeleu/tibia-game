@@ -814,7 +814,7 @@ void MassCombat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 		throw ERROR;
 	}
 
-	if(Actor != NULL){
+	if(Actor == NULL){
 		error("MassCombat: Übergebene Kreatur existiert nicht.\n");
 		throw ERROR;
 	}
@@ -4060,8 +4060,8 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 			if(Other.getObjectType().isCreatureContainer()){
 				uint32 OtherID = Other.getCreatureID();
 				if(Target == NULL
-						|| (Aggressive && OtherID != Actor->ID)
-						|| (!Aggressive && OtherID == Actor->ID)){
+						|| (Aggressive && OtherID != Actor->ID && OtherID != Target->ID)
+						|| (!Aggressive && OtherID == Actor->ID && OtherID != Target->ID)){
 					Target = GetCreature(OtherID);
 					Dest = Other;
 				}
@@ -4086,7 +4086,7 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 			throw PROTECTIONZONE;
 		}
 
-		if(Dest.getContainer().getObjectType().isMapContainer()){
+		if(!Dest.getContainer().getObjectType().isMapContainer()){
 			throw NOROOM;
 		}
 	}

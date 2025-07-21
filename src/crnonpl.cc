@@ -324,7 +324,7 @@ TBehaviourDatabase::TBehaviourDatabase(TReadScriptFile *Script) :
 					Script->nextToken();
 					TBehaviourNode *Right = this->readTerm(Script);
 					Behaviour->addCondition(BEHAVIOUR_CONDITION_EXPRESSION,
-							NewBehaviourNode(Operator, Right, Left));
+							NewBehaviourNode(Operator, Left, Right));
 				}else{
 					Script->nextToken();
 				}
@@ -1393,12 +1393,15 @@ void LoadMonsterhomes(void){
 }
 
 void ProcessMonsterhomes(void){
-	for(int i = 0; i < Monsterhomes; i += 1){
+	for(int i = 1; i <= Monsterhomes; i += 1){
 		TMonsterhome *MH = Monsterhome.at(i);
-		if(MH->Timer > 0){
-			MH->Timer -= 1;
+
+		ASSERT(MH->Timer >= 0);
+		if(MH->Timer == 0){
+			continue;
 		}
 
+		MH->Timer -= 1;
 		if(MH->Timer > 0){
 			continue;
 		}

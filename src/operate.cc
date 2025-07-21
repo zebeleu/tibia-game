@@ -145,7 +145,7 @@ void AnnounceChangedContainer(Object Obj, int Type){
 		}
 
 		for(int ContainerNr = 0;
-				ContainerNr <= NARRAY(Player->OpenContainer);
+				ContainerNr < NARRAY(Player->OpenContainer);
 				ContainerNr += 1){
 			if(Player->GetOpenContainer(ContainerNr) != Con){
 				continue;
@@ -282,13 +282,13 @@ void AnnounceMissile(int OrigX, int OrigY, int OrigZ,
 			continue;
 		}
 
-		if(!Player->Connection->IsVisible(OrigX, OrigY, OrigY)
+		if(!Player->Connection->IsVisible(OrigX, OrigY, OrigZ)
 		&& !Player->Connection->IsVisible(DestX, DestY, DestZ)){
 			continue;
 		}
 
 		SendMissileEffect(Player->Connection,
-				OrigX, OrigY, OrigY,
+				OrigX, OrigY, OrigZ,
 				DestX, DestY, DestZ, Type);
 	}
 }
@@ -449,10 +449,6 @@ void CheckMoveObject(uint32 CreatureID, Object Obj, bool Take){
 // NOTE(fusion): This is a helper function for `CheckMapDestination` and `CheckMapPlace`
 // and improves the readability of otherwise two convoluted functions.
 static bool IsMapBlocked(int DestX, int DestY, int DestZ, ObjectType Type){
-	if(Type.isCreatureContainer()){
-		return false;
-	}
-
 	bool HasBank = CoordinateFlag(DestX, DestY, DestZ, BANK);
 	if(HasBank && !CoordinateFlag(DestX, DestY, DestZ, UNPASS)){
 		return false;
@@ -480,16 +476,20 @@ void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon){
 		return;
 	}
 
+	int OrigX, OrigY, OrigZ;
 	int DestX, DestY, DestZ;
 	ObjectType ObjType = Obj.getObjectType();
-	GetObjectCoordinates(MapCon, &DestX, &DestY, &DestZ);
-	if(IsMapBlocked(DestX, DestY, DestZ, ObjType)){
-		throw NOROOM;
-	}
-
-	int OrigX, OrigY, OrigZ;
 	GetObjectCoordinates(Obj, &OrigX, &OrigY, &OrigZ);
-	if(ObjType.isCreatureContainer()){
+	GetObjectCoordinates(MapCon, &DestX, &DestY, &DestZ);
+	if(!ObjType.isCreatureContainer()){
+		if(IsMapBlocked(DestX, DestY, DestZ, ObjType)){
+			throw NOROOM;
+		}
+
+		if(!ObjType.getFlag(TAKE) && !ObjectInRange(CreatureID, MapCon, 2)){
+			throw OUTOFRANGE;
+		}
+	}else{
 		if(std::abs(OrigX - DestX) > 1
 				|| std::abs(OrigY - DestY) > 1
 				|| std::abs(OrigZ - DestZ) > 1){
@@ -530,10 +530,6 @@ void CheckMapDestination(uint32 CreatureID, Object Obj, Object MapCon){
 					throw PROTECTIONZONE;
 				}
 			}
-		}
-	}else{
-		if(!ObjType.getFlag(TAKE) && !ObjectInRange(CreatureID, MapCon, 2)){
-			throw OUTOFRANGE;
 		}
 	}
 
@@ -1169,19 +1165,19 @@ Object Create(Object Con, ObjectType Type, uint32 Value){
 	}
 
 	if(Type.getFlag(LIQUIDPOOL)){
-		ChangeObject(POOLLIQUIDTYPE, Value);
+		ChangeObject(Obj, POOLLIQUIDTYPE, Value);
 	}
 
 	if(Type.getFlag(LIQUIDCONTAINER)){
-		ChangeObject(CONTAINERLIQUIDTYPE, Value);
+		ChangeObject(Obj, CONTAINERLIQUIDTYPE, Value);
 	}
 
 	if(Type.getFlag(KEY)){
-		ChangeObject(KEYNUMBER, Value);
+		ChangeObject(Obj, KEYNUMBER, Value);
 	}
 
 	if(Type.getFlag(RUNE)){
-		ChangeObject(CHARGES, Value);
+		ChangeObject(Obj, CHARGES, Value);
 	}
 
 	if(Type.isCreatureContainer()){
@@ -1895,7 +1891,7 @@ void Look(uint32 CreatureID, Object Obj){
 				if(Yourself){
 					strcpy(Membership, "You are ");
 				}else{
-					snprintf(Membership, sizeof(Membership), "%s id ", Pronoun);
+					snprintf(Membership, sizeof(Membership), "%s is ", Pronoun);
 				}
 
 				if(TargetPlayer->Rank[0] != 0){
@@ -2456,10 +2452,13 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 			}
 
 			TCreature *Spectator = GetCreature(SpectatorID);
-			if(Spectator != NULL){
-				Spectator->TalkStimulus(CreatureID, Text);
-			}else{
+			if(Spectator == NULL){
 				error("Talk: Kreatur existiert nicht.\n");
+				continue;
+			}
+
+			if(Spectator->posz == Creature->posz){
+				Spectator->TalkStimulus(CreatureID, Text);
 			}
 		}
 	}

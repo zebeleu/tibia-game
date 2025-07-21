@@ -151,7 +151,7 @@ void TShortway::Expand(TShortwayPoint *Node){
 		// add waypoints two more times.
 		int NeighborWaylength = MinNeighborWaylength;
 		if(OffsetX != 0 && OffsetY != 0){
-			NeighborWaylength += Node->Waylength * 2;
+			NeighborWaylength += Node->Waypoints * 2;
 		}
 
 		if(NeighborWaylength < Neighbor->Waylength){
@@ -238,15 +238,12 @@ bool TShortway::Calculate(int DestX, int DestY, bool MustReach, int MaxSteps){
 	}
 
 	// NOTE(fusion): Walk back from the origin to reconstruct the path.
+	int CurDistance = std::max<int>(
+			std::abs(Node->x - DestX),
+			std::abs(Node->y - DestY));
 	Node = Node->Predecessor;
-	while(Node != NULL && MaxSteps > 0){
-		int MaxDistance = std::max<int>(
-				std::abs(Node->x - DestX),
-				std::abs(Node->y - DestY));
-		if(!MustReach && MaxDistance <= 1){
-			break;
-		}
-
+	while(Node != NULL && MaxSteps > 0
+			&& (MustReach || CurDistance > 1)){
 		TToDoEntry TD = {};
 		TD.Code = TDGo;
 		TD.Go.x = this->StartX + Node->x;
@@ -254,6 +251,9 @@ bool TShortway::Calculate(int DestX, int DestY, bool MustReach, int MaxSteps){
 		TD.Go.z = this->StartZ;
 		Creature->ToDoAdd(TD);
 
+		CurDistance = std::max<int>(
+			std::abs(Node->x - DestX),
+			std::abs(Node->y - DestY));
 		Node = Node->Predecessor;
 		MaxSteps -= 1;
 	}
@@ -768,22 +768,22 @@ void TCreature::Execute(void){
 				}
 
 				case TDMove:{
-					this->Move(TD.Move.Obj, TD.Move.x, TD.Move.y, TD.Move.z, (uint8)TD.Move.Count);
+					this->Move(Object(TD.Move.Obj), TD.Move.x, TD.Move.y, TD.Move.z, (uint8)TD.Move.Count);
 					break;
 				}
 
 				case TDTrade:{
-					this->Trade(TD.Trade.Obj, TD.Trade.Partner);
+					this->Trade(Object(TD.Trade.Obj), TD.Trade.Partner);
 					break;
 				}
 
 				case TDUse:{
-					this->Use(TD.Use.Obj1, TD.Use.Obj2, TD.Use.Dummy);
+					this->Use(Object(TD.Use.Obj1), Object(TD.Use.Obj2), TD.Use.Dummy);
 					break;
 				}
 
 				case TDTurn:{
-					this->Turn(TD.Turn.Obj);
+					this->Turn(Object(TD.Turn.Obj));
 					break;
 				}
 

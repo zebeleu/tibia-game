@@ -365,16 +365,24 @@ Object GetBodyObject(uint32 CreatureID, int Position){
 
 Object GetTopObject(int x, int y, int z, bool Move){
 	Object Obj = GetFirstObject(x, y, z);
-	while(Obj != NONE){
-		ObjectType ObjType = Obj.getObjectType();
-		if(!ObjType.getFlag(BANK)
-				&& !ObjType.getFlag(CLIP)
-				&& !ObjType.getFlag(BOTTOM)
-				&& !ObjType.getFlag(TOP)
-				&& (!Move || !ObjType.isCreatureContainer())){
-			break;
+	if(Obj != NONE){
+		while(true){
+			Object Next = Obj.getNextObject();
+			if(Next == NONE){
+				break;
+			}
+
+			ObjectType ObjType = Obj.getObjectType();
+			if(!ObjType.getFlag(BANK)
+					&& !ObjType.getFlag(CLIP)
+					&& !ObjType.getFlag(BOTTOM)
+					&& !ObjType.getFlag(TOP)
+					&& (!Move || !ObjType.isCreatureContainer())){
+				break;
+			}
+
+			Obj = Next;
 		}
-		Obj = Obj.getNextObject();
 	}
 	return Obj;
 }
@@ -575,7 +583,7 @@ int CountInventoryObjects(uint32 CreatureID, ObjectType Type, uint32 Value){
 		return 0;
 	}
 
-	Object Help = GetFirstContainerObject(Help);
+	Object Help = GetFirstContainerObject(Creature->CrObject);
 	return CountObjects(Help, Type, Value);
 }
 
@@ -1173,7 +1181,7 @@ bool ThrowPossible(int OrigX, int OrigY, int OrigZ,
 	// origin and destination.
 	int MaxT = std::max<int>(
 			std::abs(DestX - OrigX),
-			std::abs(DestY - OrigX));
+			std::abs(DestY - OrigY));
 
 	int StartT = 1;
 	if((DestX < OrigX && CoordinateFlag(OrigX, OrigY, OrigZ, HOOKEAST))

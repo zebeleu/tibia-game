@@ -349,10 +349,10 @@ void SendResult(TConnection *Connection, RESULT r){
 	}
 
 	if(Message != NULL){
+		SendMessage(Connection, TALK_FAILURE_MESSAGE, Message);
 		if(r == ENTERPROTECTIONZONE || r == NOTINVITED || r == MOVENOTPOSSIBLE){
 			SendSnapback(Connection);
 		}
-		SendMessage(Connection, TALK_FAILURE_MESSAGE, "Sorry, not possible.");
 	}
 }
 

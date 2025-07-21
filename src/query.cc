@@ -711,6 +711,7 @@ int TQueryManagerConnection::loginGame(uint32 AccountID, char *PlayerName,
 		}
 
 		int NumberOfRights = this->getByte();
+		memset(Rights, 0, 12); // MAX_RIGHT_BYTES ?
 		for(int i = 0; i < NumberOfRights; i += 1){
 			char RightName[30];
 			this->getString(RightName, 30);

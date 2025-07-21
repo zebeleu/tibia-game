@@ -31,7 +31,7 @@ enum : int {
 
 struct Object {
 	constexpr Object(void) : ObjectID(0) {}
-	constexpr Object(uint32 ObjectID): ObjectID(ObjectID) {}
+	constexpr explicit Object(uint32 ObjectID): ObjectID(ObjectID) {}
 
 	bool exists(void);
 	ObjectType getObjectType(void);
