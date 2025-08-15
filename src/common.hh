@@ -245,7 +245,6 @@ struct TWriteStream {
 
 struct TWriteBuffer: TWriteStream {
 	TWriteBuffer(uint8 *Data, int Size);
-	void reset(void) { this->Position = 0; }
 
 	// VIRTUAL FUNCTIONS
 	// =================

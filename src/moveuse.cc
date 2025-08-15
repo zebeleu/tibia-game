@@ -2977,7 +2977,9 @@ void LoadDataBase(void){
 			continue;
 		}
 
-		int EventType;
+		// NOTE(fusion): `TReadScriptFile::error` will always throw but the
+		// compiler might not be able to detect that and issue a warning.
+		int EventType = 0;
 		if(strcmp(Identifier, "use") == 0){
 			EventType = MOVEUSE_EVENT_USE;
 		}else if(strcmp(Identifier, "multiuse") == 0){

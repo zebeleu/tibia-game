@@ -995,7 +995,7 @@ void LoadSector(const char *FileName, int SectorX, int SectorY, int SectorZ){
 				AccessObject(LoadingSector->MapCon[OffsetX][OffsetY])->Attributes[3] |= 0x400;
 			}else if(strcmp(Identifier, "content") == 0){
 				Script.readSymbol('=');
-				HelpBuffer.reset();
+				HelpBuffer.Position = 0;
 				LoadObjects(&Script, &HelpBuffer, false);
 				TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
 				LoadObjects(&ReadBuffer, LoadingSector->MapCon[OffsetX][OffsetY]);
@@ -1254,7 +1254,7 @@ void SaveSector(char *FileName, int SectorX, int SectorY, int SectorZ){
 							Script.writeText(", ");
 						}
 						Script.writeText("Content=");
-						HelpBuffer.reset();
+						HelpBuffer.Position = 0;
 						SaveObjects(First, &HelpBuffer, false);
 						TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
 						SaveObjects(&ReadBuffer, &Script);
@@ -1459,7 +1459,7 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 				}
 			}else if(strcmp(Identifier, "content") == 0){
 				Script->readSymbol('=');
-				HelpBuffer.reset();
+				HelpBuffer.Position = 0;
 				if(!House || !SaveHouses){
 					LoadObjects(Script, &HelpBuffer, false);
 					TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
@@ -1615,7 +1615,7 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 				}
 			}else if(strcmp(Identifier, "content") == 0){
 				IN.readSymbol('=');
-				HelpBuffer.reset();
+				HelpBuffer.Position = 0;
 				LoadObjects(&IN, &HelpBuffer, false);
 				if(!FieldPatched[OffsetX][OffsetY]){
 					if(AttrCount > 0){
@@ -1680,7 +1680,7 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 					OUT.writeText(", ");
 				}
 				OUT.writeText("Content=");
-				HelpBuffer.reset();
+				HelpBuffer.Position = 0;
 				SaveObjects(First, &HelpBuffer, false);
 				TReadBuffer ReadBuffer(HelpBuffer.Data, HelpBuffer.Position);
 				SaveObjects(&ReadBuffer, &OUT);

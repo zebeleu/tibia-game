@@ -1232,7 +1232,7 @@ void IncrementActiveConnections(void){
 
 void DecrementActiveConnections(void){
 	CommunicationThreadMutex.down();
-	ActiveConnections += 1;
+	ActiveConnections -= 1;
 	CommunicationThreadMutex.up();
 }
 

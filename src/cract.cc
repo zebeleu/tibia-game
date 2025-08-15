@@ -1434,9 +1434,7 @@ void TCreature::NotifyGo(void){
 		}
 	}
 
-	// TODO(fusion): This is probably an inlined function to get the first object
-	// with some specific flag on a field.
-	int Waypoints;
+	int Waypoints = 0;
 	Object Bank = GetFirstObject(DestX, DestY, DestZ);
 	while(Bank != NONE){
 		ObjectType BankType = Bank.getObjectType();

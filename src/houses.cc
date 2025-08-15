@@ -36,7 +36,7 @@ THouse::THouse(void) : Subowner(0, 4, 5), Guest(0, 9, 10) {
 	this->CenterY = 0;
 	this->CenterZ = 0;
 	this->OwnerID = 0;
-	this->OwnerName[30] = 0;
+	this->OwnerName[0] = 0;
 	this->LastTransition = 0;
 	this->PaidUntil = 0;
 	this->Subowners = 0;

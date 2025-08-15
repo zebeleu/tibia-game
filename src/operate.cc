@@ -2892,10 +2892,10 @@ void RefreshMap(void){
 			continue;
 		}
 
-		bool Refreshable = false;
 		int OffsetX = -1;
 		int OffsetY = -1;
-		HelpBuffer.reset();
+		bool Refreshable = false;
+		HelpBuffer.Position = 0;
 		try{
 			TReadScriptFile Script;
 			Script.open(FileName);
@@ -2914,13 +2914,9 @@ void RefreshMap(void){
 					uint8 *SectorOffset = Script.getBytesequence();
 					OffsetX = (int)SectorOffset[0];
 					OffsetY = (int)SectorOffset[1];
+					Refreshable = false;
 					Script.readSymbol(':');
-					continue;
-				}
-
-				// TODO(fusion): We don't enforce the token to be an identifier
-				// here as we do when loading any sector file in `map.cc`.
-				if(Script.Token == IDENTIFIER){
+				}else if(Script.Token == IDENTIFIER){
 					if(OffsetX == -1 || OffsetY == -1){
 						Script.error("coordinate expected");
 					}

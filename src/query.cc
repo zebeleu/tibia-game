@@ -312,7 +312,8 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		return QUERY_STATUS_FAILED;
 	}
 
-	for(int Attempt = 0; true; Attempt += 1){
+	const int MaxAttempts = 2;
+	for(int Attempt = 1; true; Attempt += 1){
 		if(!this->isConnected()){
 			if(!AutoReconnect){
 				return QUERY_STATUS_FAILED;
@@ -335,7 +336,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 
 		if(this->write(this->Buffer, PacketSize) != PacketSize){
 			this->disconnect();
-			if(Attempt > 0){
+			if(Attempt >= MaxAttempts){
 				error("TQueryManagerConnection::executeQuery: Fehler beim Abschicken der Anfrage.\n");
 				return QUERY_STATUS_FAILED;
 			}
@@ -346,7 +347,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		int BytesRead = this->read(Help, 2, Timeout);
 		if(BytesRead != 2){
 			this->disconnect();
-			if(BytesRead == -2 || Attempt > 0){
+			if(BytesRead == -2 || Attempt >= MaxAttempts){
 				return QUERY_STATUS_FAILED;
 			}
 			continue;
