@@ -18,6 +18,7 @@ var (
 		"-pedantic",
 		"-Wall",
 		"-Wextra",
+		"-Wno-deprecated-declarations",
 		"-Wno-unused-parameter",
 		"-Wno-format-truncation",
 		"-std=c++11",
