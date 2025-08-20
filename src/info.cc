@@ -405,7 +405,7 @@ Object GetObject(uint32 CreatureID, int x, int y, int z, int RNum, ObjectType Ty
 			if(Con != NONE){
 				Obj = GetContainerObject(Con, RNum);
 			}
-		}else if(y != 0){
+		}else if(y != INVENTORY_ANY){
 			error("GetObject: Ungültiger ContainerCode x=%d,y=%d,z=%d,RNum=%d,Type=%d.\n",
 					x, y, z, RNum, Type.TypeID);
 		}

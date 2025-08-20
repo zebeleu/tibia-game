@@ -2904,9 +2904,7 @@ void ChangeProfession(TCreature *Actor, const char *Param){
 			return;
 		}
 
-		// NOTE(fusion): Using the value 10 with `TPlayer::SetProfession` will
-		// cause the player to be promoted.
-		((TPlayer*)Actor)->SetProfession(10);
+		((TPlayer*)Actor)->SetProfession(PROFESSION_PROMOTION);
 	}else{
 		return;
 	}

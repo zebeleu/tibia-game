@@ -1011,18 +1011,18 @@ void TPlayer::ClearProfession(void){
 }
 
 void TPlayer::SetProfession(uint8 Profession){
-	if(Profession == PROFESSION_PROMOTED){
+	if(Profession == PROFESSION_PROMOTION){
 		if(this->Profession == PROFESSION_NONE){
 			error("TPlayer::SetProfession: Spieler hat noch keinen Beruf für Veredelung.\n");
 			return;
 		}
 
-		if(this->Profession >= PROFESSION_PROMOTED){
+		if(this->Profession >= PROFESSION_PROMOTION){
 			error("TPlayer::SetProfession: Spieler hat seinen Beruf schon veredelt.\n");
 			return;
 		}
 
-		this->Profession += PROFESSION_PROMOTED;
+		this->Profession += PROFESSION_PROMOTION;
 		this->Combat.CheckCombatValues();
 
 		// TODO(fusion): This is similar to the TPlayer's constructor. It is
@@ -1107,8 +1107,8 @@ uint8 TPlayer::GetRealProfession(void){
 
 uint8 TPlayer::GetEffectiveProfession(void){
 	uint8 Profession = this->Profession;
-	if(Profession >= PROFESSION_PROMOTED){
-		Profession -= PROFESSION_PROMOTED;
+	if(Profession >= PROFESSION_PROMOTION){
+		Profession -= PROFESSION_PROMOTION;
 	}
 	return Profession;
 }
@@ -1125,7 +1125,7 @@ uint8 TPlayer::GetActiveProfession(void){
 
 bool TPlayer::GetActivePromotion(void){
 	return CheckRight(this->ID, PREMIUM_ACCOUNT)
-		&& this->Profession >= PROFESSION_PROMOTED;
+		&& this->Profession >= PROFESSION_PROMOTION;
 }
 
 bool TPlayer::SpellKnown(int SpellNr){

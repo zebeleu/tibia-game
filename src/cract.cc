@@ -443,8 +443,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 	}
 
 	if(DestX == 0xFFFF){ // SPECIAL_COORDINATE ?
-		// NOTE(fusion): Any inventory slot.
-		if(DestY == 0){
+		if(DestY == INVENTORY_ANY){
 			// NOTE(fusion): `CheckInventoryDestination` will throw if it's not
 			// possible to place the object on the chosen container. We want to
 			// find a slot that doesn't make it throw while giving priority to
@@ -470,7 +469,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 			// NOTE(fusion): No appropriate inventory slot was found so we now
 			// fallback to inventory containers. For whatever reason we don't
 			// give priority to the bag slot.
-			if(DestY == 0){
+			if(DestY == INVENTORY_ANY){
 				for(int Position = INVENTORY_FIRST;
 						Position <= INVENTORY_LAST;
 						Position += 1){
@@ -487,7 +486,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 				}
 			}
 
-			if(DestY == 0){
+			if(DestY == INVENTORY_ANY){
 				throw NOROOM;
 			}
 		}
@@ -981,6 +980,13 @@ void TCreature::ToDoWait(int Delay){
 	TToDoEntry TD = {};
 	TD.Code = TDWait;
 	TD.Wait.Time = ServerMilliseconds + Delay;
+	this->ToDoAdd(TD);
+}
+
+void TCreature::ToDoWaitUntil(uint32 Time){
+	TToDoEntry TD = {};
+	TD.Code = TDWait;
+	TD.Wait.Time = Time;
 	this->ToDoAdd(TD);
 }
 

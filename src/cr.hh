@@ -539,6 +539,7 @@ struct TCreature: TSkillBase {
 	void ToDoStart(void);
 	void ToDoYield(void);
 	void ToDoWait(int Delay);
+	void ToDoWaitUntil(uint32 Time);
 	void ToDoGo(int DestX, int DestY, int DestZ, bool MustReach, int MaxSteps);
 	void ToDoRotate(int Direction);
 	void ToDoMove(int ObjX, int ObjY, int ObjZ, ObjectType Type, uint8 RNum,
