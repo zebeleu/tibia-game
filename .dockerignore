@@ -1,0 +1,27 @@
+# Ignore build output and local artifacts
+dist/
+build/
+*.o
+*.so
+
+# Ignore editor and OS files
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ignore secrets and local certs
+tibia.pem
+
+# Ignore temporary files and logs
+*.log
+tmp/
+
+# Node, Python, Go modules (if present)
+node_modules/
+__pycache__/
+*.pyc
+
+# Git metadata (already excluded by default in some docker contexts but safe to include)
+.git
+.gitignore
