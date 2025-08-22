@@ -1,5 +1,4 @@
-# docker build --target artifact -f Dockerfile.game --output type=local,dest=.\dist .
-
+# docker build --target artifact -f Dockerfile.game --build-arg DEBUG=1 --output type=local,dest=.\dist .
 
 FROM debian:stable-slim AS builder
 
