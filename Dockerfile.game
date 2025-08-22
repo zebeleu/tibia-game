@@ -1,6 +1,6 @@
 # docker build --target artifact -f Dockerfile.game --build-arg DEBUG=1 --output type=local,dest=.\dist .
 
-FROM debian:stable-slim AS builder
+FROM debian:bookworm-slim AS builder
 
 # Use non-interactive mode to avoid prompts during automated builds.
 ENV DEBIAN_FRONTEND=noninteractive
@@ -32,7 +32,7 @@ RUN make clean && make DEBUG=$DEBUG
 
 # ------------------------------------------------------------------------------
 
-FROM debian:stable-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
