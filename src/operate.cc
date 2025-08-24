@@ -12,7 +12,7 @@ static fifo<TStatement> Statements(1024);
 static fifo<TListener> Listeners(1024);
 
 static vector<TChannel> Channel(0, 18, 10);
-static int Channels;
+static int Channels = PUBLIC_CHANNELS;
 static int CurrentChannelID;
 static int CurrentSubscriberNumber;
 
@@ -2209,7 +2209,8 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 				|| Mode == TALK_PRIVATE_MESSAGE
 				|| ((Mode == TALK_CHANNEL_CALL
 					|| Mode == TALK_HIGHLIGHT_CHANNELCALL)
-						&& Channel >= 1 && Channel <= 7);
+						&& Channel != CHANNEL_GUILD
+						&& Channel < CHANNEL_PRIVATE);
 
 		int Muting = 0;
 		if(CheckSpamming){
@@ -3231,11 +3232,11 @@ int GetCommunicationContext(uint32 CharacterID, uint32 StatementID,
 				|| Statement->Mode == TALK_GAMEMASTER_CHANNELCALL
 				|| Statement->Mode == TALK_HIGHLIGHT_CHANNELCALL;
 
-		bool ReportableChannel = Statement->Channel == 2	// CHANNEL_TUTOR
-				|| Statement->Channel == 4					// CHANNEL_GAME
-				|| Statement->Channel == 5					// CHANNEL_TRADE
-				|| Statement->Channel == 6					// CHANNEL_RLCHAT
-				|| Statement->Channel == 7;					// CHANNEL_HELP
+		bool ReportableChannel = Statement->Channel == CHANNEL_TUTOR
+				|| Statement->Channel == CHANNEL_GAMECHAT
+				|| Statement->Channel == CHANNEL_TRADE
+				|| Statement->Channel == CHANNEL_RLCHAT
+				|| Statement->Channel == CHANNEL_HELP;
 
 		if(!ChannelMode || !ReportableChannel){
 			error("GetCommunicationContext: Äußerung dürfte nicht gemeldet werden.\n");
@@ -3387,7 +3388,7 @@ bool ChannelActive(int ChannelID){
 		return false;
 	}
 
-	return ChannelID <= 7 || Channel.at(ChannelID)->Moderator != 0;
+	return ChannelID < CHANNEL_PRIVATE || Channel.at(ChannelID)->Moderator != 0;
 }
 
 bool ChannelAvailable(int ChannelID, uint32 CharacterID){
@@ -3402,16 +3403,16 @@ bool ChannelAvailable(int ChannelID, uint32 CharacterID){
 	}
 
 	switch(ChannelID){
-		case 0: return Player->Guild[0] != 0;
-		case 1: return CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
-		case 2: return CheckRight(Player->ID, READ_TUTOR_CHANNEL);
-		case 3: return CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
-		case 4: return true;
-		case 5: return true;
-		case 6: return true;
-		case 7: return true;
+		case CHANNEL_GUILD:          return Player->Guild[0] != 0;
+		case CHANNEL_GAMEMASTER:     return CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+		case CHANNEL_TUTOR:          return CheckRight(Player->ID, READ_TUTOR_CHANNEL);
+		case CHANNEL_RULEVIOLATIONS: return CheckRight(Player->ID, READ_GAMEMASTER_CHANNEL);
+		case CHANNEL_GAMECHAT:       return true;
+		case CHANNEL_TRADE:          return true;
+		case CHANNEL_RLCHAT:         return true;
+		case CHANNEL_HELP:           return true;
 		default:{
-			if(ChannelID > 7){
+			if(ChannelID >= CHANNEL_PRIVATE){
 				TChannel *Chan = Channel.at(ChannelID);
 				if(Chan->Moderator == CharacterID){
 					return true;
@@ -3442,16 +3443,16 @@ const char *GetChannelName(int ChannelID, uint32 CharacterID){
 	}
 
 	switch(ChannelID){
-		case 0: return Player->Guild;
-		case 1: return "Gamemaster";
-		case 2: return "Tutor";
-		case 3: return "Rule Violations";
-		case 4: return "Game-Chat";
-		case 5: return "Trade";
-		case 6: return "RL-Chat";
-		case 7: return "Help";
+		case CHANNEL_GUILD:          return Player->Guild;
+		case CHANNEL_GAMEMASTER:     return "Gamemaster";
+		case CHANNEL_TUTOR:          return "Tutor";
+		case CHANNEL_RULEVIOLATIONS: return "Rule Violations";
+		case CHANNEL_GAMECHAT:       return "Game-Chat";
+		case CHANNEL_TRADE:          return "Trade";
+		case CHANNEL_RLCHAT:         return "RL-Chat";
+		case CHANNEL_HELP:           return "Help";
 		default:{
-			if(ChannelID > 7){
+			if(ChannelID >= CHANNEL_PRIVATE){
 				snprintf(ChannelName, sizeof(ChannelName), "%s's Channel",
 						Channel.at(ChannelID)->ModeratorName);
 				return ChannelName;
@@ -3501,7 +3502,7 @@ uint32 GetNextSubscriber(void){
 }
 
 bool MayOpenChannel(uint32 CharacterID){
-	if(Channels >= 0xFFFF){
+	if(Channels >= MAX_CHANNELS){
 		return false;
 	}
 
@@ -3510,7 +3511,7 @@ bool MayOpenChannel(uint32 CharacterID){
 	}
 
 	// NOTE(fusion): Check if character is already moderator of any non-public channel.
-	for(int ChannelID = 8; ChannelID < Channels; ChannelID += 1){
+	for(int ChannelID = CHANNEL_PRIVATE; ChannelID < Channels; ChannelID += 1){
 		if(Channel.at(ChannelID)->Moderator == CharacterID){
 			return false;
 		}
@@ -3527,7 +3528,7 @@ void OpenChannel(uint32 CharacterID){
 	}
 
 	// TODO(fusion): Shouldn't we scan for a free channel before returning here?
-	if(Channels >= 0xFFFF){
+	if(Channels >= MAX_CHANNELS){
 		error("OpenChannel: Zu viele Kanäle.\n");
 		throw ERROR;
 	}
@@ -3537,7 +3538,7 @@ void OpenChannel(uint32 CharacterID){
 	}
 
 	// NOTE(fusion): Check if character already has an open channel.
-	for(int ChannelID = 8; ChannelID < Channels; ChannelID += 1){
+	for(int ChannelID = CHANNEL_PRIVATE; ChannelID < Channels; ChannelID += 1){
 		if(Channel.at(ChannelID)->Moderator == CharacterID){
 			SendOpenOwnChannel(Player->Connection, ChannelID);
 			return;
@@ -3545,7 +3546,7 @@ void OpenChannel(uint32 CharacterID){
 	}
 
 	// NOTE(fusion): Assign free channel to character.
-	int ChannelID = 8;
+	int ChannelID = CHANNEL_PRIVATE;
 	while(ChannelID < Channels){
 		if(Channel.at(ChannelID)->Moderator == 0){
 			break;
@@ -3567,7 +3568,7 @@ void OpenChannel(uint32 CharacterID){
 }
 
 void CloseChannel(int ChannelID){
-	if(ChannelID <= 7 || ChannelID >= Channels){
+	if(ChannelID < CHANNEL_PRIVATE || ChannelID >= Channels){
 		error("CloseChannel: Ungültige ChannelID %d.\n", ChannelID);
 		return;
 	}
@@ -3588,7 +3589,7 @@ void InviteToChannel(uint32 CharacterID, const char *Name){
 		return;
 	}
 
-	int ChannelID = 8;
+	int ChannelID = CHANNEL_PRIVATE;
 	while(ChannelID < Channels){
 		if(Channel.at(ChannelID)->Moderator == CharacterID){
 			break;
@@ -3670,7 +3671,7 @@ void ExcludeFromChannel(uint32 CharacterID, const char *Name){
 		return;
 	}
 
-	int ChannelID = 8;
+	int ChannelID = CHANNEL_PRIVATE;
 	while(ChannelID < Channels){
 		if(Channel.at(ChannelID)->Moderator == CharacterID){
 			break;
@@ -3797,7 +3798,7 @@ void LeaveChannel(int ChannelID, uint32 CharacterID, bool Close){
 		Chan->Subscribers = 0;
 	}
 
-	if(ChannelID > 7 && Chan->Subscribers == 0){
+	if(ChannelID >= CHANNEL_PRIVATE && Chan->Subscribers == 0){
 		CloseChannel(ChannelID);
 	}
 }
