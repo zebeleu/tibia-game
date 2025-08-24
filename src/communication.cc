@@ -1408,7 +1408,8 @@ bool OpenSocket(void){
 	struct sockaddr_in ServerAddress = {};
 	ServerAddress.sin_family = AF_INET;
 	ServerAddress.sin_port = htons(GamePort);
-	ServerAddress.sin_addr.s_addr = inet_addr(GameAddress);
+	// ServerAddress.sin_addr.s_addr = inet_addr(GameAddress);
+	ServerAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 	if(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(ServerAddress)) == -1){
 		error("LaunchServer: Fehler %d bei bind.\n", errno);
 		print(1, "Bind Error Again -> Begin FloodBind :(\n");
