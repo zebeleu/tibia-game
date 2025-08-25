@@ -2518,7 +2518,7 @@ void TMonster::IdleStimulus(void){
 				continue;
 			}
 
-			if(this->IsFleeing() && random(1, 3) == 1){
+			if(this->IsFleeing() && random(1, 3) != 1){
 				continue;
 			}
 
