@@ -587,7 +587,7 @@ void AngleShapeSpell(TCreature *Actor, int Angle, int Range, TImpact *Impact, in
 				continue;
 			}
 
-			if(!ThrowPossible(ActorX, ActorZ, ActorZ, FieldX, FieldY, FieldZ, 0)){
+			if(!ThrowPossible(ActorX, ActorY, ActorZ, FieldX, FieldY, FieldZ, 0)){
 				continue;
 			}
 
