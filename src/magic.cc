@@ -3839,8 +3839,8 @@ void GetSpellbook(uint32 CharacterID, char *Buffer){
 			SpellNr < NARRAY(SpellList);
 			SpellNr += 1){
 		int Level = (int)SpellList[SpellNr].Level;
-		if(Level > MaxLevel){
-			Level = MaxLevel;
+		if(MaxLevel < Level){
+			MaxLevel = Level;
 		}
 	}
 
