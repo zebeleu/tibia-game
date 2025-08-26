@@ -2083,11 +2083,14 @@ void Look(uint32 CreatureID, Object Obj){
 
 			uint16 HouseID = GetHouseID(ObjX, ObjY, ObjZ);
 			if(HouseID != 0){
-				// TODO(fusion): Make `GetHouseOwner` return "Nobody" when there
-				// is no owner name.
+				const char *HouseOwner = GetHouseOwner(HouseID);
+				if(HouseOwner == NULL || HouseOwner[0] == 0){
+					HouseOwner = "Nobody";
+				}
+
 				snprintf(Help, sizeof(Help),
 						". It belongs to house '%s'. %s owns this house",
-						GetHouseName(HouseID), GetHouseOwner(HouseID));
+						GetHouseName(HouseID), HouseOwner);
 				strcat(Description, Help);
 			}else{
 				error("Look: NameDoor auf [%d,%d,%d] gehört zu keinem Haus.\n", ObjX, ObjY, ObjZ);
