@@ -550,7 +550,6 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 		}
 
 		try{
-			// TODO(fusion): Find out what is this last parameter to `Move`.
 			::Move(this->ID, Obj, DestCon, MoveCount, false, DestObj);
 		}catch(RESULT r){
 			// NOTE(fusion): Attempt to exchange inventory items.
@@ -562,7 +561,7 @@ void TCreature::Move(Object Obj, int DestX, int DestY, int DestZ, uint8 Count){
 						|| r == ONEWEAPONONLY)){
 				Object ObjCon = Obj.getContainer();
 				::Move(this->ID, DestObj, ObjCon, -1, false, NONE);
-				::Move(this->ID, Obj, DestCon, MoveCount, false, NONE);
+				::Move(this->ID, Obj, DestCon, MoveCount, false, DestObj);
 			}else{
 				throw;
 			}
