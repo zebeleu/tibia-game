@@ -2734,7 +2734,7 @@ void DeleteAtCreature(uint32 CreatureID, ObjectType Type, int Amount, uint32 Val
 
 		if(Type.getFlag(CUMULATIVE)){
 			int ObjAmount = (int)Obj.getAttribute(AMOUNT);
-			if(ObjAmount < Amount){
+			if(ObjAmount <= Amount){
 				Delete(Obj, -1);
 				Amount -= ObjAmount;
 			}else{
