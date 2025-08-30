@@ -1000,6 +1000,7 @@ bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player){
 						}
 					}
 				}
+				Expanded = true;
 			}
 
 			if(LoginPossible && (!Player || !IsNoLogoutField(FieldX, FieldY, FieldZ))){
@@ -1009,6 +1010,7 @@ bool SearchSpawnField(int *x, int *y, int *z, int Distance, bool Player){
 				}
 
 				if(TieBreaker > BestTieBreaker){
+					Found = true;
 					BestX = FieldX;
 					BestY = FieldY;
 					BestTieBreaker = TieBreaker;

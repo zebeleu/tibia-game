@@ -2243,6 +2243,7 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 				throw EXHAUSTED;
 			}
 
+			Player->EarliestYellRound = RoundNr + 30;
 			strcpy(YellBuffer, Text);
 			strUpper(YellBuffer);
 			Text = YellBuffer;
