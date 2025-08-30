@@ -3962,40 +3962,42 @@ int CheckForSpell(uint32 CreatureID, const char *Text){
 	}
 
 	int SpellNr = FindSpell(Syllable);
-	if(SpellNr != 0){
-		try{
-			switch(SpellType){
-				case 1: CharacterRightSpell(CreatureID, SpellNr, SpellStr); break;
-				case 2: RuneSpell(CreatureID, SpellNr); break;
-				case 3: CastSpell(CreatureID, SpellNr, SpellStr); break;
-				case 4: CastSpell(CreatureID, SpellNr, SpellStr); break;
-				case 5: AccountRightSpell(CreatureID, SpellNr, SpellStr); break;
-				default:{
-					error("CheckForSpell: Spruchklasse %d existiert nicht.\n", SpellType);
-					break;
-				}
-			}
-		}catch(RESULT r){
-			// TODO(fusion): `SpellFailed` is inlined in here but I think it's
-			// cleaner to keep it this way.
-			TCreature *Actor = GetCreature(CreatureID);
-			if(Actor == NULL){
-				error("SpellFailed: Kreatur existiert nicht.\n");
-			}else{
-				if(r != ERROR){
-					GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
-				}
-
-				if(Actor->Type == PLAYER){
-					SendResult(Actor->Connection, r);
-				}
-			}
-
-			return -SpellType;
-		}
+	if(SpellNr == 0){
+		return 0;
 	}
 
-	return SpellType;
+	try{
+		switch(SpellType){
+			case 1: CharacterRightSpell(CreatureID, SpellNr, SpellStr); break;
+			case 2: RuneSpell(CreatureID, SpellNr); break;
+			case 3: CastSpell(CreatureID, SpellNr, SpellStr); break;
+			case 4: CastSpell(CreatureID, SpellNr, SpellStr); break;
+			case 5: AccountRightSpell(CreatureID, SpellNr, SpellStr); break;
+			default:{
+				error("CheckForSpell: Spruchklasse %d existiert nicht.\n", SpellType);
+				break;
+			}
+		}
+
+		return SpellType;
+	}catch(RESULT r){
+		// TODO(fusion): `SpellFailed` is inlined in here but I think it's
+		// cleaner to keep it this way.
+		TCreature *Actor = GetCreature(CreatureID);
+		if(Actor == NULL){
+			error("SpellFailed: Kreatur existiert nicht.\n");
+		}else{
+			if(r != ERROR){
+				GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
+			}
+
+			if(Actor->Type == PLAYER){
+				SendResult(Actor->Connection, r);
+			}
+		}
+
+		return -SpellType;
+	}
 }
 
 static void DeleteRune(Object Obj){
