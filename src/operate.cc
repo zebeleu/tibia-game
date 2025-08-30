@@ -2430,7 +2430,7 @@ void Talk(uint32 CreatureID, int Mode, const char *Addressee, const char *Text, 
 
 			// TODO(fusion): We should probably review this. You'd assume creature
 			// should be a player when talking to any channel.
-			if(Channel == 0 && (Creature->Type != PLAYER
+			if(Channel == CHANNEL_GUILD && (Creature->Type != PLAYER
 					|| strcmp(((TPlayer*)Creature)->Guild, Subscriber->Guild) != 0)){
 				continue;
 			}
