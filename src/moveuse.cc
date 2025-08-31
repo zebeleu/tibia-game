@@ -2329,7 +2329,7 @@ void SeparationEvent(Object Obj, Object Start){
 				ObjectType DoorTarget = HelpType.getFlag(LEVELDOOR)
 						? (int)HelpType.getAttribute(LEVELDOORTARGET)
 						: (int)HelpType.getAttribute(QUESTDOORTARGET);
-				if(DoorTarget.isMapContainer() || DoorTarget.getFlag(UNPASS)){
+				if(DoorTarget.isMapContainer() || !DoorTarget.getFlag(UNPASS)){
 					error("SeparationEvent: Zieltür für Tür %d nicht spezifiziert oder passierbar.\n",
 							HelpType.TypeID);
 					throw ERROR;
