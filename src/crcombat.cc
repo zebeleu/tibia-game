@@ -833,7 +833,7 @@ void TCombat::DistanceAttack(TCreature *Target){
 	}else if(SpecialEffect == 2){ // BURST ARROW
 		int Damage = ComputeDamage(Master, 0, EffectStrength, EffectStrength);
 		TDamageImpact Impact(Master, DAMAGE_PHYSICAL, Damage, false);
-		CircleShapeSpell(Master, DropX, DropY, DropZ, -1,
+		CircleShapeSpell(Master, DropX, DropY, DropZ, INT_MAX,
 				ANIMATION_NONE, 2, &Impact, EFFECT_FIRE);
 	}
 
