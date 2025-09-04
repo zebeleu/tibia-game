@@ -2371,7 +2371,10 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 		Radius = NARRAY(Circle) - 1;
 	}
 
-	for(int R = 0; R <= Radius; R += 1){
+	// TODO(fusion): We don't include the origin (R=0) to avoid dispelling the
+	// caster as this is only used with the actor also being the target. We could
+	// instead just filter the actor while looping.
+	for(int R = 1; R <= Radius; R += 1){
 		int CirclePoints = Circle[R].Count;
 		for(int Point = 0; Point < CirclePoints; Point += 1){
 			int FieldX = TargetX + Circle[R].x[Point];
@@ -2405,7 +2408,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 							Effect = EFFECT_BLOCK_HIT;
 
 							// NOTE(fusion): If the victim still has an illusion effect up, it
-							// it must come from an item and it seems there is a change to destroy
+							// must come from an item and it seems there is a chance to destroy
 							// it on pvp enforced worlds.
 							// TODO(fusion): This is probably an inlined function.
 							if(WorldType == PVP_ENFORCED){
@@ -4156,7 +4159,7 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 			}
 
 			case 17:{
-				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_FIRE, 3);
+				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_FIRE, 2);
 				break;
 			}
 
@@ -4241,7 +4244,7 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 			}
 
 			case 55:{
-				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_ENERGY, 3);
+				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_ENERGY, 2);
 				break;
 			}
 
@@ -4268,7 +4271,7 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 			}
 
 			case 91:{
-				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_POISON, 3);
+				MassCreateField(Actor, Dest, 0, 0, FIELD_TYPE_POISON, 2);
 				break;
 			}
 
