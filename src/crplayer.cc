@@ -1449,8 +1449,7 @@ bool TPlayer::IsAttackJustified(uint32 VictimID){
 			return true;
 		}
 
-		if(Victim->GetPartyLeader(true) != 0
-		&& Victim->GetPartyLeader(true) == this->GetPartyLeader(true)){
+		if(Victim->InPartyWith(this, true)){
 			return true;
 		}
 
@@ -1471,9 +1470,9 @@ void TPlayer::RecordAttack(uint32 VictimID){
 		return;
 	}
 
-	if(!Victim->IsAttacker(this->ID, true) && !this->IsAttacker(VictimID, false)
-			&& (Victim->GetPartyLeader(true) == 0
-				|| Victim->GetPartyLeader(true) != this->GetPartyLeader(true))){
+	if(!Victim->InPartyWith(this, true)
+			&& !Victim->IsAttacker(this->ID, true)
+			&& !this->IsAttacker(VictimID, false)){
 		*this->AttackedPlayers.at(this->NumberOfAttackedPlayers) = VictimID;
 		this->NumberOfAttackedPlayers += 1;
 		print(3, "Spieler %s ist Angreifer für Spieler %s.\n", this->Name, Victim->Name);
@@ -1650,8 +1649,7 @@ int TPlayer::GetPlayerkillingMark(TPlayer *Observer){
 			return SKULL_WHITE;
 		}
 
-		if(this->GetPartyLeader(false) != 0
-		&& this->GetPartyLeader(false) == Observer->GetPartyLeader(false)){
+		if(this->InPartyWith(Observer, false)){
 			return SKULL_GREEN;
 		}
 
@@ -1669,6 +1667,16 @@ uint32 TPlayer::GetPartyLeader(bool CheckFormer){
 	}else{
 		return 0;
 	}
+}
+
+bool TPlayer::InPartyWith(TPlayer *Other, bool CheckFormer){
+	if(Other == NULL){
+		error("TPlayer::InPartyWith: Other player is NULL.\n");
+		return false;
+	}
+
+	return this->GetPartyLeader(CheckFormer) != 0
+		&& this->GetPartyLeader(CheckFormer) == Other->GetPartyLeader(CheckFormer);
 }
 
 void TPlayer::JoinParty(uint32 LeaderID){
@@ -1690,8 +1698,7 @@ int TPlayer::GetPartyMark(TPlayer *Observer){
 		return PARTY_SHIELD_LEADER;
 	}
 
-	if(this->GetPartyLeader(false) != 0
-	&& this->GetPartyLeader(false) == Observer->GetPartyLeader(false)){
+	if(this->InPartyWith(Observer, false)){
 		return PARTY_SHIELD_MEMBER;
 	}
 

@@ -4079,10 +4079,9 @@ void JoinParty(uint32 GuestID, uint32 HostID){
 	}
 
 	if(Guest->GetPartyLeader(true) != 0){
-		bool SameParty = Guest->GetPartyLeader(true) == Host->GetPartyLeader(true);
 		SendMessage(Guest->Connection, TALK_INFO_MESSAGE,
 				"You are already member of %s party.",
-				(SameParty ? "this" : "a"));
+				(Guest->InPartyWith(Host, true) ? "this" : "a"));
 		return;
 	}
 
