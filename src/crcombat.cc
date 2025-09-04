@@ -916,7 +916,7 @@ void TCombat::DistributeExperiencePoints(uint32 Exp){
 
 		int Amount = (int)((Exp * this->CombatList[i].Damage) / this->CombatDamage);
 		if(Master->Type == PLAYER && Attacker->Type == PLAYER){
-			if(((TPlayer*)Master)->GetPartyLeader(true) == ((TPlayer*)Attacker)->GetPartyLeader(true)){
+			if(((TPlayer*)Master)->InPartyWith((TPlayer*)Attacker, true)){
 				continue;
 			}
 

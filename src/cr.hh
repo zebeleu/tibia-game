@@ -867,6 +867,7 @@ struct TPlayer: TCreature {
 	void ClearPlayerkillingMarks(void);
 	int GetPlayerkillingMark(TPlayer *Observer);
 	uint32 GetPartyLeader(bool CheckFormer);
+	bool InPartyWith(TPlayer *Other, bool CheckFormer);
 	void JoinParty(uint32 LeaderID);
 	void LeaveParty(void);
 	int GetPartyMark(TPlayer *Observer);
