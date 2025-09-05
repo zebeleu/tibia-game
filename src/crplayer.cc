@@ -282,7 +282,7 @@ TPlayer::~TPlayer(void){
 			}
 
 			// NOTE(fusion): This is used to reset skills back to default. See
-			// `LoadData`.
+			// `TPlayer::LoadData`.
 			for(int SkillNr = 0;
 					SkillNr < NARRAY(PlayerData->Minimum);
 					SkillNr += 1){
