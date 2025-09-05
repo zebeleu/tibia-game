@@ -1042,9 +1042,15 @@ void CreateField(int x, int y, int z, int FieldType, uint32 Owner, bool Peaceful
 	}
 
 	// NOTE(fusion): Create field, at last.
-	Create(GetMapContainer(x, y, z),
-			GetSpecialObject(Meaning),
-			Owner);
+	try{
+		Create(GetMapContainer(x, y, z),
+				GetSpecialObject(Meaning),
+				Owner);
+	}catch(RESULT r){
+		if(r != DESTROYED){
+			throw;
+		}
+	}
 }
 
 void CreateField(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, int FieldType){
