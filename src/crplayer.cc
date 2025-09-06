@@ -1534,6 +1534,20 @@ void TPlayer::RecordMurder(uint32 VictimID){
 	}
 }
 
+void TPlayer::RecordDeath(uint32 AttackerID, int OldLevel, const char *Remark){
+	bool Justified = true;
+	if(AttackerID != 0 && AttackerID != this->ID && IsCreaturePlayer(AttackerID)){
+		TPlayer *Attacker = GetPlayer(AttackerID);
+		if(Attacker == NULL){
+			return;
+		}
+
+		Justified = Attacker->IsAttackJustified(this->ID);
+		Attacker->RecordMurder(this->ID);
+	}
+	CharacterDeathOrder(this, OldLevel, AttackerID, Remark, !Justified);
+}
+
 int TPlayer::CheckPlayerkilling(int Now){
 	int LastDay = 0;
 	int LastWeek = 0;
