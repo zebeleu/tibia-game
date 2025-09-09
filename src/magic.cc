@@ -946,22 +946,23 @@ int GetDirection(int dx, int dy){
 		}
 	}else{
 		// NOTE(fusion): This function uses the approximate tangent value, avoiding
-		// floating point calculations, for whatever reason. The tangent is unique
-		// and odd in the interval (-PI/2, +PI/2). We also need to recall that the
-		// Y-axis is inverted in Tibia, so we need to negate `dy`.
+		// floating point calculations. The tangent is unique and odd in the interval
+		// (-PI/2, +PI/2) but since that only covers half the unit circle, we need to
+		// mirror results to the other half by comparing the sign of `dx`. The Y-axis
+		// is also inverted in Tibia, so we need to negate `dy`.
 		constexpr int Tangent_67_5 = 618;	// => 618 / 256 ~ 2.41 ~ tan(67.5 deg)
 		constexpr int Tangent_22_5 = 106;	// => 106 / 256 ~ 0.41 ~ tan(22.5 deg)
 		int Tangent = (-dy * 256) / dx;		// => (dy * 256) / dx ~ (dy / dx) * 256
 		if(Tangent >= Tangent_67_5){
-			Result = DIRECTION_NORTH;
+			Result = (dx < 0) ? DIRECTION_SOUTH     : DIRECTION_NORTH;
 		}else if(Tangent >= Tangent_22_5){
-			Result = (dx < 0) ? DIRECTION_NORTHWEST : DIRECTION_NORTHEAST;
+			Result = (dx < 0) ? DIRECTION_SOUTHWEST : DIRECTION_NORTHEAST;
 		}else if(Tangent >= -Tangent_22_5){
-			Result = (dx < 0) ? DIRECTION_WEST : DIRECTION_EAST;
+			Result = (dx < 0) ? DIRECTION_WEST      : DIRECTION_EAST;
 		}else if(Tangent >= -Tangent_67_5){
-			Result = (dx < 0) ? DIRECTION_SOUTHWEST : DIRECTION_SOUTHEAST;
+			Result = (dx < 0) ? DIRECTION_NORTHWEST : DIRECTION_SOUTHEAST;
 		}else{
-			Result = DIRECTION_SOUTH;
+			Result = (dx < 0) ? DIRECTION_NORTH     : DIRECTION_SOUTH;
 		}
 	}
 	return Result;
