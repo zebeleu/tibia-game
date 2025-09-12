@@ -78,7 +78,7 @@ func main() {
 	// DEBUG SWITCH
 	fmt.Fprint(&output, "DEBUG ?= 0\n")
 	fmt.Fprint(&output, "ifneq ($(DEBUG), 0)\n")
-	fmt.Fprint(&output, "\tCFLAGS += -g -O0\n")
+	fmt.Fprint(&output, "\tCFLAGS += -g -Og\n")
 	fmt.Fprint(&output, "else\n")
 	fmt.Fprint(&output, "\tCFLAGS += -O2\n")
 	fmt.Fprint(&output, "endif\n\n")
@@ -107,7 +107,7 @@ func main() {
 
 	// PHONY
 	fmt.Fprint(&output, ".PHONY: clean\n\n")
-	fmt.Fprint(&output, "clean:\n\t@rm -r $(BUILDDIR)\n\n")
+	fmt.Fprint(&output, "clean:\n\t@rm -rf $(BUILDDIR)\n\n")
 
 	if err := os.WriteFile("Makefile", output.Bytes(), 0644); err != nil {
 		fmt.Printf("failed to write Makefile: %v\n", err)
