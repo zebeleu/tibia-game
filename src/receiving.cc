@@ -1620,7 +1620,7 @@ void CRuleViolation(TConnection *Connection, TReadBuffer *Buffer){
 		}
 	}
 
-	PunishmentOrder(Player, Name,IPAddress, Reason, Action, Comment,
+	PunishmentOrder(Player, Name, IPAddress, Reason, Action, Comment,
 			NumberOfStatements, ReportedStatements, StatementID, IPBanishment);
 }
 

@@ -1986,7 +1986,7 @@ void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 		throw ERROR;
 	}
 
-	if(DepotNr < 0 || DepotNr >= 9){ // MAX_DEPOT ?
+	if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
 		error("LoadDepot: Ungültige Depotnummer %d.\n", DepotNr);
 		throw ERROR;
 	}
@@ -2022,7 +2022,7 @@ void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 		throw ERROR;
 	}
 
-	if(DepotNr < 0 || DepotNr >= 9){ // MAX_DEPOT ?
+	if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
 		error("SaveDepot: Ungültige Depotnummer %d.\n", DepotNr);
 		throw ERROR;
 	}
@@ -2364,7 +2364,7 @@ bool LoadPlayerData(TPlayerData *Slot){
 			}
 
 			int DepotNr = Script.getNumber();
-			if(DepotNr < 0 || DepotNr >= NARRAY(Slot->Depot)){
+			if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
 				Script.error("illegal depot number");
 			}
 
@@ -2398,9 +2398,7 @@ bool LoadPlayerData(TPlayerData *Slot){
 		Slot->Inventory = NULL;
 		Slot->InventorySize = 0;
 
-		for(int DepotNr = 0;
-				DepotNr < NARRAY(Slot->Depot);
-				DepotNr += 1){
+		for(int DepotNr = 0; DepotNr < MAX_DEPOTS; DepotNr += 1){
 			delete[] Slot->Depot[DepotNr];
 			Slot->Depot[DepotNr] = NULL;
 			Slot->DepotSize[DepotNr] = 0;
@@ -2597,9 +2595,7 @@ void SavePlayerData(TPlayerData *Slot){
 
 		bool FirstDepot = true;
 		Script.writeText("Depots      = {");
-		for(int DepotNr = 0;
-				DepotNr < NARRAY(Slot->Depot);
-				DepotNr += 1){
+		for(int DepotNr = 0; DepotNr < MAX_DEPOTS; DepotNr += 1){
 			if(Slot->Depot[DepotNr] != NULL){
 				TReadBuffer Buffer(Slot->Depot[DepotNr], Slot->DepotSize[DepotNr]);
 				if(!FirstDepot){
@@ -2671,7 +2667,7 @@ void FreePlayerPoolSlot(TPlayerData *Slot){
 	}
 
 	delete[] Slot->Inventory;
-	for(int DepotNr = 0; DepotNr < 9; DepotNr += 1){ // MAX_DEPOT ?
+	for(int DepotNr = 0; DepotNr < MAX_DEPOTS; DepotNr += 1){
 		delete[] Slot->Depot[DepotNr];
 	}
 
