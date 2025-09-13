@@ -143,8 +143,8 @@ struct TPlayerData {
 	int MurderTimestamps[20];
 	uint8 *Inventory;
 	int InventorySize;
-	uint8 *Depot[9];
-	int DepotSize[9];
+	uint8 *Depot[MAX_DEPOTS];
+	int DepotSize[MAX_DEPOTS];
 	uint32 AccountID;
 	int Sex;
 	char Name[30];

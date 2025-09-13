@@ -26,7 +26,9 @@ var (
 		"-DOS_LINUX=1",
 		"-DARCH_X64=1",
 	}
-	linkerOptions = []string{
+	debugOptions   = []string{"-g", "-Og", "-DENABLE_ASSERTIONS=1"}
+	releaseOptions = []string{"-O2"}
+	linkerOptions  = []string{
 		"-Wl,-t",
 		"-lcrypto",
 	}
@@ -78,9 +80,9 @@ func main() {
 	// DEBUG SWITCH
 	fmt.Fprint(&output, "DEBUG ?= 0\n")
 	fmt.Fprint(&output, "ifneq ($(DEBUG), 0)\n")
-	fmt.Fprint(&output, "\tCFLAGS += -g -Og\n")
+	fmt.Fprintf(&output, "\tCFLAGS += %v\n", strings.Join(debugOptions, " "))
 	fmt.Fprint(&output, "else\n")
-	fmt.Fprint(&output, "\tCFLAGS += -O2\n")
+	fmt.Fprintf(&output, "\tCFLAGS += %v\n", strings.Join(releaseOptions, " "))
 	fmt.Fprint(&output, "endif\n\n")
 
 	// HEADERS
