@@ -918,7 +918,7 @@ void SendMails(TPlayerData *PlayerData){
 		}
 
 		int DepotNr = Mail->DepotNumber;
-		if(DepotNr < 0 || DepotNr >= 9){ // MAX_DEPOT ?
+		if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
 			error(Translate("SendMails: Ungültige Depotnummer %d.\n",
 							"SendMails: Invalid DepotNumber %d.\n"), DepotNr);
 			DepotNr = 0;
