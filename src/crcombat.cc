@@ -1,4 +1,4 @@
-#include "cr.hh"
+﻿#include "cr.hh"
 #include "config.hh"
 #include "info.hh"
 #include "magic.hh"
@@ -44,8 +44,7 @@ void TCombat::GetWeapon(void){
 	// TODO(fusion): Check if `Master` is NULL?
 	TCreature *Master = this->Master;
 	if(!Master->CrObject.exists()){
-		error(Translate("TCombat::GetWeapon: Kreatur-Objekt existiert nicht.\n",
-						"TCombat::GetWeapon: CreatureObject does not exist.\n"));
+		error("TCombat::GetWeapon: %s\n", t("CREATUREOBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -326,8 +325,7 @@ void TCombat::SetAttackMode(uint8 AttackMode){
 	if(AttackMode != ATTACK_MODE_OFFENSIVE
 			&& AttackMode != ATTACK_MODE_BALANCED
 			&& AttackMode != ATTACK_MODE_DEFENSIVE){
-		error(Translate("TCombat::SetAttackMode: Ungültiger Angriffsmodus %d.\n",
-						"TCombat::SetAttackMode: Invalid attack mode %d.\n"), AttackMode);
+		error("TCombat::SetAttackMode: %s\n", t("INVALID_ATTACK_MODE", AttackMode));
 		return;
 	}
 
@@ -339,8 +337,7 @@ void TCombat::SetAttackMode(uint8 AttackMode){
 
 void TCombat::SetChaseMode(uint8 ChaseMode){
 	if(ChaseMode != CHASE_MODE_NONE && ChaseMode != CHASE_MODE_CLOSE){
-		error(Translate("TCombat::SetChaseMode: Ungültiger Verfolgungsmodus %d.\n",
-						"TCombat::SetChaseMode: Invalid tracking mode %d.\n"), ChaseMode);
+		error("TCombat::SetChaseMode: %s\n", t("INVALID_TRACKING_MODE", ChaseMode));
 		return;
 	}
 
@@ -349,8 +346,7 @@ void TCombat::SetChaseMode(uint8 ChaseMode){
 
 void TCombat::SetSecureMode(uint8 SecureMode){
 	if(SecureMode != SECURE_MODE_DISABLED && SecureMode != SECURE_MODE_ENABLED){
-		error(Translate("TCombat::SetSecureMode: Ungültiger Sicherheitsmodus %d.\n",
-						"TCombat::SetSecureMode: Invalid security mode %d.\n"), SecureMode);
+		error("TCombat::SetSecureMode: %s\n", t("INVALID_SECURITY_MODE", SecureMode));
 		return;
 	}
 
@@ -454,8 +450,7 @@ void TCombat::CanToDoAttack(void){
 	// TODO(fusion): There is some `CanAttack` function inlined here.
 	TCreature *Master = this->Master;
 	if(Master == NULL){
-		error(Translate("TCombat::CanAttack: Kein Master gesetzt!\n",
-						"TCombat::CanAttack: No Master set!\n"));
+		error("TCombat::CanAttack: %s\n", t("NO_MASTER_SET"));
 		throw ERROR;
 	}
 
@@ -544,8 +539,7 @@ void TCombat::Attack(void){
 	// TODO(fusion): There is some `CanAttack` function inlined here.
 	TCreature *Master = this->Master;
 	if(Master == NULL){
-		error(Translate("TCombat::CanAttack: Kein Master gesetzt!\n",
-						"TCombat::CanAttack: No Master set!\n"));
+		error("TCombat::CanAttack: %s\n", t("NO_MASTER_SET"));
 		throw ERROR;
 	}
 
@@ -851,8 +845,7 @@ void TCombat::DistanceAttack(TCreature *Target){
 		}
 	}catch(RESULT r){
 		if(r != DESTROYED){
-			error("TCombat::RangeAttack: Konnte Ammo nicht verschieben/löschen"
-					" (Exception %d, [%d,%d,%d].\n", r, DropX, DropY, DropZ);
+			error("TCombat::RangeAttack: %s\n", t("COULD_NOT_MOVE_DELETE_AMMO"), r, DropX, DropY, DropZ);
 		}
 	}
 
@@ -909,8 +902,7 @@ uint32 TCombat::GetMostDangerousAttacker(void){
 
 void TCombat::DistributeExperiencePoints(uint32 Exp){
 	TCreature *Master = this->Master;
-	print(3, Translate("%s ist gestorben. Verteile %u EXP...\n",
-					   "%s has died. Distribute %u EXP...\n"), Master->Name, Exp);
+	print(3, "%s\n", t("HAS_DIED_DISTRIBUTE_EXP", Master->Name, Exp));
 	if(this->CombatDamage == 0){
 		return;
 	}
@@ -935,7 +927,7 @@ void TCombat::DistributeExperiencePoints(uint32 Exp){
 			}
 
 			Amount = ((MaxLevel - AttackerLevel) * Amount) / MasterLevel;
-			print(3, "%s erhält %d EXP.\n", Attacker->Name, Amount);
+			print(3, "%s\n", t("RECEIVES_EXP"), Attacker->Name, Amount);
 		}
 
 		if(Amount > 0){

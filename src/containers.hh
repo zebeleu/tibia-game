@@ -1,4 +1,4 @@
-#ifndef TIBIA_CONTAINERS_HH_
+﻿#ifndef TIBIA_CONTAINERS_HH_
 #define TIBIA_CONTAINERS_HH_ 1
 
 #include "common.hh"
@@ -21,14 +21,12 @@ struct vector{
 	vector(int min, int max, int block){
 		int space = (max - min) + 1;
 		if(space < 1){
-			error(Translate("vector: Ungueltige Feldgroesse %d bis %d.\n",
-							"vector: Invalid field size %d to %d.\n"), min, max);
+			error("vector: %s\n", t("INVALID_FIELD_SIZE_2_D", min, max));
 			space = 1;
 		}
 
 		if(block < 0){
-			error(Translate("vector: Ungueltige Blockgroesse %d.\n",
-							"vector: Invalid block size %d.\n"), block);
+			error("vector: %s\n", t("INVALID_BLOCK_SIZE", block));
 			block = 0;
 		}
 
@@ -178,8 +176,7 @@ struct priority_queue{
 
 	void deleteMin(void){
 		if(this->Entries < 1){
-			error(Translate("priority_queue::deleteMin: Warteschlange ist leer.\n",
-							"priority_queue::deleteMin: Queue is empty.\n"));
+			error("priority_queue::deleteMin: %s\n", t("QUEUE_IS_EMPTY"));
 			return;
 		}
 
@@ -237,8 +234,7 @@ struct matrix{
 		int dy = (ymax - ymin) + 1;
 
 		if(dx < 1 || dy < 1){
-			error(Translate("matrix: Ungueltige Feldgroesse %d..%d, %d..%d.\n",
-							"matrix: Invalid field size %d..%d, %d..%d.\n"), xmin, xmax, ymin, ymax);
+			error("matrix: %s\n", t("INVALID_FIELD_SIZE_4_D", xmin, xmax, ymin, ymax));
 
 			if(dx < 1){
 				dx = 1;
@@ -282,8 +278,7 @@ struct matrix{
 		int xoffset = x - this->xmin;
 		int yoffset = y - this->ymin;
 		if(xoffset < 0 || xoffset >= this->dx || yoffset < 0 || yoffset >= this->dy){
-			error(Translate("matrix::operator(): Ungueltiger Index %d/%d.\n",
-							"matrix::operator(): Invalid index %d/%d.\n"), x, y);
+			error("matrix::operator(): %s\n", t("INVALID_INDEX_2_D", x, y));
 			return &this->entry[0];
 		}else{
 			// TODO(fusion): Are we really storing this in row major order?
@@ -310,9 +305,7 @@ struct matrix3d{
 		int dz = (zmax - zmin) + 1;
 
 		if(dx < 1 || dy < 1 || dz < 1){
-			error(Translate("matrix3d: Ungueltige Feldgroesse %d..%d, %d..%d, %d..%d.\n",
-							"matrix3d: Invalid field size %d..%d, %d..%d, %d..%d.\n"),
-					xmin, xmax, ymin, ymax, zmin, zmax);
+			error("matrix3d: %s\n", t("INVALID_FIELD_SIZE_6_D", xmin, xmax, ymin, ymax, zmin, zmax));
 
 			if(dx < 1){
 				dx = 1;
@@ -355,8 +348,7 @@ struct matrix3d{
 		if(xoffset < 0 || xoffset >= this->dx
 				|| yoffset < 0 || yoffset >= this->dy
 				|| zoffset < 0 || zoffset >= this->dz){
-			error(Translate("matrix3d::operator(): Ungueltiger Index %d/%d/%d.\n",
-							"matrix3d::operator(): Invalid index %d/%d/%d.\n"), x, y, z);
+			error("matrix3d::operator(): %s\n", t("INVALID_INDEX_3_D", x, y, z));
 			return &this->entry[0];
 		}else{
 			// TODO(fusion): Same as `matrix::at` on the XY plane.
@@ -417,8 +409,7 @@ struct list{
 
 	void remove(listnode<T> *node){
 		if(node == NULL){
-			error(Translate("list::remove: node ist NULL.\n",
-							"list::remove: node is NULL.\n"));
+			error("list::remove: %s\n", t("NODE_IS_NULL"));
 			return;
 		}
 
@@ -491,8 +482,7 @@ struct fifo{
 
 	void remove(void){
 		if(this->Tail > this->Head){
-			error(Translate("fifo::remove: Fifo ist leer.\n",
-							"fifo::remove: Fifo is empty.\n"));
+			error("fifo::remove: %s\n", t("FIFO_IS_EMPTY"));
 			return;
 		}
 
