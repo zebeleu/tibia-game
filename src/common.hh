@@ -1,4 +1,4 @@
-#ifndef TIBIA_COMMON_HH_
+﻿#ifndef TIBIA_COMMON_HH_
 #define TIBIA_COMMON_HH_ 1
 
 #include <ctype.h>
@@ -208,8 +208,7 @@ void ClearBit(uint8 *BitSet, int Index);
 template<typename T>
 void RandomShuffle(T *Buffer, int Size){
 	if(Buffer == NULL){
-		error(Translate("RandomShuffle: Buffer ist NULL.\n",
-						"RandomShuffle: Buffer is NULL.\n"));
+		error("RandomShuffle: %s\n", t("BUFFER_IS_NULL"));
 		return;
 	}
 
