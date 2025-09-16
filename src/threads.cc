@@ -1,4 +1,4 @@
-#include "threads.hh"
+﻿#include "threads.hh"
 
 struct TThreadStarter {
 	ThreadFunction *Function;
@@ -35,8 +35,7 @@ ThreadHandle StartThread(ThreadFunction *Function, void *Argument, bool Detach){
 	pthread_t Handle;
 	int err = pthread_create(&Handle, NULL, ThreadStarter, Starter);
 	if(err != 0){
-		error(Translate("StartThread: Kann Thread nicht anlegen; Fehlercode %d.\n",
-						"StartThread: Cannot create thread; Error code %d.\n"), err);
+		error("StartThread: %s\n", t("CANNOT_CREATE_THREAD__ERROR_CODE", err));
 		return INVALID_THREAD_HANDLE;
 	}
 
@@ -60,8 +59,7 @@ ThreadHandle StartThread(ThreadFunction *Function, void *Argument, size_t StackS
 	int err = pthread_create(&Handle, &Attr, ThreadStarter, Starter);
 	pthread_attr_destroy(&Attr);
 	if(err != 0){
-		error(Translate("StartThread: Kann Thread nicht anlegen; Fehlercode %d.\n",
-						"StartThread: Cannot create thread; Error code %d.\n"), err);
+		error("StartThread: %s\n", t("CANNOT_CREATE_THREAD__ERROR_CODE", err));
 		return INVALID_THREAD_HANDLE;
 	}
 
@@ -85,8 +83,7 @@ ThreadHandle StartThread(ThreadFunction *Function, void *Argument, void *Stack, 
 	int err = pthread_create(&Handle, &Attr, ThreadStarter, Starter);
 	pthread_attr_destroy(&Attr);
 	if(err != 0){
-		error(Translate("StartThread: Kann Thread nicht anlegen; Fehlercode %d.\n",
-						"StartThread: Cannot create thread; Error code %d.\n"), err);
+		error("StartThread: %s\n", t("CANNOT_CREATE_THREAD__ERROR_CODE", err));
 		return INVALID_THREAD_HANDLE;
 	}
 
@@ -126,13 +123,11 @@ Semaphore::Semaphore(int Value){
 	// TODO(fusion): These should probably be non-recoverable errors.
 
 	if(pthread_mutex_init(&this->mutex, NULL) != 0){
-		error(Translate("Semaphore::Semaphore: Kann Mutex nicht einrichten.\n",
-						"Semaphore::Semaphore: Cannot set mutex.\n"));
+		error("Semaphore::Semaphore: %s\n", t("CANNOT_SET_MUTEX"));
 	}
 
 	if(pthread_cond_init(&this->condition, NULL) != 0){
-		error(Translate("Semaphore::Semaphore: Kann Wartebedingung nicht einrichten.\n",
-						"Semaphore::Semaphore: Cannot set wait condition.\n"));
+		error("Semaphore::Semaphore: %s\n", t("CANNOT_SET_WAIT_CONDITION"));
 	}
 }
 
@@ -150,13 +145,9 @@ Semaphore::~Semaphore(void){
 
 	int ErrorCode;
 	if((ErrorCode = pthread_mutex_destroy(&this->mutex)) != 0){
-		error(Translate("Semaphore::~Semaphore: Kann Mutex nicht freigeben: (%d) %s.\n",
-						"Semaphore::~Semaphore: Cannot release mutex: (%d) %s.\n"),
-				ErrorCode, strerrordesc_np(ErrorCode));
+		error("Semaphore::~Semaphore: %s\n", t("CANNOT_RELEASE_MUTEX", ErrorCode, strerrordesc_np(ErrorCode)));
 	}else if((ErrorCode = pthread_cond_destroy(&this->condition)) != 0){
-		error(Translate("Semaphore::~Semaphore: Kann Wartebedingung nicht freigeben: (%d) %s.\n",
-						"Semaphore::~Semaphore: Cannot release wait condition: (%d) %s.\n"),
-				ErrorCode, strerrordesc_np(ErrorCode));
+		error("Semaphore::~Semaphore: %s\n", t("CANNOT_RELEASE_WAIT_CONDITION", ErrorCode, strerrordesc_np(ErrorCode)));
 	}
 }
 

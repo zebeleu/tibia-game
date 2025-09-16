@@ -1,4 +1,4 @@
-#include "reader.hh"
+﻿#include "reader.hh"
 #include "config.hh"
 #include "cr.hh"
 #include "map.hh"
@@ -31,8 +31,7 @@ void InsertOrder(TReaderThreadOrderType OrderType,
 		int SectorX, int SectorY, int SectorZ, uint32 CharacterID){
 	int Orders = (OrderPointerWrite - OrderPointerRead);
 	if(Orders >= NARRAY(OrderBuffer)){
-		error(Translate("InsertOrder (Reader): Order-Puffer ist voll => Vergrößern.\n",
-						"InsertOrder (Reader): Order buffer is full => Enlarge.\n"));
+		error("InsertOrder (Reader): %s\n", t("ORDER_BUFFER_IS_FULL__INCREASE"));
 	}
 
 	OrderBufferEmpty.down();
@@ -132,8 +131,7 @@ void ProcessLoadCharacterOrder(uint32 CharacterID){
 	while(true){
 		TPlayerData *Slot = AssignPlayerPoolSlot(CharacterID, true);
 		if(Slot == NULL){
-			error(Translate("ProcessLoadCharacterOrder: Kann keinen Slot für Spielerdaten zuweisen.\n",
-							"ProcessLoadCharacterOrder: Cannot allocate a slot for player data.\n"));
+			error("ProcessLoadCharacterOrder: %s\n", t("CANNOT_ALLOCATE_A_SLOT_FOR_PLAYER_DATA"));
 			break;
 		}
 
@@ -172,8 +170,7 @@ int ReaderThreadLoop(void *Unused){
 			}
 
 			default:{
-				error(Translate("ReaderThreadLoop: Unbekanntes Kommando %d.\n",
-								"ReaderThreadLoop: Unknown command %d.\n"), Order.OrderType);
+				error("ReaderThreadLoop: %s\n", t("UNKNOWN_COMMAND", Order.OrderType));
 				break;
 			}
 		}
@@ -188,8 +185,7 @@ void InsertReply(TReaderThreadReplyType ReplyType,
 		int SectorX, int SectorY, int SectorZ, uint8 *Data, int Size){
 	int Replies = (ReplyPointerWrite - ReplyPointerRead);
 	while(Replies > NARRAY(ReplyBuffer)){
-		error(Translate("InsertReply (Reader): Puffer ist voll; warte...\n",
-						"InsertReply (Reader): Buffer is full; waiting...\n"));
+		error("InsertReply (Reader): %s\n", t("BUFFER_IS_FULL_WAITING"));
 		DelayThread(5, 0);
 	}
 
@@ -255,8 +251,7 @@ void ProcessReaderThreadReplies(TRefreshSectorFunction *RefreshSector, TSendMail
 			}
 
 			default:{
-				error(Translate("ProcessReaderThreadReplies: Unbekannte Rückmeldung %d.\n",
-								"ProcessReaderThreadReplies: Unknown response %d.\n"), Reply.ReplyType);
+				error("ProcessReaderThreadReplies: %s\n", t("UNKNOWN_RESPONSE", Reply.ReplyType));
 				break;
 			}
 		}

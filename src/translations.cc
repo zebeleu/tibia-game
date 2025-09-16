@@ -103,6 +103,30 @@ namespace
 		{"SOCKET_WAS_NOT_SET_LINGER_0", "Socket was not set to LINGER=0."},
 		{"SENT_BYTES", "sent:      %d bytes."},
 		{"RECEIVED_BYTES", "received:  %d bytes."},
+		{"INVALID_TYPE_D", "Invalid Type %d."},
+		{"TYPE_HAS_NO_FLAG_FOR_ATTRIBUTE", "Type %d has no Flag %d for Attribute %d."},
+		{"CREATURE_TYPE_HAS_NO_NAME", "The creature type has no name."},
+		{"OBJECT_TYPE_DOEST_NOT_EXIST", "Object type %u/%u does not exist."},
+		{"SEARCHNAME_IS_NULL", "SearchName is NULL."},
+		{"NO_OBJECT_TYPE__MEANING_DEFINED", "No object type with meaning %d defined."},
+		{"INVALID_MEANING", "Invalid meaning %d."},
+		{"CANNOT_OPEN_FILE", "Cannot open file %s."},
+		{"CANNOT_CREATE_THREAD__ERROR_CODE", "Cannot create thread; Error code %d."},
+		{"CANNOT_RELEASE_MUTEX", "Cannot release mutex: (%d) %s."},
+		{"CANNOT_RELEASE_WAIT_CONDITION", "Cannot release wait condition: (%d) %s."},
+		{"CANNOT_SET_MUTEX", "Cannot set mutex."},
+		{"CANNOT_SET_WAIT_CONDITION", "Cannot set wait condition."},
+		{"SHAREDMEMORY_DOES_NOT_EXIST", "SharedMemory does not exist."},
+		{"CANNOT_DELETE_SHAREDMEMORY", "Cannot delete SharedMemory."},
+		{"CANNOT_CREATE_SHAREDMEMORY", "Cannot create SharedMemory (Error %d)."},
+		{"CANNOT_GET_SHAREDMEMORY", "Cannot get SharedMemory."},
+		{"CANNOT_DETACH_SHAREDMEMORY", "Cannot detach SharedMemory."},
+		{"TOO_MANY_ERROR_NO_FURTHER_LOGGING", "Too many errors. No further logging."},
+		{"ORDER_BUFFER_IS_FULL__INCREASE", "Order buffer is full => Increase."},
+		{"CANNOT_ALLOCATE_A_SLOT_FOR_PLAYER_DATA", "Cannot allocate a slot for player data."},
+		{"UNKNOWN_COMMAND", "Unknown command %d."},
+		{"BUFFER_IS_FULL_WAITING", "Buffer is full; waiting..."},
+		{"UNKNOWN_RESPONSE", "Unknown response %d."},
 		
 
 
@@ -201,7 +225,35 @@ namespace
 		{"SOCKET_WAS_NOT_SET_LINGER_0", "Socket wurde nicht auf LINGER=0 gesetzt."},
 		{"SENT_BYTES", "gesendet:  %d Bytes."},
 		{"RECEIVED_BYTES", "empfangen: %d Bytes."},
+		{"INVALID_TYPE_D", "Ungültiger Typ %d."},
+		{"TYPE_HAS_NO_FLAG_FOR_ATTRIBUTE", "Typ %d hat kein Flag %d für Attribut %d."},
+		{"CREATURE_TYPE_HAS_NO_NAME", "Der Kreaturtyp hat keinen Namen."},
+		{"OBJECT_TYPE_DOEST_NOT_EXIST", "Objekttyp %u/%u existiert nicht."},
+		{"SEARCHNAME_IS_NULL", "SearchName ist NULL."},
+		{"NO_OBJECT_TYPE__MEANING_DEFINED", "Kein Objekttyp mit Bedeutung %d definiert."},
+		{"INVALID_MEANING", "Ungültige Bedeutung %d."},
+		{"CANNOT_OPEN_FILE", "Kann Datei %s nicht öffnen %s."},
+		{"CANNOT_CREATE_THREAD__ERROR_CODE", "Kann Thread nicht anlegen; Fehlercode %d."},
+		{"CANNOT_RELEASE_MUTEX", "Kann Mutex nicht freigeben: (%d) %s."},
+		{"CANNOT_RELEASE_WAIT_CONDITION", "Kann Wartebedingung nicht freigeben: (%d) %s."},
+		{"CANNOT_SET_MUTEX", "Kann Mutex nicht einrichten."},
+		{"CANNOT_SET_WAIT_CONDITION", "Kann Wartebedingung nicht einrichten."},
+		{"SHAREDMEMORY_DOES_NOT_EXIST", "SharedMemory existiert nicht."},
+		{"CANNOT_DELETE_SHAREDMEMORY", "Kann SharedMemory nicht löschen."},
+		{"CANNOT_CREATE_SHAREDMEMORY", "Kann SharedMemory nicht anlegen (Fehler %d).."},
+		{"CANNOT_GET_SHAREDMEMORY", "Kann SharedMemory nicht fassen."},
+		{"CANNOT_DETACH_SHAREDMEMORY", "Kann SharedMemory nicht löschen."},
+		{"TOO_MANY_ERROR_NO_FURTHER_LOGGING", "Zu viele Fehler. Keine weitere Protokollierung."},
+		{"ORDER_BUFFER_IS_FULL__INCREASE", "Order-Puffer ist voll => Vergrößern."},
+		{"CANNOT_ALLOCATE_A_SLOT_FOR_PLAYER_DATA", "Kann keinen Slot für Spielerdaten zuweisen."},
+		{"UNKNOWN_COMMAND", "Unbekanntes Kommando %d."},
+		{"BUFFER_IS_FULL_WAITING", "Puffer ist voll; warte..."},
+		{"UNKNOWN_RESPONSE", "Unbekannte Rückmeldung %d."},
 
+
+
+
+ 
 
 
 

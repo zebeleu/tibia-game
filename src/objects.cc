@@ -1,4 +1,4 @@
-#include "objects.hh"
+﻿#include "objects.hh"
 #include "config.hh"
 #include "containers.hh"
 #include "script.hh"
@@ -256,8 +256,7 @@ static const char InstanceAttributeNames[18][30] = {
 // =============================================================================
 void ObjectType::setTypeID(int TypeID){
 	if(!ObjectTypeExists(TypeID)){
-		error(Translate("ObjectType::setTypeID: Ungültiger Typ %d.\n",
-						"ObjectType::setTypeID: Invalid Type %d.\n"), TypeID);
+		error("ObjectType: %s\n", t("INVALID_TYPE_D", TypeID));
 		TypeID = 0;
 	}
 
@@ -271,9 +270,7 @@ bool ObjectType::getFlag(FLAG Flag){
 
 uint32 ObjectType::getAttribute(TYPEATTRIBUTE Attribute){
 	if(!this->getFlag(TypeAttributeFlags[Attribute])){
-		error(Translate("ObjectType::getAttribute: Typ %d hat kein Flag %d für Attribut %d.\n",
-						"ObjectType::getAttribute: Type %d has no Flag %d for Attribute %d.\n"),
-				this->TypeID, TypeAttributeFlags[Attribute], Attribute);
+		error("ObjectType: %s\n", t("TYPE_HAS_NO_FLAG_FOR_ATTRIBUTE", this->TypeID, TypeAttributeFlags[Attribute], Attribute));
 		return 0;
 	}
 
@@ -295,8 +292,7 @@ int ObjectType::getAttributeOffset(INSTANCEATTRIBUTE Attribute){
 
 const char *ObjectType::getName(int Count){
 	if(this->isCreatureContainer()){
-		error(Translate("ObjectType::getName: Der Kreaturtyp hat keinen Namen.\n",
-						"ObjectType::getName: The creature type has no name.\n"));
+		error("ObjectType: %s\n", t("CREATURE_TYPE_HAS_NO_NAME"));
 		return NULL;
 	}
 
@@ -382,8 +378,7 @@ bool ObjectTypeExists(uint8 Group, uint8 Number){
 ObjectType GetNewObjectType(uint8 Group, uint8 Number){
 	int TypeID = NewType[GetNewTypeIndex(Group, Number)];
 	if(TypeID < 0){
-		error(Translate("GetNewObjectType: Objekttyp %u/%u existiert nicht.\n",
-						"GetNewObjectType: Object type %u/%u does not exist.\n"), Group, Number);
+		error("GetNewObjectType: %s\n", t("OBJECT_TYPE_DOEST_NOT_EXIST", Group, Number));
 		TypeID = 0;
 	}
 
@@ -392,8 +387,7 @@ ObjectType GetNewObjectType(uint8 Group, uint8 Number){
 
 void GetOldObjectType(ObjectType Type, uint8 *Group, uint8 *Number){
 	if(!ObjectTypeExists(Type.TypeID)){
-		error(Translate("GetOldObjectType: Ungültiger Typ %d.\n",
-						"GetOldObjectType: Invalid Type %d.\n"), Type.TypeID);
+		error("GetOldObjectType: %s\n", t("INVALID_TYPE_D", Type.TypeID));
 		return;
 	}
 
@@ -407,20 +401,17 @@ ObjectType GetSpecialObject(SPECIALMEANING Meaning){
 	if(Meaning > 0 && Meaning < NARRAY(SpecialObjects)){
 		TypeID = SpecialObjects[Meaning].TypeID;
 		if(TypeID == 0){
-			error(Translate("GetSpecialObject: Kein Objekttyp mit Bedeutung %d definiert.\n",
-							"GetSpecialObject: No object type with meaning %d defined.\n"), Meaning);
+			error("GetSpecialObject: %s\n", t("NO_OBJECT_TYPE__MEANING_DEFINED", Meaning));
 		}
 	}else{
-		error(Translate("GetSpecialObject: Ungültige Bedeutung %d.\n",
-						"GetSpecialObject: Invalid meaning %d.\n"), Meaning);
+		error("GetSpecialObject: %s\n", t("INVALID_MEANING", Meaning));
 	}
 	return ObjectType(TypeID);
 }
 
 ObjectType GetObjectTypeByName(const char *SearchName, bool Movable){
 	if(SearchName == NULL){
-		error(Translate("GetObjectTypeByName: SearchName ist NULL.\n",
-						"GetObjectTypeByName: SearchName is NULL.\n"));
+		error("GetObjectTypeByName: %s\n", t("SEARCHNAME_IS_NULL"));
 		return ObjectType();
 	}
 
@@ -582,8 +573,7 @@ static void LoadConversionList(void){
 	snprintf(FileName, sizeof(FileName), "%s/conversion.lst", DATAPATH);
 	std::ifstream IN(FileName, std::ios_base::in);
 	if(IN.fail()){
-		error(Translate("LoadConversionList: Kann Datei %s nicht öffnen.\n",
-						"LoadConversionList: Cannot open file %s.\n"), FileName);
+		error("LoadConversionList: %s\n", t("CANNOT_OPEN_FILE", FileName));
 		throw "Cannot open conversion.lst";
 	}
 
@@ -598,8 +588,7 @@ static void LoadConversionList(void){
 
 		// TODO(fusion): Review this?
 		if(TypeID <= 0 || TypeID >= NARRAY(OldGroup)){
-			error(Translate("LoadConversionList: Ungültiger Typ %d.\n",
-							"LoadConversionList: Invalid Type %d.\n"), TypeID);
+			error("LoadConversionList: %s\n", t("INVALID_TYPE_D", TypeID));
 			throw "Error while loading conversion.lst";
 		}
 
