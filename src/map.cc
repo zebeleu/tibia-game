@@ -2113,9 +2113,8 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 
 				ObjectType ObjType = Obj.getObjectType();
 				ObjectType CurType = Cur.getObjectType();
-				error(Translate("PlaceObject: Zwei %s-Objekte (%d und %d) auf Feld [%d,%d,%d].\n",
-								"PlaceObject: Two %s objects (%d and %d) on array [%d,%d,%d].\n"),
-					PriorityString, ObjType.TypeID, CurType.TypeID, CoordX, CoordY, CoordZ);
+				error("PlaceObject: %s\n", t("TWO_OBJECTS_ON_ARRAY",
+					PriorityString, ObjType.TypeID, CurType.TypeID, CoordX, CoordY, CoordZ));
 			}
 
 			if(Append && CurPriority > ObjPriority) break;

@@ -154,6 +154,12 @@ void Trim(char *Text);
 void Trim(char *Destination, const char *Source);
 char *Capitals(char *Text);
 
+// translations.cc
+// =============================================================================
+void InitTranslations(const char *Language);
+void ExitTranslations(void);
+const char *t(const char *Key, ...);
+
 // time.cc
 // =============================================================================
 extern uint32 RoundNr;

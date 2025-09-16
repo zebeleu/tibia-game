@@ -249,6 +249,7 @@ void LoadWorldConfig(void){
 static void InitAll(void){
 	try{
 		ReadConfig();
+		InitTranslations("de");
 		SetQueryManagerLoginData(1, WorldName);
 		LoadWorldConfig();
 		InitSHM(!BeADaemon);
@@ -290,6 +291,7 @@ static void ExitAll(void){
 	ExitReader();
 	ExitWriter();
 	ExitStrings();
+	ExitTranslations();
 	ExitCommunication();
 	ExitConnections();
 	ExitSignalHandler();
