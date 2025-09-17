@@ -124,8 +124,7 @@ bool TImpact::isAggressive(void){
 // =============================================================================
 TDamageImpact::TDamageImpact(TCreature *Actor, int DamageType, int Power, bool AllowDefense){
 	if(Actor == NULL){
-		error(Translate("TDamageImpact::TDamageImpact: Actor ist NULL.\n",
-						"TDamageImpact::TDamageImpact: Actor is NULL.\n"));
+		error("TDamageImpact::TDamageImpact: %s\n", t("ACTOR_IS_NULL"));
 	}
 
 	this->Actor = Actor;
@@ -136,8 +135,7 @@ TDamageImpact::TDamageImpact(TCreature *Actor, int DamageType, int Power, bool A
 
 void TDamageImpact::handleCreature(TCreature *Victim){
 	if(Victim == NULL){
-		error(Translate("TDamageImpact::handleCreature: Opfer existiert nicht.\n",
-						"TDamageImpact::handleCreature: Victim does not exist.\n"));
+		error("TDamageImpact::handleCreature: %s\n", t("VICTIM_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -184,9 +182,7 @@ THealingImpact::THealingImpact(TCreature *Actor, int Power){
 	}
 
 	if(Power < 0){
-		error(Translate("THealingImpact::THealingImpact: Power ist negativ (Actor: %s).\n",
-						"THealingImpact::THealingImpact: Power is negative (Actor: %s).\n"),
-				(Actor != NULL ? Actor->Name : "(unknown)"));
+		error("THealingImpact::THealingImpact: %s\n", t("POWER_IS_NEGATIVE__ACTOR_S", (Actor != NULL ? Actor->Name : "(unknown)")));
 	}
 
 	this->Actor = Actor;

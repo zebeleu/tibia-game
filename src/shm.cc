@@ -290,7 +290,8 @@ static bool DeleteSHM(void){
 	int SHMID = shmget(SHMKey, 0, 0);
 	if(SHMID == -1){
 		if(VerboseOutput){
-			puts("DeleteSHM: %s\n", t("SHAREDMEMORY_DOES_NOT_EXIST"));
+			puts(Translate("DeleteSHM: SharedMemory existiert nicht.",
+						   "DeleteSHM: SharedMemory does not exist."));
 		}
 		return true;
 	}
@@ -298,7 +299,8 @@ static bool DeleteSHM(void){
 	if(shmctl(SHMID, IPC_RMID, NULL) == -1){
 		if(VerboseOutput){
 			// TODO(fusion): Include `errno` in the error message?
-			puts("DeleteSHM: %s\n", t("CANNOT_DELETE_SHAREDMEMORY"));
+			puts(Translate("DeleteSHM: Kann SharedMemory nicht löschen.",
+						   "DeleteSHM: Cannot delete SharedMemory."));
 		}
 		return false;
 	}
@@ -334,7 +336,8 @@ static void AttachSHM(void){
 	if(SHMID == -1){
 		if(VerboseOutput){
 			// TODO(fusion): Include `errno` in the error message?
-			puts("AttachSHM: %s\n", t("CANNOT_GET_SHAREDMEMORY"));
+			puts(Translate("AttachSHM: Kann SharedMemory nicht fassen.",
+						   "AttachSHM: Cannot get SharedMemory."));
 		}
 		SHM = NULL;
 		throw "Cannot get SharedMemory";
@@ -354,7 +357,8 @@ static void AttachSHM(void){
 static void DetachSHM(void){
 	if(SHM != NULL){
 		if(shmdt(SHM) == -1 && VerboseOutput){
-			puts("DetachSHM: %s\n", t("CANNOT_DETACH_SHAREDMEMORY"));
+			puts(Translate("DetachSHM: Kann SharedMemory nicht löschen.",
+						   "DetachSHM: Cannot detach SharedMemory."));
 		}
 		SHM = NULL;
 	}

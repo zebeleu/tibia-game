@@ -233,7 +233,7 @@ int GetObjectRNum(Object Obj){
 bool ObjectInRange(uint32 CreatureID, Object Obj, int Range){
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-		error("ObjectInRange: %s\n", t("INVALID_CREATURE_ID", CreatureID));
+		error("ObjectInRange: %s\n", t("INVALID_CREATURE_ID_D", CreatureID));
 		return false;
 	}
 

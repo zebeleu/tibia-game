@@ -136,7 +136,7 @@ void TReadScriptFile::close(void){
 
 	ASSERT(Depth < NARRAY(this->File));
 	if(fclose(this->File[Depth]) != 0){
-		::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
+		::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
 	}
 	this->RecursionDepth -= 1;
 }
@@ -157,7 +157,7 @@ void TReadScriptFile::error(const char *Text){
 	// TODO(fusion): Reset? Also seems like `TReadScriptFile::close` was inlined.
 	for(; Depth >= 0; Depth -= 1){
 		if(fclose(this->File[Depth]) != 0){
-			::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
+			::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
 	}
 	this->RecursionDepth = -1;
@@ -581,7 +581,7 @@ void TWriteScriptFile::open(const char *FileName){
 		::error(Translate("TWriteScriptFile::open: Altes Skript ist noch offen.\n",
 						  "TWriteScriptFile::open: Old script is still open.\n"));
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteScriptFile::open: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
+			::error("TWriteScriptFile::open: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
 		this->File = NULL;
 	}
@@ -608,7 +608,7 @@ void TWriteScriptFile::close(void){
 	}
 
 	if(fclose(this->File) != 0){
-		::error(Translate("TWriteScriptFile::close: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
+		::error("TWriteScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
 	}
 	this->File = NULL;
 }
