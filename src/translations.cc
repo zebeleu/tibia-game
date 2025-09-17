@@ -32,7 +32,7 @@ namespace
 		{"INVALID_MESSAGE_TYPE", "Invalid message type %d."},
 		{"MESSAGE_IS_NULL", "Message is NULL."},
 		{"INVALID_WAITING_TIME", "Invalid waiting time %d."},
-		{"MESSAGE_TOO_LONG", "Message too long (%s)."},		
+		{"MESSAGE_TOO_LONG", "Message too long (%s)."},
 		{"CONNECTION_IS_NULL", "Connection is NULL."},
 		{"ERROR_FILLING_BUFFER", "Error filling buffer (%s)"},
 		{"ADDING_TO_THE_WAITING_LIST", "Adding %s to the waiting list."},
@@ -158,19 +158,55 @@ namespace
 		{"SOURCE_IS_NULL", "Source is NULL."},
 		{"DESTINATION_IS_NULL", "Destination is NULL."},
 		{"TEXT_IS_NULL", "Text is NULL."},
-		
-
-
-
-
-
-
-
-		
-
-
-
+		{"FILENAME_IS_NULL", "Filename is NULL."},
+		{"SOURCE_FILE_DOES_NOT_EXIST", "Source file %s does not exist."},
+		{"CANNOT_CREATE_TARGET_FILE", "Cannot create target file %s."},
+		{"ERROR_READING_SOURCE_FILE", "Error reading source file %s."},
+		{"ERROR_WRITING_TARGET_FILE", "Error writing the target file %s."},
+		{"ERROR_CLOSING_SOURCE_FILE", "Error %d closing source file."},
+		{"ERROR_CLOSING_TARGET_FILE", "Error %d closing the target file."},
+		{"FILE_IS_STILL_OPEN", "File is still open."},
+		{"ERROR_CLOSING_FILE", "Error %d closing file."},
+		{"FILE_ERROR_CODE", "# File: %s, Error code: %d (%s)"},
+		{"FILE_POSITION_RETURN_VALUE_ERROR_CODE", "# File: %s, Position: %d, Return value: %d, Error code: %d (%s)"},
+		{"ERROR_WHILE_READING_A_BYTE", "Error while reading a byte"},
+		{"ERROR_READING_BYTES", "Error reading %d bytes"},
+		{"NO_SCRIPT_OPEN_FOR_WRITING", "No script open for writing."},
+		{"INVALID_COORDINATES", "Invalid coordinates [%d,%d,%d]."},
+		{"SEQUENCE_IS_NULL", "Sequence is NULL."},
+		{"INVALID_SEQUENCE_LENGTH", "Invalid sequence length."},
+		{"CANNOT_CREATE_FILE", "Cannot create file %s."},
 		{"TWO_OBJECTS_ON_ARRAY", "Two %s objects (%d and %d) on array [%d,%d,%d]."},
+		{"INVALID_FLUID_TYPE", "Invalid fluid type %d"},
+		{"CREATURE_D_DOES_NOT_EXIST", "Creature %d does not exist."},
+		{"PASSED_OBJECT_DOES_NOT_EXIST", "Passed object does not exist."},
+		{"OBJECT_TYPE_NOT_REMOVABLE", "Object type %d is not removable."},
+		{"OBJECT_IS_MAPCONTAINER", "Object is MapContainer."},
+		{"OBJECT_NOT_IN_CONTAINER", "Object is not in container"},
+		{"INVALID_CREATURE_ID", "Invalid creature CreatureID=%d passed."},
+		{"CREATURE_DOES_NOT_EXIST", "Creature does not exist."},
+		{"INVALID_POSITION", "Invalid position: %d"},
+		{"CREATURE_OBJECT_S_DOES_NOT_EXIST_POS", "Creature object of %s does not exist (pos %d)."},
+		{"ONLY_PLAYERS_HAVE_OPEN_CONTAINERS", "Only players have open containers."},
+		{"CONTAINER_DOES_NOT_EXIST", "Container does not exist."},
+		{"CREATURE_D_DOES_NOT_EXIST_OBJECT_TYPE", "Creature %d does not exist; object type %d."},
+		{"CREATURE_S_NO_CREATURE_OBJECT", "Creature %s has no creature object."},
+		{"COINS_NOT_ENOUGH", "%d/%d/%d coins are not enough to pay %d."},
+		{"PAY_WITH_COINS", "Pay %d with %d/%d/%d coins..."},
+		{"INVALID_BAN_REASON", "Invalid ban reason %d."},
+		{"INVALID_BAN_REASON_BY_PLAYER", "Invalid ban reason %d from player %d."},
+		{"PLAYER_DOES_NOT_EXIST", "Player does not exist."},
+		{"PLAYER_DOES_NOT_EXIST_RIGHT", "Player does not exist; Right=%d."},
+		{"INVALID_RIGHT_NUMBER", "Invalid Right number %d."},
+		{"INVALID_DIRECTION", "Invalid direction %d."},
+		{"REFUGEE_DOES_NOT_EXIST", "Refugee does not exist."},
+		{"PURSUER_DOES_NOT_EXIST", "Pursuer does not exist."},
+		{"REFUGEE_PURSUER_DIFFERENT_LEVELS", "Refugee and pursuer are on different levels."},
+		{"INCORRECT_CALCULATION", "Incorrect calculation: %d/%d/%d coins for %d."},
+		{"USE_COINS", "Use %d/%d/%d coins."},
+		{"INVALID_ACTION_BY_PLAYER", "Invalid action %d by player %d."},
+		{"INVALID_CONTAINER_CODE", "Invalid ContainerCode x=%d,y=%d,z=%d,RNum=%d,Type=%d."},
+
 	};
 
 	const TranslationEntry DETranslations[] = {
@@ -311,15 +347,55 @@ namespace
 		{"SOURCE_IS_NULL", "Source ist NULL."},
 		{"DESTINATION_IS_NULL", "Destination ist NULL."},
 		{"TEXT_IS_NULL", "Text ist NULL."},
-
-
-
-
- 
-
-
-
+		{"FILENAME_IS_NULL", "Filename ist NULL."},
+		{"SOURCE_FILE_DOES_NOT_EXIST", "Quelldatei %s existiert nicht."},
+		{"CANNOT_CREATE_TARGET_FILE", "Kann Zieldatei %s nicht anlegen."},
+		{"ERROR_READING_SOURCE_FILE", "Fehler beim Lesen der Quelldatei %s."},
+		{"ERROR_WRITING_TARGET_FILE", "Fehler beim Schreiben der Zieldatei %s."},
+		{"ERROR_CLOSING_SOURCE_FILE", "Fehler %d beim Schließen der Quelldatei."},
+		{"ERROR_CLOSING_TARGET_FILE", "Fehler %d beim Schließen der Zieldatei."},
+		{"FILE_IS_STILL_OPEN", "Datei ist noch offen."},
+		{"ERROR_CLOSING_FILE", "Fehler %d beim Schließen der Datei."},
+		{"FILE_ERROR_CODE", "# Datei: %s, Fehlercode: %d (%s)"},
+		{"FILE_POSITION_RETURN_VALUE_ERROR_CODE", "# Datei: %s, Position: %d, Rückgabewert: %d, Fehlercode: %d (%s)"},
+		{"ERROR_WHILE_READING_A_BYTE", "Fehler beim Lesen eines Bytes"},
+		{"ERROR_READING_BYTES", "Fehler beim Lesen von %d Bytes"},
+		{"NO_SCRIPT_OPEN_FOR_WRITING", "Kein Skript zum Schreiben geöffnet."},
+		{"INVALID_COORDINATES", "Ungültige Koordinaten [%d,%d,%d]."},
+		{"SEQUENCE_IS_NULL", "Sequence ist NULL."},
+		{"INVALID_SEQUENCE_LENGTH", "Ungültige Sequenzlänge."},
+		{"CANNOT_CREATE_FILE", "Kann Datei %s nicht anlegen."},
 		{"TWO_OBJECTS_ON_ARRAY", "Zwei %s-Objekte (%d und %d) auf Feld [%d,%d,%d]."},
+		{"INVALID_FLUID_TYPE", "Ungültiger Flüssigkeitstyp %d"},
+		{"CREATURE_D_DOES_NOT_EXIST", "Kreatur %d existiert nicht."},
+		{"PASSED_OBJECT_DOES_NOT_EXIST", "Übergebenes Objekt existiert nicht."},
+		{"OBJECT_TYPE_NOT_REMOVABLE", "Objekttyp %d ist nicht nehmbar."},
+		{"OBJECT_IS_MAPCONTAINER", "Objekt ist MapContainer."},
+		{"OBJECT_NOT_IN_CONTAINER", "Objekt liegt nicht in Container"},
+		{"INVALID_CREATURE_ID", "Ungültige Kreatur CreatureID=%d übergeben."},
+		{"CREATURE_DOES_NOT_EXIST", "Kreatur existiert nicht."},
+		{"INVALID_POSITION", "ungültige Position: %d"},
+		{"CREATURE_OBJECT_S_DOES_NOT_EXIST_POS", "Kreatur-Objekt von %s existiert nicht (Pos %d)."},
+		{"ONLY_PLAYERS_HAVE_OPEN_CONTAINERS", "Nur Spieler haben offene Container."},
+		{"CONTAINER_DOES_NOT_EXIST", "Container existiert nicht."},
+		{"CREATURE_D_DOES_NOT_EXIST_OBJECT_TYPE", "Kreatur %d existiert nicht; Objekttyp %d."},
+		{"CREATURE_S_NO_CREATURE_OBJECT", "Kreatur %s hat kein Kreatur-Objekt."},
+		{"COINS_NOT_ENOUGH", "%d/%d/%d Münzen reichen nicht zur Bezahlung von %d."},
+		{"PAY_WITH_COINS", "Zahle %d mit %d/%d/%d Münzen..."},
+		{"INVALID_BAN_REASON", "Ungültiger Verbannungsgrund %d."},
+		{"INVALID_BAN_REASON_BY_PLAYER", "Ungültiger Banngrund %d von Spieler %d."},
+		{"PLAYER_DOES_NOT_EXIST", "Spieler existiert nicht."},
+		{"PLAYER_DOES_NOT_EXIST_RIGHT", "Spieler existiert nicht; Right=%d."},
+		{"INVALID_RIGHT_NUMBER", "Ungültige Rechtnummer %d."},
+		{"INVALID_DIRECTION", "Ungültige Richtung %d."},
+		{"REFUGEE_DOES_NOT_EXIST", "Flüchtling existiert nicht."},
+		{"PURSUER_DOES_NOT_EXIST", "Verfolger existiert nicht."},
+		{"REFUGEE_PURSUER_DIFFERENT_LEVELS", "Flüchtling und Verfolger sind auf verschiedenen Ebenen."},
+		{"INCORRECT_CALCULATION", "Fehlerhafte Berechnung: %d/%d/%d Münzen für %d."},
+		{"USE_COINS", "Verwende %d/%d/%d Münzen."},
+		{"INVALID_ACTION_BY_PLAYER", "Ungültige Aktion %d von Spieler %d."},
+		{"INVALID_CONTAINER_CODE", "Ungültiger ContainerCode x=%d,y=%d,z=%d,RNum=%d,Type=%d."},
+
 	};
 
 	const LanguageDefinition AllLanguages[] = {

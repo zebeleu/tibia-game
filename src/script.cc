@@ -1,4 +1,4 @@
-#include "script.hh"
+﻿#include "script.hh"
 
 // NOTE(fusion): Throwing a character array on the stack as an exception won't
 // work because it implicitly decays into a character pointer which would then
@@ -17,8 +17,7 @@ static char ErrorString[100];
 // =============================================================================
 static void SaveFile(const char *Filename){
 	if(Filename == NULL){
-		error(Translate("SaveFile: Filename ist NULL.\n",
-						"SaveFile: Filename is NULL.\n"));
+		error("SaveFile: %s\n", t("FILENAME_IS_NULL"));
 		return;
 	}
 
@@ -29,15 +28,13 @@ static void SaveFile(const char *Filename){
 
 	FILE *Source = fopen(Filename, "rb");
 	if(Source == NULL){
-		error(Translate("SaveFile: Quelldatei %s existiert nicht.\n",
-						"SaveFile: Source file %s does not exist.\n"), Filename);
+		error("SaveFile: %s\n", t("SOURCE_FILE_DOES_NOT_EXIST", Filename));
 		return;
 	}
 
 	FILE *Dest = fopen(BackupFilename, "wb");
 	if(Dest == NULL){
-		error(Translate("SaveFile: Kann Zieldatei %s nicht anlegen.\n",
-						"SaveFile: Cannot create target file %s.\n"), BackupFilename);
+		error("SaveFile: %s\n", t("CANNOT_CREATE_TARGET_FILE", BackupFilename));
 		fclose(Source);
 		return;
 	}
@@ -53,27 +50,23 @@ static void SaveFile(const char *Filename){
 		usize n = fread(Buffer, 1, sizeof(Buffer), Source);
 		if(n == 0){
 			if(ferror(Source)){
-				error(Translate("SaveFile: Fehler beim Lesen der Quelldatei %s.\n",
-								"SaveFile: Error reading source file %s.\n"), Filename);
+				error("SaveFile: %s\n", t("ERROR_READING_SOURCE_FILE", Filename));
 			}
 			break;
 		}
 
 		if(fwrite(Buffer, 1, n, Dest) != n){
-			error(Translate("SaveFile: Fehler beim Schreiben der Zieldatei %s.\n",
-							"SaveFile: Error writing the target file %s.\n"), BackupFilename);
+			error("SaveFile: %s\n", t("ERROR_WRITING_TARGET_FILE", BackupFilename));
 			break;
 		}
 	}
 
 	if(fclose(Source) != 0){
-		error(Translate("SaveFile: Fehler %d beim Schließen der Quelldatei.\n",
-						"SaveFile: Error %d closing source file.\n"), errno);
+		error("SaveFile: %s\n", t("ERROR_CLOSING_SOURCE_FILE", errno));
 	}
 
 	if(fclose(Dest) != 0){
-		error(Translate("SaveFile: Fehler %d beim Schließen der Zieldatei.\n",
-						"SaveFile: Error %d closing the target file.\n"), errno);
+		error("SaveFile: %s\n", t("ERROR_CLOSING_TARGET_FILE", errno));
 	}
 }
 
@@ -86,13 +79,11 @@ TReadScriptFile::TReadScriptFile(void){
 
 TReadScriptFile::~TReadScriptFile(void){
 	if(this->RecursionDepth != -1){
-		::error(Translate("TReadScriptFile::~TReadScriptFile: Datei ist noch offen.\n",
-						  "TReadScriptFile::~TReadScriptFile: File is still open.\n"));
+		::error("TReadScriptFile::~TReadScriptFile: %s\n", t("FILE_IS_STILL_OPEN"));
 		for(int Depth = this->RecursionDepth; Depth >= 0; Depth -= 1){
 			// TODO(fusion): Probably `TReadScriptFile::close` inlined?
 			if(fclose(this->File[Depth]) != 0){
-				::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n",
-								  "TReadScriptFile::close: Error %d closing file.\n"), errno);
+				::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
 			}
 		}
 		this->RecursionDepth = -1;
@@ -145,8 +136,7 @@ void TReadScriptFile::close(void){
 
 	ASSERT(Depth < NARRAY(this->File));
 	if(fclose(this->File[Depth]) != 0){
-		::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n",
-						  "TReadScriptFile::close: Error %d closing file.\n"), errno);
+		::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
 	}
 	this->RecursionDepth -= 1;
 }
@@ -167,8 +157,7 @@ void TReadScriptFile::error(const char *Text){
 	// TODO(fusion): Reset? Also seems like `TReadScriptFile::close` was inlined.
 	for(; Depth >= 0; Depth -= 1){
 		if(fclose(this->File[Depth]) != 0){
-			::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n",
-							  "TReadScriptFile::close: Error %d closing file.\n"), errno);
+			::error(Translate("TReadScriptFile::close: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
 		}
 	}
 	this->RecursionDepth = -1;
@@ -592,8 +581,7 @@ void TWriteScriptFile::open(const char *FileName){
 		::error(Translate("TWriteScriptFile::open: Altes Skript ist noch offen.\n",
 						  "TWriteScriptFile::open: Old script is still open.\n"));
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteScriptFile::open: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteScriptFile::open: Error %d closing file.\n"), errno);
+			::error(Translate("TWriteScriptFile::open: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
 		}
 		this->File = NULL;
 	}
@@ -620,8 +608,7 @@ void TWriteScriptFile::close(void){
 	}
 
 	if(fclose(this->File) != 0){
-		::error(Translate("TWriteScriptFile::close: Fehler %d beim Schließen der Datei.\n",
-						  "TWriteScriptFile::close: Error %d closing file.\n"), errno);
+		::error(Translate("TWriteScriptFile::close: Fehler %d beim Schließen der Datei.\n", t("ERROR_CLOSING_FILE", errno);
 	}
 	this->File = NULL;
 }
@@ -629,8 +616,7 @@ void TWriteScriptFile::close(void){
 void TWriteScriptFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteScriptFile::error: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteScriptFile::error: Error %d closing file.\n"), errno);
+			::error("TWriteScriptFile::error: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
 		this->File = NULL;
 	}
@@ -712,15 +698,13 @@ void TWriteScriptFile::writeString(const char *Text){
 
 void TWriteScriptFile::writeCoordinate(int x ,int y ,int z){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::writeCoordinate: Kein Skript zum Schreiben geöffnet.\n",
-						  "TWriteScriptFile::writeCoordinate: No script open for writing.\n"));
+		::error("TWriteScriptFile::writeCoordinate: %s\n", t("NO_SCRIPT_OPEN_FOR_WRITING"));
 		throw "Cannot write coordinate";
 	}
 
 	// TODO(fusion): This is weird because we support loading negative coordinates values.
 	if(x < 0 || y < 0 || z < 0){
-		::error(Translate("TWriteScriptFile::writeCoordinate: Ungültige Koordinaten [%d,%d,%d].\n",
-						  "TWriteScriptFile::writeCoordinate: Invalid coordinates [%d,%d,%d].\n"), x, y, z);
+		::error("TWriteScriptFile::writeCoordinate: %s\n", t("INVALID_COORDINATES", x, y, z));
 		throw "Invalid coordinates";
 	}
 
@@ -731,20 +715,17 @@ void TWriteScriptFile::writeCoordinate(int x ,int y ,int z){
 
 void TWriteScriptFile::writeBytesequence(const uint8 *Sequence, int Length){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::writeBytesequence: Kein Skript zum Schreiben geöffnet.\n",
-						  "TWriteScriptFile::writeBytesequence: No script open for writing.\n"));
+		::error("TWriteScriptFile::writeBytesequence: %s\n", t("NO_SCRIPT_OPEN_FOR_WRITING"));
 		throw "Cannot write bytesequence";
 	}
 
 	if(Sequence == NULL){
-		::error(Translate("TWriteScriptFile::writeBytesequence: Sequence ist NULL.\n",
-						  "TWriteScriptFile::writeBytesequence: Sequence is NULL.\n"));
+		::error("TWriteScriptFile::writeBytesequence: %s\n", t("SEQUENCE_IS_NULL"));
 		throw "Cannot write bytesequence";
 	}
 
 	if(Length <= 0){
-		::error(Translate("TWriteScriptFile::writeBytesequence: Ungültige Sequenzlänge.\n",
-						  "TWriteScriptFile::writeBytesequence: Invalid sequence length.\n"));
+		::error("TWriteScriptFile::writeBytesequence: %s\n", t("INVALID_SEQUENCE_LENGTH"));
 		throw "Cannot write bytesequence";
 	}
 
@@ -785,11 +766,8 @@ void TReadBinaryFile::close(void){
 	// TODO(fusion): Check if file is NULL?
 	if(fclose(this->File) != 0){
 		int ErrCode = errno;
-		::error(Translate("TReadBinaryFile::close: Fehler beim Schließen der Datei.\n",
-						  "TReadBinaryFile::close: Error closing file.\n"));
-		::error(Translate("# Datei: %s, Fehlercode: %d (%s)\n",
-						  "# File: %s, Error code: %d (%s)\n"),
-				this->Filename, ErrCode, strerror(ErrCode));
+		::error("TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE"));
+		::error("%s\n", t("FILE_ERROR_CODE", this->Filename, ErrCode, strerror(ErrCode)));
 	}
 	this->File = NULL;
 }
@@ -797,8 +775,7 @@ void TReadBinaryFile::close(void){
 void TReadBinaryFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
-			::error(Translate("TReadBinaryFile::error: Fehler %d beim Schließen der Datei.\n",
-							  "TReadBinaryFile::error: Error %d closing file.\n"), errno);
+			::error("TReadBinaryFile::error: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
 		this->File = NULL;
 	}
@@ -848,16 +825,12 @@ uint8 TReadBinaryFile::readByte(void){
 	if(Result != 1){
 		int ErrCode = errno;
 		int Position = this->getPosition();
-		::error(Translate("TReadBinaryFile::readByte: Fehler beim Lesen eines Bytes\n",
-						  "TReadBinaryFile::readByte: error while reading a byte\n"));
-		::error(Translate("# Datei: %s, Position: %d, Rückgabewert: %d, Fehlercode: %d (%s)\n",
-						  "# File: %s, Position: %d, Return value: %d, Error code: %d (%s)\n"),
-				this->Filename, Position, Result, ErrCode, strerror(ErrCode));
+		::error("TReadBinaryFile::readByte: %s\n", t("ERROR_WHILE_READING_A_BYTE"));
+		::error("%s\n", t("FILE_POSITION_RETURN_VALUE_ERROR_CODE", this->Filename, Position, Result, ErrCode, strerror(ErrCode)));
 
 		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
 		if(fclose(this->File) != 0){
-			::error(Translate("TReadBinaryFile::readByte: Fehler %d beim Schließen der Datei.\n",
-							  "TReadBinaryFile::readByte: Error %d closing file.\n"), errno);
+			::error("TReadBinaryFile::readByte: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
 		this->File = NULL;
 		SaveFile(this->Filename);
@@ -872,16 +845,12 @@ void TReadBinaryFile::readBytes(uint8 *Buffer, int Count){
 	if(Result != Count){
 		int ErrCode = errno;
 		int Position = this->getPosition();
-		::error(Translate("TReadBinaryFile::readBytes: Fehler beim Lesen von %d Bytes\n",
-						  "TReadBinaryFile::readBytes: Error reading %d bytes\n"), Count);
-		::error(Translate("# Datei: %s, Position %d, Rückgabewert: %d, Fehlercode: %d (%s)\n",
-						  "# File: %s, Position %d, Return value: %d, Error code: %d (%s)\n"),
-				this->Filename, Position, Result, ErrCode, strerror(ErrCode));
+		::error("TReadBinaryFile::readBytes: %s\n", t("ERROR_READING_BYTES", Count));
+		::error("%s\n", t("FILE_POSITION_RETURN_VALUE_ERROR_CODE", this->Filename, Position, Result, ErrCode, strerror(ErrCode)));
 
 		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
 		if(fclose(this->File) != 0){
-			::error(Translate("TReadBinaryFile::readBytes: Fehler %d beim Schließen der Datei.\n",
-							  "TReadBinaryFile::readBytes: Error %d closing file.\n"), errno);
+			::error("TReadBinaryFile::readBytes: %s\n", t("TReadBinaryFile::readByte", errno));
 		}
 		this->File = NULL;
 		SaveFile(this->Filename);
@@ -911,8 +880,7 @@ TReadBinaryFile::~TReadBinaryFile(void){
 		::error(Translate("TReadBinaryFile::~TReadBinaryFile: Datei %s ist noch offen.\n",
 						  "TReadBinaryFile::~TReadBinaryFile: File %s is still open.\n"), this->Filename);
 		if(fclose(this->File) != 0){
-			::error(Translate("TReadBinaryFile::~TReadBinaryFile: Fehler %d beim Schließen der Datei.\n",
-							  "TReadBinaryFile::~TReadBinaryFile: Error %d closing file.\n"), errno);
+			::error("TReadBinaryFile::~TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
 	}
 }
