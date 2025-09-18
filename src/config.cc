@@ -24,7 +24,6 @@ char QueryManagerGamePW[9];
 char QueryManagerWebPW[9];
 
 int DebugLevel;
-TLanguage Language = TLanguage::GERMAN;
 bool PrivateWorld;
 TWorldType WorldType;
 char WorldName[30];

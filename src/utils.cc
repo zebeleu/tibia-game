@@ -7,10 +7,6 @@ static TErrorFunction *ErrorFunction;
 static TPrintFunction *PrintFunction;
 static char StandardLogFile[4096];
 
-const char *Translate(const char *German, const char *English){
-	return (Language == TLanguage::ENGLISH) ? English : German;
-}
-
 void SetErrorFunction(TErrorFunction *Function){
 	ErrorFunction = Function;
 }

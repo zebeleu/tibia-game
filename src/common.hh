@@ -174,7 +174,6 @@ uint32 GetRoundForNextMinute(void);
 
 // utils.cc
 // =============================================================================
-const char *Translate(const char *German, const char *English);
 typedef void TErrorFunction(const char *Text);
 typedef void TPrintFunction(int Level, const char *Text);
 void SetErrorFunction(TErrorFunction *Function);

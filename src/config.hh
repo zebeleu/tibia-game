@@ -4,8 +4,6 @@
 #include "common.hh"
 #include "enums.hh"
 
-enum class TLanguage { GERMAN, ENGLISH };
-
 struct TDatabaseSettings {
     char Product[30];
     char Database[30];
@@ -41,7 +39,6 @@ extern char QueryManagerAdminPW[9];
 extern char QueryManagerGamePW[9];
 extern char QueryManagerWebPW[9];
 extern int DebugLevel;
-extern TLanguage Language;
 extern bool PrivateWorld;
 extern TWorldType WorldType;
 extern char WorldName[30];
