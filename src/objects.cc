@@ -573,7 +573,7 @@ static void LoadConversionList(void){
 	snprintf(FileName, sizeof(FileName), "%s/conversion.lst", DATAPATH);
 	std::ifstream IN(FileName, std::ios_base::in);
 	if(IN.fail()){
-		error("LoadConversionList: %s\n", t("CANNOT_OPEN_FILE", FileName));
+		error("LoadConversionList: %s\n", t("CANNOT_OPEN_FILE_S", FileName));
 		throw "Cannot open conversion.lst";
 	}
 

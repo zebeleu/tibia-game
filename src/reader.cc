@@ -31,7 +31,7 @@ void InsertOrder(TReaderThreadOrderType OrderType,
 		int SectorX, int SectorY, int SectorZ, uint32 CharacterID){
 	int Orders = (OrderPointerWrite - OrderPointerRead);
 	if(Orders >= NARRAY(OrderBuffer)){
-		error("InsertOrder (Reader): %s\n", t("ORDER_BUFFER_IS_FULL__INCREASE"));
+		error("InsertOrder (Reader): %s\n", t("ORDER_BUFFER_IS_FULL_INCREASE"));
 	}
 
 	OrderBufferEmpty.down();
@@ -170,7 +170,7 @@ int ReaderThreadLoop(void *Unused){
 			}
 
 			default:{
-				error("ReaderThreadLoop: %s\n", t("UNKNOWN_COMMAND", Order.OrderType));
+				error("ReaderThreadLoop: %s\n", t("UNKNOWN_COMMAND_D", Order.OrderType));
 				break;
 			}
 		}
@@ -251,7 +251,7 @@ void ProcessReaderThreadReplies(TRefreshSectorFunction *RefreshSector, TSendMail
 			}
 
 			default:{
-				error("ProcessReaderThreadReplies: %s\n", t("UNKNOWN_RESPONSE", Reply.ReplyType));
+				error("ProcessReaderThreadReplies: %s\n", t("UNKNOWN_RESPONSE_D", Reply.ReplyType));
 				break;
 			}
 		}

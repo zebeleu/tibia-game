@@ -83,7 +83,7 @@ TReadScriptFile::~TReadScriptFile(void){
 		for(int Depth = this->RecursionDepth; Depth >= 0; Depth -= 1){
 			// TODO(fusion): Probably `TReadScriptFile::close` inlined?
 			if(fclose(this->File[Depth]) != 0){
-				::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
+				::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 			}
 		}
 		this->RecursionDepth = -1;
@@ -132,7 +132,7 @@ void TReadScriptFile::close(void){
 
 	ASSERT(Depth < NARRAY(this->File));
 	if(fclose(this->File[Depth]) != 0){
-		::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
+		::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 	}
 	this->RecursionDepth -= 1;
 }
@@ -153,7 +153,7 @@ void TReadScriptFile::error(const char *Text){
 	// TODO(fusion): Reset? Also seems like `TReadScriptFile::close` was inlined.
 	for(; Depth >= 0; Depth -= 1){
 		if(fclose(this->File[Depth]) != 0){
-			::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
+			::error("TReadScriptFile::close: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 	}
 	this->RecursionDepth = -1;
@@ -573,7 +573,7 @@ void TWriteScriptFile::open(const char *FileName){
 	if(this->File != NULL){
 		::error("TWriteScriptFile::open: %s\n", t("OLD_SCRIPT_IS_STILL_OPEN"));
 		if(fclose(this->File) != 0){
-			::error("TWriteScriptFile::open: %s\n", t("ERROR_CLOSING_FILE", errno));
+			::error("TWriteScriptFile::open: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 	}
@@ -597,7 +597,7 @@ void TWriteScriptFile::close(void){
 	}
 
 	if(fclose(this->File) != 0){
-		::error("TWriteScriptFile::close: %s\n", t("ERROR_CLOSING_FILE", errno));
+		::error("TWriteScriptFile::close: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 	}
 	this->File = NULL;
 }
@@ -605,7 +605,7 @@ void TWriteScriptFile::close(void){
 void TWriteScriptFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
-			::error("TWriteScriptFile::error: %s\n", t("ERROR_CLOSING_FILE", errno));
+			::error("TWriteScriptFile::error: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 	}
@@ -749,8 +749,8 @@ void TReadBinaryFile::close(void){
 	// TODO(fusion): Check if file is NULL?
 	if(fclose(this->File) != 0){
 		int ErrCode = errno;
-		::error("TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE"));
-		::error("%s\n", t("FILE_ERROR_CODE", this->Filename, ErrCode, strerror(ErrCode)));
+		::error("TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE_D"));
+		::error("%s\n", t("FILE_ERROR_CODE_S_D_S", this->Filename, ErrCode, strerror(ErrCode)));
 	}
 	this->File = NULL;
 }
@@ -758,7 +758,7 @@ void TReadBinaryFile::close(void){
 void TReadBinaryFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
-			::error("TReadBinaryFile::error: %s\n", t("ERROR_CLOSING_FILE", errno));
+			::error("TReadBinaryFile::error: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 	}
@@ -813,7 +813,7 @@ uint8 TReadBinaryFile::readByte(void){
 
 		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
 		if(fclose(this->File) != 0){
-			::error("TReadBinaryFile::readByte: %s\n", t("ERROR_CLOSING_FILE", errno));
+			::error("TReadBinaryFile::readByte: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 		SaveFile(this->Filename);
@@ -862,7 +862,7 @@ TReadBinaryFile::~TReadBinaryFile(void){
 	if(this->File != NULL){
 		::error("TReadBinaryFile::~TReadBinaryFile: %s\n", t("FILE_IS_STILL_OPEN_S", this->Filename));
 		if(fclose(this->File) != 0){
-			::error("TReadBinaryFile::~TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE", errno));
+			::error("TReadBinaryFile::~TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 	}
 }
@@ -897,7 +897,7 @@ void TWriteBinaryFile::close(void){
 	// TODO(fusion): Check if file is NULL?
 	if(fclose(this->File) != 0){
 		int ErrCode = errno;
-		::error("TWriteBinaryFile::close: %s\n", t("ERROR_CLOSING_FILE"));
+		::error("TWriteBinaryFile::close: %s\n", t("ERROR_CLOSING_FILE_D"));
 		::error("%s\n", t("FILE_ERROR_CODE_S_D_S",
 				this->Filename, ErrCode, strerror(ErrCode)));
 	}

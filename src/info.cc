@@ -60,7 +60,7 @@ const char *GetName(Object Obj){
 		if(Creature != NULL){
 			snprintf(ObjectName, sizeof(ObjectName), "%s", Creature->Name);
 		}else{
-			error("GetName: %s\n", t("CREATURE_D_DOES_NOT_EXIST", Obj.getCreatureID()));
+			error("GetName: %s\n", t("CREATURE_DOES_NOT_EXIST_D", Obj.getCreatureID()));
 		}
 	}else{
 		// IMPORTANT(fusion): `ObjectType::getName` returns the same static buffer
@@ -327,7 +327,7 @@ Object GetBodyContainer(uint32 CreatureID, int Position){
 
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-		error("GetBodyContainer: %s\n", t("CREATURE_D_DOES_NOT_EXIST", CreatureID));
+		error("GetBodyContainer: %s\n", t("CREATURE_DOES_NOT_EXIST_D", CreatureID));
 		return NONE;
 	}
 
@@ -456,7 +456,7 @@ Object GetRowObject(Object Obj, ObjectType Type, uint32 Value, bool Recurse){
 Object GetInventoryObject(uint32 CreatureID, ObjectType Type, uint32 Value){
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-		error("GetInventoryObject: %s\n", t("CREATURE_D_DOES_NOT_EXIST", CreatureID));
+		error("GetInventoryObject: %s\n", t("CREATURE_DOES_NOT_EXIST_D", CreatureID));
 		return NONE;
 	}
 
@@ -614,7 +614,7 @@ int CountMoney(Object Obj){
 int CountInventoryMoney(uint32 CreatureID){
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-		error("CountInventoryMoney: %s\n", t("CREATURE_D_DOES_NOT_EXIST", CreatureID));
+		error("CountInventoryMoney: %s\n", t("CREATURE_DOES_NOT_EXIST_D", CreatureID));
 		return 0;
 	}
 
@@ -1076,7 +1076,7 @@ bool SearchFlightField(uint32 FugitiveID, uint32 PursuerID, int *x, int *y, int 
 			case DIRECTION_NORTHWEST: FieldX -= 1; FieldY -= 1; break;
 			case DIRECTION_NORTHEAST: FieldX += 1; FieldY -= 1; break;
 			default:{
-				error("SearchFlightField: %s\n", t("INVALID_DIRECTION", Dir[i]));
+				error("SearchFlightField: %s\n", t("INVALID_DIRECTION_D", Dir[i]));
 				return false;
 			}
 		}
@@ -1265,7 +1265,7 @@ void GetCreatureLight(uint32 CreatureID, int *Brightness, int *Color){
 int GetInventoryWeight(uint32 CreatureID){
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-		error("GetInventoryWeight: %s\n", t("CREATURE_D_DOES_NOT_EXIST", CreatureID));
+		error("GetInventoryWeight: %s\n", t("CREATURE_DOES_NOT_EXIST_D", CreatureID));
 		return 0;
 	}
 

@@ -373,7 +373,7 @@ TSummonImpact::TSummonImpact(TCreature *Actor, int Race, int Maximum){
 	}
 
 	if(!IsRaceValid(Race)){
-		error("TSummonImpact::TSummonImpact: %s\n", t("INVALID_RACE_NUMBER_D_2", Race));
+		error("TSummonImpact::TSummonImpact: %s\n", t("INVALID_RACE_NUMBER_D", Race));
 	}
 
 	this->Actor = Actor;
@@ -502,7 +502,7 @@ static void ExecuteCircleSpell(int DestX, int DestY, int DestZ,
 
 void OriginShapeSpell(TCreature *Actor, int Radius, TImpact *Impact, int Effect){
 	if(Actor == NULL){
-		error("OriginShapeSpell: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("OriginShapeSpell: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -549,7 +549,7 @@ void DestinationShapeSpell(TCreature *Actor, TCreature *Victim,
 
 void AngleShapeSpell(TCreature *Actor, int Angle, int Range, TImpact *Impact, int Effect){
 	if(Actor == NULL){
-		error("AngleShapeSpell: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("AngleShapeSpell: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -612,7 +612,7 @@ void AngleShapeSpell(TCreature *Actor, int Angle, int Range, TImpact *Impact, in
 
 void CheckSpellbook(TCreature *Actor, int SpellNr){
 	if(Actor == NULL){
-		error("CheckSpellbook: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckSpellbook: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -624,7 +624,7 @@ void CheckSpellbook(TCreature *Actor, int SpellNr){
 
 void CheckAccount(TCreature *Actor, int SpellNr){
 	if(Actor == NULL){
-		error("CheckAccount: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckAccount: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -642,7 +642,7 @@ void CheckAccount(TCreature *Actor, int SpellNr){
 
 void CheckLevel(TCreature *Actor, int SpellNr){
 	if(Actor == NULL){
-		error("CheckLevel: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckLevel: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -661,7 +661,7 @@ void CheckLevel(TCreature *Actor, int SpellNr){
 
 void CheckRuneLevel(TCreature *Actor, int SpellNr){
 	if(Actor == NULL){
-		error("CheckRuneLevel: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckRuneLevel: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -680,7 +680,7 @@ void CheckRuneLevel(TCreature *Actor, int SpellNr){
 
 void CheckMagicItem(TCreature *Actor, ObjectType Type){
 	if(Actor == NULL){
-		error("CheckMagicObject: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckMagicObject: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -692,7 +692,7 @@ void CheckMagicItem(TCreature *Actor, ObjectType Type){
 
 void CheckRing(TCreature *Actor, int SpellNr){
 	if(Actor == NULL){
-		error("CheckRing: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckRing: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -707,7 +707,7 @@ void CheckRing(TCreature *Actor, int SpellNr){
 
 void CheckAffectedPlayers(TCreature *Actor, int x, int y, int z){
 	if(Actor == NULL){
-		error("CheckAffectedPlayers: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckAffectedPlayers: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -730,7 +730,7 @@ void CheckAffectedPlayers(TCreature *Actor, int x, int y, int z){
 
 void CheckMana(TCreature *Actor, int ManaPoints, int SoulPoints, int Delay){
 	if(Actor == NULL){
-		error("CheckMana: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("CheckMana: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -814,7 +814,7 @@ void MassCombat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 	}
 
 	if(Actor == NULL){
-		error("MassCombat: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("MassCombat: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -837,7 +837,7 @@ void MassCombat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 void AngleCombat(TCreature *Actor, int ManaPoints, int SoulPoints,
 		int Damage, int Effect, int Range, int Angle, int DamageType){
 	if(Actor == NULL){
-		error("AngleCombat: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("AngleCombat: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -859,7 +859,7 @@ void Combat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 	}
 
 	if(Actor == NULL){
-		error("Combat: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("Combat: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -928,7 +928,7 @@ int GetDirection(int dx, int dy){
 // =============================================================================
 void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
 	if(Actor == NULL){
-		error("KillAllMonsters: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("KillAllMonsters: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -965,7 +965,7 @@ void KillAllMonsters(TCreature *Actor, int Effect, int Radius){
 				if(Obj.getObjectType().isCreatureContainer()){
 					TCreature *Victim = GetCreature(Obj);
 					if(Victim == NULL){
-						error("KillAllMonsters: %s\n", t("INVALID_CREATURE_PROVIDED"));
+						error("KillAllMonsters: %s\n", t("INVALID_CREATURE_PROVIDED_2"));
 					}else if(Actor != Victim && Victim->Type == MONSTER){
 						print(3, "%s\n", t("KILL_S", Victim->Name));
 						Victim->Kill();
@@ -1253,7 +1253,7 @@ void CreateFieldWall(TCreature *Actor, Object Target,
 		}
 
 		default:{
-			error("CreateFieldWall: %s\n", t("INVALID_DIRECTION_D_2", Direction));
+			error("CreateFieldWall: %s\n", t("INVALID_DIRECTION_D", Direction));
 			throw ERROR;
 		}
 	}
@@ -1784,7 +1784,7 @@ void CreateMoney(TCreature *Actor, const char *Param){
 	}
 
 	if(Actor->Type != PLAYER){
-		error("CreateMoney: %s\n", t("SPELL_CAN_ONLY_BE_USED_BY_PLAYERS_2"));
+		error("CreateMoney: %s\n", t("SPELL_CAN_ONLY_BE_USED_BY_PLAYERS"));
 		throw ERROR;
 	}
 
@@ -2164,7 +2164,7 @@ void MassHeal(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, i
 				if(ObjType.isCreatureContainer()){
 					TCreature *Victim = GetCreature(Obj);
 					if(Victim == NULL){
-						error("MassHeal: %s\n", t("INVALID_CREATURE_PROVIDED"));
+						error("MassHeal: %s\n", t("INVALID_CREATURE_PROVIDED_2"));
 					}else if(WorldType != NON_PVP || Victim->IsPeaceful()){
 						// TODO(fusion): Do we really want to throw here? If not
 						// having hitpoints is a problem, it should have been
@@ -2256,12 +2256,12 @@ void RefreshMana(TCreature *Actor, int ManaPoints, int SoulPoints, int Amount){
 
 void MagicGoStrength(TCreature *Actor, TCreature *Target, int ManaPoints, int SoulPoints, int Percent, int Duration){
 	if(Actor == NULL){
-		error("MagicGoStrength: %s\n", t("CREATURE_DOES_NOT_EXIST_2"));
+		error("MagicGoStrength: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
 	if(Target == NULL){
-		error("MagicGoStrength: %s\n", t("CREATURE_DOES_NOT_EXIST_3"));
+		error("MagicGoStrength: %s\n", t("CREATURE_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -2402,7 +2402,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 				if(ObjType.isCreatureContainer()){
 					TCreature *Victim = GetCreature(Obj);
 					if(Victim == NULL){
-						error("CancelInvisibility: %s\n", t("INVALID_CREATURE_PROVIDED"));
+						error("CancelInvisibility: %s\n", t("INVALID_CREATURE_PROVIDED_2"));
 					}else if(Victim->IsInvisible()
 							&& (WorldType != NON_PVP || !Victim->IsPeaceful())){
 						Victim->SetTimer(SKILL_ILLUSION, 0, 0, 0, -1);
@@ -2653,7 +2653,7 @@ void Challenge(TCreature *Actor, int ManaPoints, int SoulPoints, int Radius){
 			if(Obj != NONE){
 				TCreature *Victim = GetCreature(Obj);
 				if(Victim == NULL){
-					error("Challenge: %s\n", t("INVALID_CREATURE_PROVIDED"));
+					error("Challenge: %s\n", t("INVALID_CREATURE_PROVIDED_2"));
 				}else if(Victim->Type == MONSTER){
 					ChallengeMonster(Actor, Victim);
 				}
@@ -2670,7 +2670,7 @@ void FindPerson(TCreature *Actor, int ManaPoints, int SoulPoints, const char *Ta
 	}
 
 	if(TargetName == NULL){
-		error("FindPerson: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("FindPerson: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -2874,7 +2874,7 @@ void ChangeProfession(TCreature *Actor, const char *Param){
 	}
 
 	if(Param == NULL){
-		error("ChangeProfession: %s\n", t("INVALID_PARAMETER_PROVIDED_2"));
+		error("ChangeProfession: %s\n", t("INVALID_PARAMETER_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3059,7 +3059,7 @@ void Notation(TCreature *Actor, const char *Name, const char *Comment){
 	}
 
 	if(Name == NULL){
-		error("Notation: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("Notation: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3084,7 +3084,7 @@ void NameLock(TCreature *Actor, const char *Name){
 	}
 
 	if(Name == NULL){
-		error("NameLock: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("NameLock: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3104,7 +3104,7 @@ void BanishAccount(TCreature *Actor, const char *Name, int Duration, const char 
 	}
 
 	if(Name == NULL){
-		error("BanishAccount: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("BanishAccount: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3129,7 +3129,7 @@ void DeleteAccount(TCreature *Actor, const char *Name, const char *Reason){
 	}
 
 	if(Name == NULL){
-		error("DeleteAccount: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("DeleteAccount: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3154,7 +3154,7 @@ void BanishCharacter(TCreature *Actor, const char *Name, int Duration, const cha
 	}
 
 	if(Name == NULL){
-		error("BanishCharacter: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("BanishCharacter: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3179,7 +3179,7 @@ void DeleteCharacter(TCreature *Actor, const char *Name, const char *Reason){
 	}
 
 	if(Name == NULL){
-		error("DeleteCharacter: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("DeleteCharacter: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3204,7 +3204,7 @@ void IPBanishment(TCreature *Actor, const char *Name, const char *Reason){
 	}
 
 	if(Name == NULL){
-		error("IPBanishment: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("IPBanishment: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3229,12 +3229,12 @@ void SetNameRule(TCreature *Actor, const char *Name){
 	}
 
 	if(Name == NULL){
-		error("SetNameRule: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("SetNameRule: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
 	if(Actor->Type != PLAYER){
-		error("SetNameRule: %s\n", t("SPELL_CAN_ONLY_BE_USED_BY_PLAYERS_2"));
+		error("SetNameRule: %s\n", t("SPELL_CAN_ONLY_BE_USED_BY_PLAYERS"));
 		throw ERROR;
 	}
 
@@ -3249,7 +3249,7 @@ void KickPlayer(TCreature *Actor, const char *Name){
 	}
 
 	if(Name == NULL){
-		error("KickPlayer: %s\n", t("INVALID_NAME_PROVIDED_2"));
+		error("KickPlayer: %s\n", t("INVALID_NAME_PROVIDED"));
 		throw ERROR;
 	}
 
@@ -3779,7 +3779,7 @@ static void GetSpellString(int SpellNr, char *Text){
 	Text[0] = 0;
 
 	if(SpellNr < 1 || SpellNr >= NARRAY(SpellList)){
-		error("GetSpellString: %s\n", t("INVALID_SPELL_NUMBER_D_2", SpellNr));
+		error("GetSpellString: %s\n", t("INVALID_SPELL_NUMBER_D", SpellNr));
 		return;
 	}
 

@@ -7,7 +7,7 @@
 
 bool CommandAllowed(TConnection *Connection, int Command){
 	if(Connection == NULL){
-		error("CommandAllowed: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CommandAllowed: %s\n", t("CONNECTION_IS_NULL"));
 		return false;
 	}
 
@@ -44,7 +44,7 @@ bool CheckSpecialCoordinates(int Command, int x, int y, int z, bool AllowInvento
 
 bool CheckVisibility(int Command, TConnection *Connection, int x, int y, int z){
 	if(Connection == NULL){
-		error("CheckVisibility: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CheckVisibility: %s\n", t("CONNECTION_IS_NULL"));
 		return false;
 	}
 
@@ -121,7 +121,7 @@ void CGoPath(TConnection *Connection, TReadBuffer *Buffer){
 	// valid since these functions are all called from within `ReceiveData` which
 	// also checks it.
 	if(Connection == NULL){
-		error("CGoPath: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CGoPath: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -170,7 +170,7 @@ void CGoPath(TConnection *Connection, TReadBuffer *Buffer){
 
 void CGoDirection(TConnection *Connection, int OffsetX, int OffsetY){
 	if(Connection == NULL){
-		error("CGoDirection: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CGoDirection: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -199,7 +199,7 @@ void CGoDirection(TConnection *Connection, int OffsetX, int OffsetY){
 
 void CGoStop(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CGoStop: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CGoStop: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -211,7 +211,7 @@ void CGoStop(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRotate(TConnection *Connection, int Direction){
 	if(Connection == NULL){
-		error("CRotate: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRotate: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -231,7 +231,7 @@ void CRotate(TConnection *Connection, int Direction){
 
 void CMoveObject(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CMoveObject: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CMoveObject: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -288,7 +288,7 @@ void CMoveObject(TConnection *Connection, TReadBuffer *Buffer){
 
 void CTradeObject(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CTradeObject: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CTradeObject: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -335,7 +335,7 @@ void CTradeObject(TConnection *Connection, TReadBuffer *Buffer){
 
 void CInspectTrade(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CInspectTrade: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CInspectTrade: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -358,7 +358,7 @@ void CInspectTrade(TConnection *Connection, TReadBuffer *Buffer){
 
 void CAcceptTrade(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CAcceptTrade: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CAcceptTrade: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -370,7 +370,7 @@ void CAcceptTrade(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRejectTrade(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRejectTrade: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRejectTrade: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -382,7 +382,7 @@ void CRejectTrade(TConnection *Connection, TReadBuffer *Buffer){
 
 void CUseObject(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CUseObject: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CUseObject: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -428,7 +428,7 @@ void CUseObject(TConnection *Connection, TReadBuffer *Buffer){
 
 void CUseTwoObjects(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CUseTwoObjects: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CUseTwoObjects: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -478,7 +478,7 @@ void CUseTwoObjects(TConnection *Connection, TReadBuffer *Buffer){
 
 void CUseOnCreature(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CUseOnCreature: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CUseOnCreature: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -547,7 +547,7 @@ void CUseOnCreature(TConnection *Connection, TReadBuffer *Buffer){
 
 void CTurnObject(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CTurnObject: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CTurnObject: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -589,7 +589,7 @@ void CTurnObject(TConnection *Connection, TReadBuffer *Buffer){
 
 void CCloseContainer(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CCloseContainer: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CCloseContainer: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -607,7 +607,7 @@ void CCloseContainer(TConnection *Connection, TReadBuffer *Buffer){
 
 void CUpContainer(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CUpContainer: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CUpContainer: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -635,7 +635,7 @@ void CUpContainer(TConnection *Connection, TReadBuffer *Buffer){
 
 void CEditText(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CEditText: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CEditText: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -677,7 +677,7 @@ void CEditText(TConnection *Connection, TReadBuffer *Buffer){
 
 void CEditList(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CEditList: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CEditList: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -715,7 +715,7 @@ void CEditList(TConnection *Connection, TReadBuffer *Buffer){
 
 void CLookAtPoint(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CLookAtPoint: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CLookAtPoint: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -748,7 +748,7 @@ void CLookAtPoint(TConnection *Connection, TReadBuffer *Buffer){
 
 void CTalk(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CTalk: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CTalk: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -909,7 +909,7 @@ void CTalk(TConnection *Connection, TReadBuffer *Buffer){
 
 void CGetChannels(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CGetChannels: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CGetChannels: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -918,7 +918,7 @@ void CGetChannels(TConnection *Connection, TReadBuffer *Buffer){
 
 void CJoinChannel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CJoinChannel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CJoinChannel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -947,7 +947,7 @@ void CJoinChannel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CLeaveChannel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CLeaveChannel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CLeaveChannel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -964,7 +964,7 @@ void CLeaveChannel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CPrivateChannel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CPrivateChannel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CPrivateChannel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -996,7 +996,7 @@ void CPrivateChannel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CProcessRequest(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CProcessRequest: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CProcessRequest: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1032,7 +1032,7 @@ void CProcessRequest(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRemoveRequest(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRemoveRequest: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRemoveRequest: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1067,7 +1067,7 @@ void CRemoveRequest(TConnection *Connection, TReadBuffer *Buffer){
 
 void CCancelRequest(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CCancelRequest: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CCancelRequest: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1092,7 +1092,7 @@ void CCancelRequest(TConnection *Connection, TReadBuffer *Buffer){
 
 void CSetTactics(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CSetTactics: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CSetTactics: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1131,7 +1131,7 @@ void CSetTactics(TConnection *Connection, TReadBuffer *Buffer){
 
 void CAttack(TConnection *Connection, TReadBuffer *Buffer, bool Follow){
 	if(Connection == NULL){
-		error("CAttack: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CAttack: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1155,7 +1155,7 @@ void CAttack(TConnection *Connection, TReadBuffer *Buffer, bool Follow){
 
 void CInviteToParty(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CInviteToParty: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CInviteToParty: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1180,7 +1180,7 @@ void CInviteToParty(TConnection *Connection, TReadBuffer *Buffer){
 
 void CJoinParty(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CJoinParty: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CJoinParty: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1195,7 +1195,7 @@ void CJoinParty(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRevokeInvitation(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRevokeInvitation: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRevokeInvitation: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1215,7 +1215,7 @@ void CRevokeInvitation(TConnection *Connection, TReadBuffer *Buffer){
 
 void CPassLeadership(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CPassLeadership: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CPassLeadership: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1235,7 +1235,7 @@ void CPassLeadership(TConnection *Connection, TReadBuffer *Buffer){
 
 void CLeaveParty(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CLeaveParty: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CLeaveParty: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1254,7 +1254,7 @@ void CLeaveParty(TConnection *Connection, TReadBuffer *Buffer){
 
 void COpenChannel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("COpenChannel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("COpenChannel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1272,7 +1272,7 @@ void COpenChannel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CInviteToChannel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CInviteToChannel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CInviteToChannel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1297,7 +1297,7 @@ void CInviteToChannel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CExcludeFromChannel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CExcludeFromChannel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CExcludeFromChannel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1324,7 +1324,7 @@ void CExcludeFromChannel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CCancel(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CCancel: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CCancel: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1347,7 +1347,7 @@ void CCancel(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRefreshField(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRefreshField: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRefreshField: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1368,7 +1368,7 @@ void CRefreshField(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRefreshContainer(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRefreshContainer: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRefreshContainer: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1388,7 +1388,7 @@ void CRefreshContainer(TConnection *Connection, TReadBuffer *Buffer){
 
 void CGetOutfit(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CGetOutfit: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CGetOutfit: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1408,7 +1408,7 @@ void CGetOutfit(TConnection *Connection, TReadBuffer *Buffer){
 
 void CSetOutfit(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CSetOutfit: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CSetOutfit: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1454,7 +1454,7 @@ void CSetOutfit(TConnection *Connection, TReadBuffer *Buffer){
 
 void CAddBuddy(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CAddBuddy: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CAddBuddy: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1472,7 +1472,7 @@ void CAddBuddy(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRemoveBuddy(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRemoveBuddy: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRemoveBuddy: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1490,7 +1490,7 @@ void CRemoveBuddy(TConnection *Connection, TReadBuffer *Buffer){
 
 void CBugReport(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CBugReport: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CBugReport: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1530,7 +1530,7 @@ void CBugReport(TConnection *Connection, TReadBuffer *Buffer){
 
 void CRuleViolation(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CRuleViolation: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CRuleViolation: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1625,7 +1625,7 @@ void CRuleViolation(TConnection *Connection, TReadBuffer *Buffer){
 
 void CErrorFileEntry(TConnection *Connection, TReadBuffer *Buffer){
 	if(Connection == NULL){
-		error("CErrorFileEntry: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("CErrorFileEntry: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -1670,7 +1670,7 @@ void CErrorFileEntry(TConnection *Connection, TReadBuffer *Buffer){
 
 void ReceiveData(TConnection *Connection){
 	if(Connection == NULL){
-		error("ReceiveData: %s\n", t("CONNECTION_IS_NULL_2"));
+		error("ReceiveData: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 

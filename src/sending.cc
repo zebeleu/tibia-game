@@ -497,7 +497,7 @@ void SendRow(TConnection *Connection, int Direction){
 		SendByte(Connection, SV_CMD_ROW_WEST);
 		MaxX = MinX;
 	}else{
-	error("SendRow: %s\n", t("INVALID_DIRECTION", Direction));
+	error("SendRow: %s\n", t("INVALID_DIRECTION_D", Direction));
 		return;
 	}
 
@@ -977,7 +977,7 @@ void SendCreatureHealth(TConnection *Connection, uint32 CreatureID){
 
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-	error("SendCreatureHealth: %s\n", t("CREATURE_U_DOES_NOT_EXIST", CreatureID));
+	error("SendCreatureHealth: %s\n", t("CREATURE_DOES_NOT_EXIST_U", CreatureID));
 		return;
 	}
 
@@ -994,7 +994,7 @@ void SendCreatureLight(TConnection *Connection, uint32 CreatureID){
 
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-	error("SendCreatureLight: %s\n", t("CREATURE_U_DOES_NOT_EXIST", CreatureID));
+	error("SendCreatureLight: %s\n", t("CREATURE_DOES_NOT_EXIST_U", CreatureID));
 		return;
 	}
 
@@ -1015,7 +1015,7 @@ void SendCreatureOutfit(TConnection *Connection, uint32 CreatureID){
 
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-	error("SendCreatureOutfit: %s\n", t("CREATURE_U_DOES_NOT_EXIST", CreatureID));
+	error("SendCreatureOutfit: %s\n", t("CREATURE_DOES_NOT_EXIST_U", CreatureID));
 		return;
 	}
 
@@ -1032,7 +1032,7 @@ void SendCreatureSpeed(TConnection *Connection, uint32 CreatureID){
 
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
-	error("SendCreatureSpeed: %s\n", t("CREATURE_U_DOES_NOT_EXIST", CreatureID));
+	error("SendCreatureSpeed: %s\n", t("CREATURE_DOES_NOT_EXIST_U", CreatureID));
 		return;
 	}
 
@@ -1049,7 +1049,7 @@ void SendCreatureSkull(TConnection *Connection, uint32 CreatureID){
 
 	TPlayer *Player = GetPlayer(CreatureID);
 	if(Player == NULL){
-	error("SendCreatureSkull: %s\n", t("CREATURE_U_DOES_NOT_EXIST", CreatureID));
+	error("SendCreatureSkull: %s\n", t("CREATURE_DOES_NOT_EXIST_U", CreatureID));
 		return;
 	}
 
@@ -1066,7 +1066,7 @@ void SendCreatureParty(TConnection *Connection, uint32 CreatureID){
 
 	TPlayer *Player = GetPlayer(CreatureID);
 	if(Player == NULL){
-	error("SendCreatureParty: %s\n", t("CREATURE_U_DOES_NOT_EXIST", CreatureID));
+	error("SendCreatureParty: %s\n", t("CREATURE_DOES_NOT_EXIST_U", CreatureID));
 		return;
 	}
 

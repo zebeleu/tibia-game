@@ -903,7 +903,7 @@ bool HandleLogin(TConnection *Connection){
 			return false;
 		}
 	}catch(const char *str){
-		error("HandleLogin: %s\n", t("ERROR_READING_COMMAND", str));
+		error("HandleLogin: %s\n", t("ERROR_READING_COMMAND_S", str));
 		return false;
 	}
 

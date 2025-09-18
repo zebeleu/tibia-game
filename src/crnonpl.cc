@@ -667,7 +667,7 @@ int TBehaviourDatabase::evaluate(TNPC *Npc, TBehaviourNode *Node, int *Parameter
 	uint32 InterlocutorID = Npc->Interlocutor;
 	TPlayer *Interlocutor = GetPlayer(InterlocutorID);
 	if(Interlocutor == NULL){
-		error("TBehaviourDatabase::evaluate: %s\n", t("CONVERSATION_PARTNER_DOES_NOT_EXIST"));
+		error("TBehaviourDatabase::evaluate: %s\n", t("INTERLOCUTOR_DOES_NOT_EXIST"));
 		return 0;
 	}
 
@@ -984,7 +984,7 @@ void TBehaviourDatabase::react(TNPC *Npc, const char *Text, SITUATION Situation)
 	uint32 InterlocutorID = Npc->Interlocutor;
 	TPlayer *Interlocutor = GetPlayer(InterlocutorID);
 	if(Interlocutor == NULL){
-		error("TBehaviourDatabase::react: %s\n", t("CONVERSATION_PARTNER_DOES_NOT_EXIST_TEXT_SITUATION_S_D", Text, Situation));
+		error("TBehaviourDatabase::react: %s\n", t("INTERLOCUTOR_DOES_NOT_EXIST_TEXT_SITUATION_S_D", Text, Situation));
 		return;
 	}
 
@@ -1244,7 +1244,7 @@ void TBehaviourDatabase::react(TNPC *Npc, const char *Text, SITUATION Situation)
 					int Param3 = this->evaluate(Npc, Action->Expression3, Parameters);
 					switch(FunctionNr){
 						case 1:{
-							print(3, "%s\n", t("NPC_TELEPORTS_CONVERSATION_PARTNER_TO_D_D_D", Param1, Param2, Param3));
+							print(3, "%s\n", t("NPC_TELEPORTS_INTERLOCUTOR_TO_D_D_D", Param1, Param2, Param3));
 							try{
 								Object Dest = GetMapContainer(Param1, Param2, Param3);
 								Move(0, Interlocutor->CrObject, Dest, -1, false, NONE);
@@ -1255,7 +1255,7 @@ void TBehaviourDatabase::react(TNPC *Npc, const char *Text, SITUATION Situation)
 						}
 
 						case 2:{
-							print(3, "%s\n", t("NPC_SETS_START_COORDINATE_FOR_CONVERSATION_PARTNER_TO_D_D_D", Param1, Param2, Param3));
+							print(3, "%s\n", t("NPC_SETS_START_COORDINATE_FOR_INTERLOCUTOR_TO_D_D_D", Param1, Param2, Param3));
 							Interlocutor->startx = Param1;
 							Interlocutor->starty = Param2;
 							Interlocutor->startz = Param3;
@@ -1721,7 +1721,7 @@ void TNPC::IdleStimulus(void){
 				this->Interlocutor = InterlocutorID;
 				this->Behaviour->react(this, GetDynamicString(Text), ADDRESSQUEUE);
 			}else{
-				error("TNPC::IdleStimulus: %s\n", t("CONVERSATION_PARTNER_DOES_NOT_EXIST_2"));
+				error("TNPC::IdleStimulus: %s\n", t("INTERLOCUTOR_DOES_NOT_EXIST"));
 			}
 
 			DeleteDynamicString(Text);
@@ -1805,7 +1805,7 @@ void TNPC::CreatureMoveStimulus(uint32 CreatureID, int Type){
 		if(CreatureID == this->Interlocutor || CreatureID == this->ID){
 			TCreature *Interlocutor = GetCreature(this->Interlocutor);
 			if(Interlocutor == NULL){
-				error("TNPC::CreatureMoveStimulus: %s\n", t("CONVERSATION_PARTNER_DOES_NOT_EXIST_2"));
+				error("TNPC::CreatureMoveStimulus: %s\n", t("INTERLOCUTOR_DOES_NOT_EXIST"));
 				this->ChangeState(IDLE, true);
 				return;
 			}
@@ -2905,7 +2905,7 @@ void TMonster::KickBoxes(Object Obj){
 
 bool TMonster::KickCreature(TCreature *Creature){
 	if(Creature == NULL){
-		error("TMonster::KickCreature: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST_2"));
+		error("TMonster::KickCreature: %s\n", t("SURRENDERED_CREATURE_DOES_NOT_EXIST"));
 		return false;
 	}
 
@@ -3027,7 +3027,7 @@ bool TMonster::IsFleeing(void){
 
 TCreature *CreateMonster(int Race, int x, int y, int z, int Home, uint32 MasterID, bool ShowEffect){
 	if(!IsRaceValid(Race)){
-		error("CreateMonster: %s\n", t("INVALID_RACE_NUMBER_D_2", Race));
+		error("CreateMonster: %s\n", t("INVALID_RACE_NUMBER_D", Race));
 		return NULL;
 	}
 

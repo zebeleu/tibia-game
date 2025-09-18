@@ -325,7 +325,7 @@ void TCombat::SetAttackMode(uint8 AttackMode){
 	if(AttackMode != ATTACK_MODE_OFFENSIVE
 			&& AttackMode != ATTACK_MODE_BALANCED
 			&& AttackMode != ATTACK_MODE_DEFENSIVE){
-		error("TCombat::SetAttackMode: %s\n", t("INVALID_ATTACK_MODE", AttackMode));
+		error("TCombat::SetAttackMode: %s\n", t("INVALID_ATTACK_MODE_D", AttackMode));
 		return;
 	}
 
@@ -346,7 +346,7 @@ void TCombat::SetChaseMode(uint8 ChaseMode){
 
 void TCombat::SetSecureMode(uint8 SecureMode){
 	if(SecureMode != SECURE_MODE_DISABLED && SecureMode != SECURE_MODE_ENABLED){
-		error("TCombat::SetSecureMode: %s\n", t("INVALID_SECURITY_MODE", SecureMode));
+		error("TCombat::SetSecureMode: %s\n", t("INVALID_SECURITY_MODE_D", SecureMode));
 		return;
 	}
 

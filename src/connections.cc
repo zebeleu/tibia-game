@@ -447,7 +447,7 @@ uint32 TConnection::NewKnownCreature(uint32 NewID){
 		this->KnownCreatureTable[EntryIndex].Next = Creature->FirstKnowingConnection;
 		Creature->FirstKnowingConnection = &this->KnownCreatureTable[EntryIndex];
 	}else{
-	error("TUserCom::NewKnownCreature: %s\n", t("CREATURE_U_DOES_NOT_EXIST", NewID));
+	error("TUserCom::NewKnownCreature: %s\n", t("CREATURE_DOES_NOT_EXIST_U", NewID));
 	}
 
 	return OldID;
@@ -467,7 +467,7 @@ void TConnection::ClearKnownCreatureTable(bool Unchain){
 void TConnection::UnchainKnownCreature(uint32 ID){
 	TCreature *Creature = GetCreature(ID);
 	if(Creature == NULL){
-	error("TUserCom::UnchainKnownCreature: %s\n", t("CREATURE_U_DOES_NOT_EXIST", ID));
+	error("TUserCom::UnchainKnownCreature: %s\n", t("CREATURE_DOES_NOT_EXIST_U", ID));
 		return;
 	}
 

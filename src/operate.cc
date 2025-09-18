@@ -655,7 +655,7 @@ void CheckDepotSpace(uint32 CreatureID, Object Source, Object Destination, int C
 	}
 
 	if(Destination == NONE){
-		error("CheckDepotSpace: %s\n", t("TARGET_DOES_NOT_EXIST_2"));
+		error("CheckDepotSpace: %s\n", t("TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -1215,7 +1215,7 @@ Object Create(Object Con, ObjectType Type, uint32 Value){
 
 Object Copy(Object Con, Object Source){
 	if(!Con.exists()){
-		error("Copy: %s\n", t("TARGET_DOES_NOT_EXIST_2"));
+		error("Copy: %s\n", t("TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 

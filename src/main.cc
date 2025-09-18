@@ -559,9 +559,9 @@ int main(int argc, char **argv){
 	}catch(const char *str){
 		error("main: %s\n", t("UNCAUGHT_EXCEPTION_S", str));
 	}catch(const std::exception &e){
-		error("main: %s\n", t("UNCAUGHT_EXCEPTION_S_2", e.what()));
+		error("main: %s\n", t("UNCAUGHT_EXCEPTION_S", e.what()));
 	}catch(...){
-		error("main: %s\n", t("UNCAUGHT_EXCEPTION_OF_UNKNOWN_TYPE"));
+		error("main: %s\n", t("UNCAUGHT_EXCEPTION_UNKNOWN"));
 	}
 
 	if(!Reboot){

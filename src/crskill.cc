@@ -1164,7 +1164,7 @@ bool TSkillBase::NewSkill(uint16 SkillNo, TCreature *Creature){
 
 bool TSkillBase::SetSkills(int Race){
 	if(!IsRaceValid(Race)){
-		error("TSkillBase::SetSkills: %s\n", t("INVALID_RACE_NUMBER_D_2", Race));
+		error("TSkillBase::SetSkills: %s\n", t("INVALID_RACE_NUMBER_D", Race));
 		return false;
 	}
 

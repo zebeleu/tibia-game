@@ -688,8 +688,8 @@ void SwapSector(void){
 		Oldest->Status = STATUS_SWAPPED;
 		File.close();
 	}catch(const char *str){
-		error("FATAL ERROR in SwapSector: %s\n", t("CANNOT_CREATE_FILE", FileName));
-		error("%s\n", t("HASH_ERROR_S", str));
+		error("FATAL ERROR in SwapSector: %s\n", t("CANNOT_CREATE_FILE_S", FileName));
+		error("%s\n", t("ERROR_S", str));
 		abort();
 	}
 }
@@ -744,7 +744,7 @@ void UnswapSector(uintptr FileNumber){
 		unlink(FileName);
 	}catch(const char *str){
 		error("FATAL ERROR in UnswapSector: %s\n", t("CANNOT_READ_FILE", FileName));
-		error("%s\n", t("HASH_ERROR_S", str));
+		error("%s\n", t("ERROR_S", str));
 		abort();
 	}
 }
@@ -752,7 +752,7 @@ void UnswapSector(uintptr FileNumber){
 void DeleteSwappedSectors(void){
 	DIR *SwapDir = opendir(SAVEPATH);
 	if(SwapDir == NULL){
-		error("DeleteSwappedSectors: %s\n", t("SUBDIRECTORY_S_NOT_FOUND", SAVEPATH));
+		error("DeleteSwappedSectors: %s\n", t("SUBDIRECTORY_NOT_FOUND_S", SAVEPATH));
 		return;
 	}
 
@@ -1001,7 +1001,7 @@ void LoadSector(const char *FileName, int SectorX, int SectorY, int SectorZ){
 		}
 	}catch(const char *str){
 		error("LoadSector: %s\n", t("CANNOT_READ_FILE", FileName));
-		error("%s\n", t("HASH_ERROR_S", str));
+		error("%s\n", t("ERROR_S", str));
 		throw "Cannot load sector";
 	}
 }
@@ -1009,7 +1009,7 @@ void LoadSector(const char *FileName, int SectorX, int SectorY, int SectorZ){
 void LoadMap(void){
 	DIR *MapDir = opendir(MAPPATH);
 	if(MapDir == NULL){
-		error("LoadMap: %s\n", t("SUBDIRECTORY_S_NOT_FOUND", MAPPATH));
+		error("LoadMap: %s\n", t("SUBDIRECTORY_NOT_FOUND_S", MAPPATH));
 		throw "Cannot load map";
 	}
 
@@ -1270,7 +1270,7 @@ void SaveSector(char *FileName, int SectorX, int SectorY, int SectorZ){
 		}
 	}catch(const char *str){
 		error("SaveSector: %s\n", t("CANNOT_WRITE_FILE", FileName));
-		error("%s\n", t("HASH_ERROR_S", str));
+		error("%s\n", t("ERROR_S", str));
 	}
 }
 
@@ -2237,7 +2237,7 @@ void MergeObjects(Object Obj, Object Dest){
 	}
 
 	if(!ObjType.getFlag(CUMULATIVE)){
-		error("MergeObjects: %s\n", t("OBJECT_TYPE_IS_NOT_CUMULATIVE_D", ObjType.TypeID));
+		error("MergeObjects: %s\n", t("OBJECT_TYPE_D_NOT_CUMULATIVE", ObjType.TypeID));
 		return;
 	}
 
@@ -2521,7 +2521,7 @@ const char *GetDepotName(int DepotNumber){
 
 int GetDepotSize(int DepotNumber, bool PremiumAccount){
 	if(DepotNumber < DepotInfo.min || DepotNumber > DepotInfo.max){
-		error("GetDepotSize: %s\n", t("INVALID_DEPOT_NUMBER_D", DepotNumber));
+		error("GetDepotSize: %s\n", t("INVALID_DEPOTNUMBER_D", DepotNumber));
 		return 1;
 	}
 

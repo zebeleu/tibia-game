@@ -1053,7 +1053,7 @@ bool TransferHouses(void){
 
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
+			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D", HouseID));
 			continue;
 		}
 
@@ -1152,7 +1152,7 @@ bool EvictFreeAccounts(void){
 
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
+			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D", HouseID));
 			continue;
 		}
 
@@ -1183,7 +1183,7 @@ bool EvictDeletedCharacters(void){
 		uint16 HouseID = HouseIDs[EvictionNr];
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
+			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D", HouseID));
 			continue;
 		}
 
@@ -1222,7 +1222,7 @@ bool EvictExGuildLeaders(void){
 			uint16 HouseID = HouseIDs[EvictionNr];
 			THouse *House = GetHouse(HouseID);
 			if(House == NULL){
-				error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
+				error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D", HouseID));
 				continue;
 			}
 

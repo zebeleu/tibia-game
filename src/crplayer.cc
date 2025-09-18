@@ -1985,7 +1985,7 @@ void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	}
 
 	if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
-		error("LoadDepot: %s\n", t("INVALID_DEPOTNUMMER_D", DepotNr));
+		error("LoadDepot: %s\n", t("INVALID_DEPOTNUMBER_D", DepotNr));
 		throw ERROR;
 	}
 
@@ -2021,7 +2021,7 @@ void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	}
 
 	if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
-		error("SaveDepot: %s\n", t("INVALID_DEPOTNUMMER_D", DepotNr));
+		error("SaveDepot: %s\n", t("INVALID_DEPOTNUMBER_D", DepotNr));
 		throw ERROR;
 	}
 

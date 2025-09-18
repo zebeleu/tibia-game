@@ -40,7 +40,7 @@ void LogFileHandler(const char *Text){
 	if(File != NULL){
 		fprintf(File, "%s", Text);
 		if(fclose(File) != 0){
-			error("LogfileHandler: %s\n", t("ERROR_CLOSING_FILE", errno));
+			error("LogfileHandler: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 	}
 }
