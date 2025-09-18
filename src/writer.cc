@@ -36,21 +36,18 @@ void InitProtocol(void){
 
 void InsertProtocolOrder(const char *ProtocolName, const char *Text){
 	if(ProtocolName == NULL){
-		error(Translate("InsertProtocolOrder: Protokoll-Name nicht angegeben.\n",
-						"InsertProtocolOrder: Protocol name not specified.\n"));
+		error("InsertProtocolOrder: %s\n", t("PROTOCOL_NAME_NOT_SPECIFIED"));
 		return;
 	}
 
 	if(Text == NULL){
-		error(Translate("InsertProtocolOrder: Text nicht angegeben.\n",
-						"InsertProtocolOrder: Text not specified.\n"));
+		error("InsertProtocolOrder: %s\n", t("TEXT_NOT_SPECIFIED"));
 		return;
 	}
 
 	int Orders = (ProtocolPointerWrite - ProtocolPointerRead);
 	if(Orders >= NARRAY(ProtocolBuffer) && strcmp(ProtocolName, "error") != 0){
-		error(Translate("InsertProtocolOrder: Protokoll-Puffer ist voll => Vergrößern.\n",
-						"InsertProtocolOrder: Protocol buffer is full => Increase.\n"));
+		error("InsertProtocolOrder: %s\n", t("PROTOCOL_BUFFER_IS_FULL_INCREASE"));
 	}
 
 	ProtocolMutex.down();
@@ -79,8 +76,7 @@ void WriteProtocol(const char *ProtocolName, const char *Text){
 	if(File != NULL){
 		fprintf(File, "%s", Text);
 		if(fclose(File) != 0){
-			error(Translate("WriteProtocol: Fehler %d beim Schließen der Datei.\n",
-							"WriteProtocol: Error %d closing file.\n"), errno);
+			error("WriteProtocol: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 	}
 }
@@ -100,8 +96,7 @@ int ProtocolThreadLoop(void *Unused){
 
 void InitLog(const char *ProtocolName){
 	if(ProtocolName == NULL){
-		error(Translate("InitLog: Protokoll-Name nicht angegeben.\n",
-						"InitLog: Protocol name not specified.\n"));
+		error("InitLog: %s\n", t("PROTOCOL_NAME_NOT_SPECIFIED"));
 		return;
 	}
 
@@ -110,8 +105,7 @@ void InitLog(const char *ProtocolName){
 
 	FILE *File = fopen(FileName, "at");
 	if(File ==NULL){
-		error(Translate("InitLog: Kann Protokoll %s nicht anlegen.\n",
-						"InitLog: Cannot create log %s.\n"), ProtocolName);
+		error("InitLog: %s\n", t("CANNOT_CREATE_LOG_S", ProtocolName));
 		return;
 	}
 
@@ -119,15 +113,13 @@ void InitLog(const char *ProtocolName){
 	time_t Time = time(NULL);
 	fprintf(File, "-------------------------------------------------------------------------------\n");
 	fprintf(File, "Tibia - Graphical Multi-User-Dungeon\n");
-	fprintf(File, Translate("%s.log - gestartet %s",
-							"%s.log - started %s"), ProtocolName, ctime(&Time));
+	fprintf(File, "%s\n", t("LOG_STARTED_S_S", ProtocolName, ctime(&Time)));
 	fclose(File);
 }
 
 void Log(const char *ProtocolName, const char *Text, ...){
 	if(ProtocolName == NULL || ProtocolName[0] == 0){
-		error(Translate("Log: Protokoll-Name nicht angegeben.\n",
-						"Log: Protocol name not specified.\n"));
+		error("Log: %s\n", t("PROTOCOL_NAME_NOT_SPECIFIED"));
 		return;
 	}
 
@@ -193,8 +185,7 @@ void InsertOrder(TWriterThreadOrderType OrderType, const void *Data){
 	if(WriterThread != INVALID_THREAD_HANDLE){
 		int Orders = (OrderPointerWrite - OrderPointerRead);
 		if(Orders >= NARRAY(OrderBuffer)){
-			error(Translate("InsertOrder (Writer): Order-Puffer ist voll => Vergrößern.\n",
-							"InsertOrder (Writer): Order buffer is full => Increase.\n"));
+			error("InsertOrder (Writer): %s\n", t("ORDER_BUFFER_IS_FULL_INCREASE"));
 		}
 
 		OrderBufferEmpty.down();
@@ -219,8 +210,7 @@ void TerminateWriterOrder(void){
 
 void LogoutOrder(TPlayer *Player){
 	if(Player == NULL){
-		error(Translate("LogoutOrder: Übergebener Spieler existiert nicht.\n",
-						"LogoutOrder: Passed player does not exist.\n"));
+		error("LogoutOrder: %s\n", t("PASSED_PLAYER_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -229,8 +219,7 @@ void LogoutOrder(TPlayer *Player){
 	Data->Level = Player->Skills[SKILL_LEVEL]->Get();
 	Data->Profession = Player->GetActiveProfession();
 	if(Player->PlayerData == NULL){
-		error(Translate("LogoutOrder: PlayerData ist NULL.\n",
-						"LogoutOrder: PlayerData is NULL.\n"));
+		error("LogoutOrder: %s\n", t("PLAYERDATA_IS_NULL"));
 		Data->LastLoginTime = 0;
 	}else{
 		Data->LastLoginTime = Player->PlayerData->LastLoginTime;
@@ -259,9 +248,8 @@ void LogoutOrder(TPlayer *Player){
 	}else if(Player->startx == 33217){
 		strcpy(Data->Residence, "Edron");
 	}else{
-		error(Translate("LogoutOrder: Unbekannte Startkoordinate [%d,%d,%d] bei Spieler %s.\n",
-						"LogoutOrder: Unknown starting coordinate [%d,%d,%d] for player %s.\n"),
-				Player->startx, Player->starty, Player->startz, Player->Name);
+		error("LogoutOrder: %s\n", t("UNKNOWN_STARTING_COORDINATE_FOR_PLAYER_D_D_D_S",
+				Player->startx, Player->starty, Player->startz, Player->Name));
 		strcpy(Data->Residence, "Unknown");
 	}
 
@@ -271,20 +259,17 @@ void LogoutOrder(TPlayer *Player){
 void PlayerlistOrder(int NumberOfPlayers, const char *PlayerNames,
 		int *PlayerLevels, int *PlayerProfessions){
 	if(PlayerNames == NULL){
-		error(Translate("PlayerlistOrder: PlayerNames ist NULL.\n",
-						"PlayerlistOrder: PlayerNames is NULL.\n"));
+		error("PlayerlistOrder: %s\n", t("PLAYERNAMES_IS_NULL"));
 		return;
 	}
 
 	if(PlayerLevels == NULL){
-		error(Translate("PlayerlistOrder: PlayerLevels ist NULL.\n",
-						"PlayerlistOrder: PlayerLevels is NULL.\n"));
+		error("PlayerlistOrder: %s\n", t("PLAYERLEVELS_IS_NULL"));
 		return;
 	}
 
 	if(PlayerProfessions == NULL){
-		error(Translate("PlayerlistOrder: PlayerProfessions ist NULL.\n",
-						"PlayerlistOrder: PlayerProfessions is NULL.\n"));
+		error("PlayerlistOrder: %s\n", t("PLAYERPROFESSIONS_IS_NULL"));
 		return;
 	}
 
@@ -300,20 +285,17 @@ void PlayerlistOrder(int NumberOfPlayers, const char *PlayerNames,
 void KillStatisticsOrder(int NumberOfRaces, const char *RaceNames,
 		int *KilledPlayers, int *KilledCreatures){
 	if(RaceNames == NULL){
-		error(Translate("KillStatisticsOrder: RaceNames ist NULL.\n",
-						"KillStatisticsOrder: RaceNames is NULL.\n"));
+		error("KillStatisticsOrder: %s\n", t("RACENAMES_IS_NULL"));
 		return;
 	}
 
 	if(KilledPlayers == NULL){
-		error(Translate("KillStatisticsOrder: KilledPlayers ist NULL.\n",
-						"KillStatisticsOrder: KilledPlayers is NULL.\n"));
+		error("KillStatisticsOrder: %s\n", t("KILLEDPLAYERS_IS_NULL"));
 		return;
 	}
 
 	if(KilledCreatures == NULL){
-		error(Translate("KillStatisticsOrder: KilledCreatures ist NULL.\n",
-						"KillStatisticsOrder: KilledCreatures is NULL.\n"));
+		error("KillStatisticsOrder: %s\n", t("KILLEDCREATURES_IS_NULL"));
 		return;
 	}
 
@@ -331,14 +313,12 @@ void PunishmentOrder(TCreature *Gamemaster, const char *Name, const char *IPAddr
 		vector<TReportedStatement> *ReportedStatements, uint32 StatementID,
 		bool IPBanishment){
 	if(Name == NULL){
-		error(Translate("PunishmentOrder: Name ist NULL.\n",
-						"PunishmentOrder: Name is NULL.\n"));
+		error("PunishmentOrder: %s\n", t("NAME_IS_NULL"));
 		return;
 	}
 
 	if(Comment == NULL){
-		error(Translate("PunishmentOrder: Comment ist NULL.\n",
-						"PunishmentOrder: Comment is NULL.\n"));
+		error("PunishmentOrder: %s\n", t("COMMENT_IS_NULL"));
 		return;
 	}
 
@@ -366,14 +346,12 @@ void PunishmentOrder(TCreature *Gamemaster, const char *Name, const char *IPAddr
 void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 		uint32 OffenderID, const char *Remark, bool Unjustified){
 	if(Creature == NULL){
-		error(Translate("CharacterDeathOrder: cr ist NULL.\n",
-						"CharacterDeathOrder: cr is NULL.\n"));
+		error("CharacterDeathOrder: %s\n", t("CR_IS_NULL"));
 		return;
 	}
 
 	if(Remark == NULL){
-		error(Translate("CharacterDeathOrder: Remark ist NULL.\n",
-						"CharacterDeathOrder: Remark is NULL.\n"));
+		error("CharacterDeathOrder: %s\n", t("REMARK_IS_NULL"));
 		return;
 	}
 
@@ -390,14 +368,12 @@ void CharacterDeathOrder(TCreature *Creature, int OldLevel,
 
 void AddBuddyOrder(TCreature *Creature, uint32 BuddyID){
 	if(Creature == NULL){
-		error(Translate("AddBuddyOrder: cr ist NULL.\n",
-						"AddBuddyOrder: Creature is NULL.\n"));
+		error("AddBuddyOrder: %s\n", t("CREATURE_IS_NULL"));
 		return;
 	}
 
 	if(Creature->Type != PLAYER){
-		error(Translate("AddBuddyOrder: Kreatur ist kein Spieler.\n",
-						"AddBuddyOrder: Creature is not a player.\n"));
+		error("AddBuddyOrder: %s\n", t("CREATURE_IS_NOT_A_PLAYER"));
 		return;
 	}
 
@@ -410,14 +386,12 @@ void AddBuddyOrder(TCreature *Creature, uint32 BuddyID){
 
 void RemoveBuddyOrder(TCreature *Creature, uint32 BuddyID){
 	if(Creature == NULL){
-		error(Translate("RemoveBuddyOrder: cr ist NULL.\n",
-						"RemoveBuddyOrder: Creature is NULL.\n"));
+		error("RemoveBuddyOrder: %s\n", t("CREATURE_IS_NULL"));
 		return;
 	}
 
 	if(Creature->Type != PLAYER){
-		error(Translate("RemoveBuddyOrder: Kreatur ist kein Spieler.\n",
-						"RemoveBuddyOrder: Creature is not a player.\n"));
+		error("RemoveBuddyOrder: %s\n", t("CREATURE_IS_NOT_A_PLAYER"));
 		return;
 	}
 
@@ -439,15 +413,13 @@ void SavePlayerDataOrder(void){
 
 void ProcessLogoutOrder(TLogoutOrderData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessLogoutOrder: Keine Daten übergeben.\n",
-						"ProcessLogoutOrder: No data provided.\n"));
+		error("ProcessLogoutOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
 	if(Data->TutorActivities > 0){
-		print(3, Translate("%d Tutor-Punkte für Spieler %u.\n",
-							"%d tutor points for player %u.\n"),
-				Data->TutorActivities, Data->CharacterID);
+		print(3, "%s\n", t("TUTOR_POINTS_FOR_PLAYER_D_U",
+				Data->TutorActivities, Data->CharacterID));
 	}
 
 	char ProfessionName[30];
@@ -455,9 +427,8 @@ void ProcessLogoutOrder(TLogoutOrderData *Data){
 	int Ret = QueryManagerConnection->logoutGame(Data->CharacterID, Data->Level,
 			ProfessionName, Data->Residence, Data->LastLoginTime, Data->TutorActivities);
 	if(Ret != 0){
-		error(Translate("ProcessLogoutOrder: Logout für Spieler %u fehlgeschlagen.\n",
-						"ProcessLogoutOrder: Logout for player %u failed.\n"),
-				Data->CharacterID);
+		error("ProcessLogoutOrder: %s\n", t("LOGOUT_FOR_PLAYER_FAILED_U",
+				Data->CharacterID));
 	}
 
 	delete Data;
@@ -465,8 +436,7 @@ void ProcessLogoutOrder(TLogoutOrderData *Data){
 
 void ProcessPlayerlistOrder(TPlayerlistOrderData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessPlayerlistOrder: Keine Daten übergeben.\n",
-						"ProcessPlayerlistOrder: No data provided.\n"));
+		error("ProcessPlayerlistOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -475,8 +445,7 @@ void ProcessPlayerlistOrder(TPlayerlistOrderData *Data){
 		int Ret = QueryManagerConnection->createPlayerlist(Data->NumberOfPlayers,
 				NULL, NULL, NULL, &NewRecord);
 		if(Ret != 0){
-			error(Translate("ProcessPlayerlistOrder: Anfrage fehlgeschlagen (1).\n",
-							"ProcessPlayerlistOrder: Request failed (1).\n"));
+			error("ProcessPlayerlistOrder: %s\n", t("REQUEST_FAILED_1"));
 		}
 	}else{
 		const char **Names      = (const char**)alloca(Data->NumberOfPlayers * sizeof(const char*));
@@ -492,8 +461,7 @@ void ProcessPlayerlistOrder(TPlayerlistOrderData *Data){
 		int Ret = QueryManagerConnection->createPlayerlist(Data->NumberOfPlayers,
 				Names, Levels, Professions, &NewRecord);
 		if(Ret != 0){
-			error(Translate("ProcessPlayerlistOrder: Anfrage fehlgeschlagen (2).\n",
-							"ProcessPlayerlistOrder: Request failed (2).\n"));
+			error("ProcessPlayerlistOrder: %s\n", t("REQUEST_FAILED_2"));
 		}
 	}
 
@@ -509,8 +477,7 @@ void ProcessPlayerlistOrder(TPlayerlistOrderData *Data){
 
 void ProcessKillStatisticsOrder(TKillStatisticsOrderData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessKillStatisticsOrder: Keine Daten übergeben.\n",
-						"ProcessKillStatisticsOrder: No data provided.\n"));
+		error("ProcessKillStatisticsOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -526,8 +493,7 @@ void ProcessKillStatisticsOrder(TKillStatisticsOrderData *Data){
 	int Ret = QueryManagerConnection->logKilledCreatures(Data->NumberOfRaces,
 			RaceNames, KilledPlayers, KilledCreatures);
 	if(Ret != 0){
-		error(Translate("ProcessKillStatisticsOrder: Anfrage fehlgeschlagen.\n",
-						"ProcessKillStatisticsOrder: Request failed.\n"));
+		error("ProcessKillStatisticsOrder: %s\n", t("REQUEST_FAILED"));
 	}
 
 	delete[] Data->RaceNames;
@@ -566,8 +532,7 @@ static const char *GetStatementOutputChannel(int Mode, int Channel){
 		}
 
 		default:{
-			error(Translate("ProcessPunishmentOrder: Ungültiger Modus %d.\n",
-							"ProcessPunishmentOrder: Invalid Mode %d.\n"), Mode);
+			error("ProcessPunishmentOrder: %s\n", t("INVALID_MODE_D", Mode));
 			Result = "Unknown";
 			break;
 		}
@@ -579,8 +544,7 @@ static const char *GetStatementOutputChannel(int Mode, int Channel){
 void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 	// TODO(fusion): I feel this it too complex for handling a simple banishment system.
 	if(Data == NULL){
-		error(Translate("ProcessPunishmentOrder: Keine Daten übergeben.\n",
-						"ProcessPunishmentOrder: No data provided.\n"));
+		error("ProcessPunishmentOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -595,8 +559,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 		switch(Ret){
 			case 0:{
 				DirectReply(Data->GamemasterID, "Notation for player %s inserted.", Data->CriminalName);
-				Log("banish", Translate("%s notiert zu %s: %s.\n",
-										"%s noted at %s: %s.\n"), Data->GamemasterName, Data->CriminalName, Data->Comment);
+				Log("banish", "%s\n", t("NOTED_AT_S_S_S", Data->GamemasterName, Data->CriminalName, Data->Comment));
 				break;
 			}
 
@@ -621,8 +584,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 		switch(Ret){
 			case 0:{
 				DirectReply(Data->GamemasterID, "Player %s reported for renaming.", Data->CriminalName);
-				Log("banish", Translate("%s meldet %s zur Namensänderung.\n",
-										"%s reports %s for name change.\n"), Data->GamemasterName, Data->CriminalName);
+				Log("banish", "%s\n", t("REPORTS_FOR_NAME_CHANGE_S_S", Data->GamemasterName, Data->CriminalName));
 				break;
 			}
 
@@ -662,8 +624,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 					DirectReply(Data->GamemasterID, "Account of player %s banished for %d days.", Data->CriminalName, Days);
 				}
 				LogoutReply(Data->CriminalName);
-				Log("banish", Translate("%s verbannt Account von Spieler %s.\n",
-										"%s bans account of player %s.\n"), Data->GamemasterName, Data->CriminalName);
+				Log("banish", "%s\n", t("BANS_ACCOUNT_OF_PLAYER_S_S", Data->GamemasterName, Data->CriminalName));
 				break;
 			}
 
@@ -712,8 +673,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 					if(Data->Action == 6){
 						DirectReply(Data->GamemasterID, "Statement of %s reported.", Data->CriminalName);
 					}
-					Log("banish", Translate("%s meldet Äußerung von Spieler %s.\n",
-											"%s reports statement from player %s.\n"), Data->GamemasterName, Data->CriminalName);
+					Log("banish", "%s\n", t("REPORTS_STATEMENT_FROM_PLAYER_S_S", Data->GamemasterName, Data->CriminalName));
 					break;
 				}
 
@@ -734,8 +694,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 				}
 			}
 		}else{
-			error(Translate("ProcessPunishmentOrder: Statements existieren nicht.\n",
-							"ProcessPunishmentOrder: Statements do not exist.\n"));
+			error("ProcessPunishmentOrder: %s\n", t("STATEMENTS_DO_NOT_EXIST"));
 		}
 	}
 
@@ -746,8 +705,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 			case 0:{
 				DirectReply(Data->GamemasterID, "IP address of %s banished.", Data->CriminalName);
 				LogoutReply(Data->CriminalName);
-				Log("banish", Translate("%s sperrt die IP-Adresse von %s.\n",
-										"%s is blocking the IP address of %s.\n"), Data->GamemasterName, Data->CriminalName);
+				Log("banish", "%s\n", t("IS_BLOCKING_THE_IP_ADDRESS_OF_S_S", Data->GamemasterName, Data->CriminalName));
 				break;
 			}
 
@@ -771,8 +729,7 @@ void ProcessPunishmentOrder(TPunishmentOrderData *Data){
 
 void ProcessCharacterDeathOrder(TCharacterDeathOrderData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessCharacterDeathOrder: Keine Daten übergeben.\n",
-						"ProcessCharacterDeathOrder: No data provided.\n"));
+		error("ProcessCharacterDeathOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -780,8 +737,7 @@ void ProcessCharacterDeathOrder(TCharacterDeathOrderData *Data){
 			Data->Level, Data->Offender, Data->Remark, Data->Unjustified,
 			Data->Time);
 	if(Ret != 0){
-		error(Translate("ProcessCharacterDeathOrder: Protokollierung fehlgeschlagen.\n",
-						"ProcessCharacterDeathOrder: Logging failed.\n"));
+		error("ProcessCharacterDeathOrder: %s\n", t("LOGGING_FAILED"));
 	}
 
 	delete Data;
@@ -789,15 +745,13 @@ void ProcessCharacterDeathOrder(TCharacterDeathOrderData *Data){
 
 void ProcessAddBuddyOrder(TBuddyOrderData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessAddBuddyOrder: Keine Daten übergeben.\n",
-						"ProcessAddBuddyOrder: No data provided.\n"));
+		error("ProcessAddBuddyOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
 	int Ret = QueryManagerConnection->addBuddy(Data->AccountID, Data->Buddy);
 	if(Ret != 0){
-		error(Translate("ProcessAddBuddyOrder: Aufnahme fehlgeschlagen.\n",
-						"ProcessAddBuddyOrder: Adding failed.\n"));
+		error("ProcessAddBuddyOrder: %s\n", t("ADDING_FAILED"));
 	}
 
 	delete Data;
@@ -805,15 +759,13 @@ void ProcessAddBuddyOrder(TBuddyOrderData *Data){
 
 void ProcessRemoveBuddyOrder(TBuddyOrderData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessRemoveBuddyOrder: Keine Daten übergeben.\n",
-						"ProcessRemoveBuddyOrder: No data provided.\n"));
+		error("ProcessRemoveBuddyOrder: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
 	int Ret = QueryManagerConnection->removeBuddy(Data->AccountID, Data->Buddy);
 	if(Ret != 0){
-		error(Translate("ProcessRemoveBuddyOrder: Entfernen fehlgeschlagen.\n",
-						"ProcessRemoveBuddyOrder: Removing failed.\n"));
+		error("ProcessRemoveBuddyOrder: %s\n", t("REMOVING_FAILED"));
 	}
 
 	delete Data;
@@ -822,8 +774,7 @@ void ProcessRemoveBuddyOrder(TBuddyOrderData *Data){
 void ProcessDecrementIsOnlineOrder(uint32 CharacterID){
 	int Ret = QueryManagerConnection->decrementIsOnline(CharacterID);
 	if(Ret != 0){
-		error(Translate("ProcessDecrementIsOnlineOrder: Verringerung fehlgeschlagen.\n",
-						"ProcessDecrementIsOnlineOrder: Decrement failed.\n"));
+		error("ProcessDecrementIsOnlineOrder: %s\n", t("DECREMENT_FAILED"));
 	}
 }
 
@@ -883,8 +834,7 @@ int WriterThreadLoop(void *Unused){
 			}
 
 			default:{
-				error(Translate("WriterThreadLoop: Unbekanntes Kommando %d.\n",
-								"WriterThreadLoop: Unknown command %d.\n"), Order.OrderType);
+				error("WriterThreadLoop: %s\n", t("UNKNOWN_COMMAND_D", Order.OrderType));
 				break;
 			}
 		}
@@ -898,8 +848,7 @@ int WriterThreadLoop(void *Unused){
 void InsertReply(TWriterThreadReplyType ReplyType, const void *Data){
 	int Replies = (ReplyPointerWrite - ReplyPointerRead);
 	if(Replies >= NARRAY(ReplyBuffer)){
-		error(Translate("InsertReply (Writer): Puffer ist voll; Rückmeldung wird verworfen.\n",
-						"InsertReply (Writer): Buffer is full; response is discarded.\n"));
+		error("InsertReply (Writer): %s\n", t("BUFFER_IS_FULL_RESPONSE_IS_DISCARDED"));
 		return;
 	}
 
@@ -920,8 +869,7 @@ bool GetReply(TWriterThreadReply *Reply){
 
 void BroadcastReply(const char *Text, ...){
 	if(Text == NULL){
-		error(Translate("BroadcastReply: Kein Text angegeben.\n",
-						"BroadcastReply: No text specified.\n"));
+		error("BroadcastReply: %s\n", t("NO_TEXT_SPECIFIED"));
 		return;
 	}
 
@@ -941,8 +889,7 @@ void DirectReply(uint32 CharacterID, const char *Text, ...){
 	}
 
 	if(Text == NULL){
-		error(Translate("SendDirectReply: Kein Text angegeben.\n",
-						"SendDirectReply: No text specified.\n"));
+		error("SendDirectReply: %s\n", t("NO_TEXT_SPECIFIED"));
 		return;
 	}
 
@@ -970,8 +917,7 @@ void LogoutReply(const char *PlayerName){
 
 void ProcessBroadcastReply(TBroadcastReplyData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessBroadcastReply: Keine Daten übergeben.\n",
-						"ProcessBroadcastReply: No data provided.\n"));
+		error("ProcessBroadcastReply: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -982,8 +928,7 @@ void ProcessBroadcastReply(TBroadcastReplyData *Data){
 
 void ProcessDirectReply(TDirectReplyData *Data){
 	if(Data == NULL){
-		error(Translate("ProcessDirectReply: Keine Daten übergeben.\n",
-						"ProcessDirectReply: No data provided.\n"));
+		error("ProcessDirectReply: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -997,8 +942,7 @@ void ProcessDirectReply(TDirectReplyData *Data){
 
 void ProcessLogoutReply(const char *Name){
 	if(Name == NULL){
-		error(Translate("ProcessLogoutReply: Keine Daten übergeben.\n",
-						"ProcessLogoutReply: No data provided.\n"));
+		error("ProcessLogoutReply: %s\n", t("NO_DATA_PROVIDED"));
 		return;
 	}
 
@@ -1031,8 +975,7 @@ void ProcessWriterThreadReplies(void){
 			}
 
 			default:{
-				error(Translate("ProcessWriterThreadReplies: Unbekannte Rückmeldung %d.\n",
-								"ProcessWriterThreadReplies: Unknown response %d.\n"), Reply.ReplyType);
+				error("ProcessWriterThreadReplies: %s\n", t("UNKNOWN_RESPONSE_D", Reply.ReplyType));
 				break;
 			}
 		}
@@ -1045,12 +988,10 @@ void ClearPlayers(void){
 	int NumberOfAffectedPlayers;
 	int Ret = QueryManagerConnection->clearIsOnline(&NumberOfAffectedPlayers);
 	if(Ret != 0){
-		error(Translate("ClearPlayers: Kann IsOnline-Flags nicht löschen.\n",
-						"ClearPlayers: Cannot delete IsOnline flags.\n"));
+		error("ClearPlayers: %s\n", t("CANNOT_DELETE_ISONLINE_FLAGS"));
 	}else if(NumberOfAffectedPlayers != 0){
-		error(Translate("ClearPlayers: %d Spieler waren als eingeloggt markiert.\n",
-						"ClearPlayers: %d players were marked as logged in.\n"),
-				NumberOfAffectedPlayers);
+		error("ClearPlayers: %s\n", t("PLAYERS_WERE_MARKED_AS_LOGGED_IN_D",
+				NumberOfAffectedPlayers));
 	}
 }
 

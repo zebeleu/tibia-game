@@ -68,15 +68,13 @@ static void SigHupHandler(int signr){
 }
 
 static void SigAbortHandler(int signr){
-	print(1, Translate("SigAbortHandler: schalte Writer-Thread ab.\n",
-					   "SigAbortHandler: turn off writer thread.\n"));
+	print(1, "SigAbortHandler: %s\n", t("TURN_OFF_WRITER_THREAD"));
 	AbortWriter();
 }
 
 static void DefaultHandler(int signr){
-	print(1, Translate("DefaultHandler: Beende Game-Server (SigNr. %d: %s).\n",
-					   "DefaultHandler: Terminating game server (SigNr. %d: %s).\n"),
-			signr, sigdescr_np(signr));
+	print(1, "DefaultHandler: %s\n", t("TERMINATING_GAME_SERVER_SIGNR_D_S",
+			signr, sigdescr_np(signr)));
 
 	SigHandler(SIGINT, SIG_IGN);
 	SigHandler(SIGQUIT, SIG_IGN);
@@ -131,8 +129,7 @@ static void InitSignalHandler(void){
 	Count += (SigHandler(SIGWINCH, SIG_IGN) != SIG_ERR);
 	Count += (SigHandler(SIGPOLL, SIG_IGN) != SIG_ERR);
 	Count += (SigHandler(SIGPWR, DefaultHandler) != SIG_ERR);
-	print(1, Translate("InitSignalHandler: %d Signalhandler eingerichtet (Soll=%d)\n",
-					   "InitSignalHandler: %d SignalHandler configured (Target=%d)\n"), Count, 0x1c);
+	print(1, "InitSignalHandler: %s\n", t("SIGNALHANDLER_CONFIGURED_TARGET_D_D", Count, 0x1c));
 }
 
 static void ExitSignalHandler(void){
@@ -223,8 +220,7 @@ static void LockGame(void){
 void LoadWorldConfig(void){
 	TQueryManagerConnection Connection(KB(16));
 	if(!Connection.isConnected()){
-		error(Translate("LoadWorldConfig: Kann nicht zum Query-Manager verbinden.\n",
-						"LoadWorldConfig: Cannot connect to Query Manager.\n"));
+		error("LoadWorldConfig: %s\n", t("CANNOT_CONNECT_TO_QUERY_MANAGER"));
 		throw "cannot connect to querymanager";
 	}
 
@@ -235,8 +231,7 @@ void LoadWorldConfig(void){
 			&MaxPlayers, &PremiumPlayerBuffer,
 			&MaxNewbies, &PremiumNewbieBuffer);
 	if(Ret != 0){
-		error(Translate("LoadWorldConfig: Kann Konfigurationsdaten nicht holen.\n",
-						"LoadWorldConfig: Cannot retrieve configuration data.\n"));
+		error("LoadWorldConfig: %s\n", t("CANNOT_RETRIEVE_CONFIGURATION_DATA"));
 		throw "cannot load world config";
 	}
 
@@ -272,8 +267,7 @@ static void InitAll(void){
 		InitTime();
 		ApplyPatches();
 	}catch(const char *str){
-		error(Translate("Initialisierungsfehler: %s\n",
-						"Initialization error: %s\n"), str);
+		error("%s\n", t("INITIALIZATION_ERROR_S", str));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -306,12 +300,10 @@ static void ProcessCommand(void){
 			if(Buffer != NULL){
 				BroadcastMessage(TALK_ADMIN_MESSAGE, "%s", Buffer);
 			}else{
-				error(Translate("ProcessCommand: Text für Broadcast ist NULL.\n",
-								"ProcessCommand: Text for Broadcast is NULL.\n"));
+				error("ProcessCommand: %s\n", t("TEXT_FOR_BROADCAST_IS_NULL"));
 			}
 		}else{
-			error(Translate("ProcessCommand: Unbekanntes Kommando %d.\n",
-							"ProcessCommand: Unknown command %d.\n"), Command);
+			error("ProcessCommand: %s\n", t("UNKNOWN_COMMAND_D", Command));
 		}
 
 		SetCommand(0, NULL);
@@ -441,8 +433,7 @@ static void AdvanceGame(int Delay){
 	}
 
 	if(Delay > Beat){
-		Log("lag", Translate("Verzögerung %d msec.\n",
-							 "Delay %d msec.\n"), Delay);
+		Log("lag", "%s\n", t("DELAY_MSEC_D", Delay));
 	}
 
 	// TODO(fusion): Why would we delay creature movement yet another beat?
@@ -451,8 +442,7 @@ static void AdvanceGame(int Delay){
 		Lag = false;
 	}else{
 		if(!Lag && RoundNr > 10){
-			error(Translate("AdvanceGame: Keine Kreaturbewegung wegen Lag (Verzögerung: %d msec).\n",
-							"AdvanceGame: No creature movement due to lag (delay: %d msec).\n"), Delay);
+			error("AdvanceGame: %s\n", t("NO_CREATURE_MOVEMENT_DUE_TO_LAG_DELAY_MSEC_D", Delay));
 		}
 		Lag = true;
 	}
@@ -473,8 +463,7 @@ static void LaunchGame(void){
 	SigHandler(SIGUSR1, SigUsr1Handler);
 	StartGame();
 
-	print(1, Translate("LaunchGame: Game-Server ist bereit (Pid=%d, Tid=%d).\n",
-					   "LaunchGame: Game server is ready (Pid=%d, Tid=%d).\n"), getpid(), gettid());
+	print(1, "LaunchGame: %s\n", t("GAME_SERVER_IS_READY_PID_TID_D_D", getpid(), gettid()));
 
 	// IMPORTANT(fusion): In general signal handlers can execute on any thread in
 	// the process group but the design of the server is to use signals directed
@@ -566,22 +555,17 @@ int main(int argc, char **argv){
 	try{
 		LaunchGame();
 	}catch(RESULT r){
-		error(Translate("main: Nicht abgefangene Exception %d.\n",
-						"main: Uncaught exception %d.\n"), r);
+		error("main: %s\n", t("UNCAUGHT_EXCEPTION_D", r));
 	}catch(const char *str){
-		error(Translate("main: Nicht abgefangene Exception \"%s\".\n",
-						"main: Uncaught exception \"%s\".\n"), str);
+		error("main: %s\n", t("UNCAUGHT_EXCEPTION_S", str));
 	}catch(const std::exception &e){
-		error(Translate("main: Nicht abgefangene Exception %s.\n",
-						"main: Uncaught exception %s.\n"), e.what());
+		error("main: %s\n", t("UNCAUGHT_EXCEPTION_S_2", e.what()));
 	}catch(...){
-		error(Translate("main: Nicht abgefangene Exception unbekannten Typs.\n",
-						"main: Uncaught exception of unknown type.\n"));
+		error("main: %s\n", t("UNCAUGHT_EXCEPTION_OF_UNKNOWN_TYPE"));
 	}
 
 	if(!Reboot){
-		print(1, Translate("Beende Game-Server...\n",
-						   "Terminating game server...\n"));
+		print(1, "%s\n", t("TERMINATING_GAME_SERVER"));
 	}else{
 		UnlockGame();
 
@@ -589,12 +573,10 @@ int main(int argc, char **argv){
 		snprintf(FileName, sizeof(FileName), "%s/reboot-daily", BINPATH);
 		if(FileExists(FileName)){
 			ExitAll();
-			print(1, Translate("Starte Game-Server neu...\n",
-							   "Rebooting game server...\n"));
+			print(1, "%s\n", t("REBOOTING_GAME_SERVER"));
 			execv(FileName, argv);
 		}else{
-			print(1, Translate("Reboot-Skript existiert nicht.\n",
-							   "Reboot script does not exist.\n"));
+			print(1, "%s\n", t("REBOOT_SCRIPT_DOES_NOT_EXIST"));
 		}
 	}
 

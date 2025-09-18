@@ -88,8 +88,7 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 
 	TPlayerData *PlayerData = AttachPlayerPoolSlot(CharacterID, false);
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::TPlayer: PlayerData-Slot nicht gefunden.\n",
-						"TPlayer::TPlayer: PlayerData slot not found.\n"));
+		error("TPlayer::TPlayer: %s\n", t("PLAYERDATA_SLOT_NOT_FOUND"));
 		this->ConstructError = ERROR;
 		return;
 	}
@@ -161,8 +160,7 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 	}
 
 	if(PlayerData->LastLoginTime == 0 && CheckRight(CharacterID, GAMEMASTER_OUTFIT)){
-		Log("game", Translate("Gamemaster-Charakter %s loggt zum ersten Mal ein -> Level 2 setzen.\n",
-							  "Gamemaster character %s logs in for the first time -> Set level 2.\n"), this->Name);
+		Log("game", "%s\n", t("GAMEMASTER_CHARACTER_LOGS_IN_FOR_THE_FIRST_TIME_SET_LEVEL_2_S", this->Name));
 		this->Skills[SKILL_LEVEL]->Act = 2;
 		this->Skills[SKILL_LEVEL]->Exp = 100;
 		this->Skills[SKILL_LEVEL]->LastLevel = 100;
@@ -182,21 +180,18 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 
 	if(!CheckRight(CharacterID, PREMIUM_ACCOUNT)){
 		if(IsPremiumArea(this->startx, this->starty, this->startz)){
-			Log("game", Translate("Spieler %s wird aus PayArea-Stadt ausgebürgert und erhält neue Heimatstadt.\n",
-								  "Player %s is expatriated from PayArea city and receives a new home city.\n"), this->Name);
+			Log("game", "%s\n", t("PLAYER_IS_EXPATRIATED_FROM_PAYAREA_CITY_AND_RECEIVES_A_NE_936d31", this->Name));
 			GetStartPosition(&this->startx, &this->starty, &this->startz, (this->Profession == PROFESSION_NONE));
 		}
 
 		if(IsPremiumArea(this->posx, this->posy, this->posz)){
-			Log("game", Translate("Spieler %s wird aus PayArea geworfen und in seine Heimatstadt gesetzt.\n",
-								  "Player %s is kicked from PayArea and placed in his home city.\n"), this->Name);
+			Log("game", "%s\n", t("PLAYER_IS_KICKED_FROM_PAYAREA_AND_PLACED_IN_HIS_HOME_CITY_S", this->Name));
 			this->posx = this->startx;
 			this->posy = this->starty;
 			this->posz = this->startz;
 		}
 	}else{
-		Log("game", Translate("Spieler besitzt Premium Account.\n",
-							  "Player has a premium account.\n"));
+		Log("game", "%s\n", t("PLAYER_HAS_A_PREMIUM_ACCOUNT"));
 	}
 
 	this->SetOnMap();
@@ -220,8 +215,7 @@ TPlayer::TPlayer(TConnection *Connection, uint32 CharacterID):
 		SendMessage(Connection, TALK_LOGIN_MESSAGE,
 				"Your last visit in Tibia: %s.", TimeString);
 	}else if(!CheckRight(this->ID, GAMEMASTER_OUTFIT)){
-		Log("game", Translate("Spieler %s loggt zum ersten Mal ein -> Outfitwahl.\n",
-							  "Player %s logs in for the first time -> Outfit selection.\n"), this->Name);
+		Log("game", "%s\n", t("PLAYER_LOGS_IN_FOR_THE_FIRST_TIME_OUTFIT_SELECTION_S", this->Name));
 		SendMessage(Connection, TALK_LOGIN_MESSAGE,
 				"Welcome to Tibia! Please choose your outfit.");
 		SendOutfit(Connection);
@@ -243,13 +237,11 @@ TPlayer::~TPlayer(void){
 	this->SaveData();
 
 	if(!this->IsDead){
-		Log("game", Translate("Spieler %s loggt aus.\n",
-							  "Player %s is logging out.\n"), this->Name);
+		Log("game", "%s\n", t("PLAYER_IS_LOGGING_OUT_S", this->Name));
 		GraphicalEffect(this->posx, this->posy, this->posz, EFFECT_POFF);
 		this->SaveInventory();
 	}else{
-		Log("game", Translate("Spieler %s ist gestorben.\n",
-							  "Player %s has died.\n"), this->Name);
+		Log("game", "%s\n", t("PLAYER_HAS_DIED_S", this->Name));
 
 		// NOTE(fusion): This is a disaster. We're deleting inventory data here
 		// so `~TCreature` can handle dropping loot and then re-generate it with
@@ -260,12 +252,10 @@ TPlayer::~TPlayer(void){
 
 		bool ResetCharacter = false;
 		if(this->Profession != PROFESSION_NONE && this->Skills[SKILL_LEVEL]->Get() <= 5){
-			Log("game", Translate("Setze Spieler %s komplett zurück wegen Level.\n",
-								  "Resetting player %s completely due to level.\n"), this->Name);
+			Log("game", "%s\n", t("RESETTING_PLAYER_COMPLETELY_DUE_TO_LEVEL_S", this->Name));
 			ResetCharacter = true;
 		}else if(this->Skills[SKILL_HITPOINTS]->Max <= 0){
-			Log("game", Translate("Setze Spieler %s komplett zurück wegen MaxHitpoints.\n",
-								  "Resetting player %s completely due to max hit points.\n"), this->Name);
+			Log("game", "%s\n", t("RESETTING_PLAYER_COMPLETELY_DUE_TO_MAX_HIT_POINTS_S", this->Name));
 			ResetCharacter = true;
 		}
 
@@ -333,8 +323,7 @@ TPlayer::~TPlayer(void){
 
 void TPlayer::Death(void){
 	if(CheckRight(this->ID, INVULNERABLE)){
-		error(Translate("TPlayer::Death: Aha, so geht das aber nicht!! Goetter kann man nicht toeten!!\n",
-						"TPlayer::Death: Aha, that's not how it works!! You can't kill gods!!\n"));
+		error("TPlayer::Death: %s\n", t("AHA_THAT_S_NOT_HOW_IT_WORKS_YOU_CAN_T_KILL_GODS"));
 		this->Skills[SKILL_HITPOINTS]->SetMax();
 		return;
 	}
@@ -485,8 +474,7 @@ void TPlayer::ClearConnection(void){
 void TPlayer::LoadData(void){
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::LoadData: PlayerData ist NULL.\n",
-						"TPlayer::LoadData: PlayerData is NULL.\n"));
+		error("TPlayer::LoadData: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -568,8 +556,7 @@ void TPlayer::LoadData(void){
 void TPlayer::SaveData(void){
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::SaveData: PlayerData ist NULL.\n",
-						"TPlayer::SaveData: PlayerData is NULL.\n"));
+		error("TPlayer::SaveData: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -638,8 +625,7 @@ void TPlayer::SaveData(void){
 void TPlayer::LoadInventory(bool SetStandardInventory){
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::LoadInventory: PlayerData ist NULL.\n",
-						"TPlayer::LoadInventory: PlayerData is NULL.\n"));
+		error("TPlayer::LoadInventory: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -659,10 +645,8 @@ void TPlayer::LoadInventory(bool SetStandardInventory){
 				}
 			}
 		}catch(const char *str){
-			error(Translate("TPlayer::LoadInventory: Kann Inventory von Spieler %s nicht lesen.\n",
-							"TPlayer::LoadInventory: Cannot read inventory of player %s.\n"), this->Name);
-			error(Translate("# Fehler: %s\n",
-							"# Error: %s\n"), str);
+			error("TPlayer::LoadInventory: %s\n", t("CANNOT_READ_INVENTORY_OF_PLAYER_S", this->Name));
+			error("%s\n", t("ERROR_S", str));
 		}
 	}else if(SetStandardInventory
 			&& this->Profession == PROFESSION_NONE
@@ -684,8 +668,7 @@ void TPlayer::LoadInventory(bool SetStandardInventory){
 								GetSpecialObject(DEFAULT_CONTAINER), 0);
 			Create(Bag, GetSpecialObject(DEFAULT_FOOD), 1);
 		}catch(RESULT r){
-			error(Translate("TPlayer::LoadInventory: Exception %d beim Erstellen des Standard-Inventorys.\n",
-							"TPlayer::LoadInventory: Exception %d while creating the standard inventory.\n"), r);
+			error("TPlayer::LoadInventory: %s\n", t("EXCEPTION_WHILE_CREATING_THE_STANDARD_INVENTORY_D", r));
 		}
 	}
 }
@@ -693,8 +676,7 @@ void TPlayer::LoadInventory(bool SetStandardInventory){
 void TPlayer::SaveInventory(void){
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::SaveInventory: PlayerData ist NULL.\n",
-						"TPlayer::SaveInventory: PlayerData is NULL.\n"));
+		error("TPlayer::SaveInventory: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -727,10 +709,8 @@ void TPlayer::SaveInventory(void){
 			memcpy(PlayerData->Inventory, HelpBuffer.Data, InventorySize);
 		}
 	}catch(const char *str){
-		error(Translate("TPlayer::SaveInventory: Kann Inventory von Spieler %s nicht schreiben.\n",
-						"TPlayer::SaveInventory: Cannot write inventory of player %s.\n"), this->Name);
-		error(Translate("# Fehler: %s\n",
-						"# Error: %s\n"), str);
+		error("TPlayer::SaveInventory: %s\n", t("CANNOT_WRITE_INVENTORY_OF_PLAYER_S", this->Name));
+		error("%s\n", t("ERROR_S", str));
 	}
 }
 
@@ -739,8 +719,7 @@ void TPlayer::StartCoordinates(void){
 }
 
 void TPlayer::TakeOver(TConnection *Connection){
-	Log("game", Translate("Spieler %s übernimmt Verbindung.\n",
-						  "Player %s takes over connection.\n"), this->Name);
+	Log("game", "%s\n", t("PLAYER_TAKES_OVER_CONNECTION_S", this->Name));
 
 	this->LoggingOut = false;
 	this->LogoutAllowed = false;
@@ -749,21 +728,18 @@ void TPlayer::TakeOver(TConnection *Connection){
 
 	TPlayerData *PlayerData = GetPlayerPoolSlot(this->ID);
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::TakeOver: PlayerData-Slot nicht gefunden.\n",
-						"TPlayer::TakeOver: PlayerData slot not found.\n"));
+		error("TPlayer::TakeOver: %s\n", t("PLAYERDATA_SLOT_NOT_FOUND"));
 		return;
 	}
 
 	if(PlayerData->Locked != gettid()){
-		error(Translate("TPlayer::TakeOver: PlayerData-Slot ist nicht korrekt gesperrt (%d).\n",
-						"TPlayer::TakeOver: PlayerData slot is not properly locked (%d).\n"), PlayerData->Locked);
+		error("TPlayer::TakeOver: %s\n", t("PLAYERDATA_SLOT_IS_NOT_PROPERLY_LOCKED_D", PlayerData->Locked));
 	}
 
 	if(PlayerData->Sticky > 1){
 		DecreasePlayerPoolSlotSticky(PlayerData);
 	}else{
-		error(Translate("TPlayer::TakeOver: Falscher Sticky-Wert %d.\n",
-						"TPlayer::TakeOver: Incorrect sticky value %d.\n"), PlayerData->Sticky);
+		error("TPlayer::TakeOver: %s\n", t("INCORRECT_STICKY_VALUE_D", PlayerData->Sticky));
 	}
 
 	strcpy(this->Name, PlayerData->Name);
@@ -800,14 +776,12 @@ void TPlayer::TakeOver(TConnection *Connection){
 
 void TPlayer::SetOpenContainer(int ContainerNr, Object Con){
 	if(ContainerNr < 0 || ContainerNr >= NARRAY(this->OpenContainer)){
-		error(Translate("TPlayer::SetOpenContainer: Ungültige Fensternummer %d.\n",
-						"TPlayer::SetOpenContainer: Invalid window number %d.\n"), ContainerNr);
+		error("TPlayer::SetOpenContainer: %s\n", t("INVALID_WINDOW_NUMBER_D", ContainerNr));
 		return;
 	}
 
 	if(Con != NONE && (!Con.exists() || !Con.getObjectType().getFlag(CONTAINER))){
-		error(Translate("TPlayer::SetOpenContainer: Container existiert nicht.\n",
-						"TPlayer::SetOpenContainer: Container does not exist.\n"));
+		error("TPlayer::SetOpenContainer: %s\n", t("CONTAINER_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -816,8 +790,7 @@ void TPlayer::SetOpenContainer(int ContainerNr, Object Con){
 
 Object TPlayer::GetOpenContainer(int ContainerNr){
 	if(ContainerNr < 0 || ContainerNr >= NARRAY(this->OpenContainer)){
-		error(Translate("TPlayer::GetOpenContainer: Ungültige Fensternummer %d.\n",
-						"TPlayer::GetOpenContainer: Invalid window number %d.\n"), ContainerNr);
+		error("TPlayer::GetOpenContainer: %s\n", t("INVALID_WINDOW_NUMBER_D", ContainerNr));
 		return NONE;
 	}
 
@@ -916,8 +889,7 @@ void TPlayer::AcceptTrade(void){
 			if(!CheckRight(Player[Other]->ID, UNLIMITED_CAPACITY)){
 				TSkill *CarryStrength = Player[Other]->Skills[SKILL_CARRY_STRENGTH];
 				if(CarryStrength == NULL){
-					error(Translate("TPlayer::AcceptTrade: Skill CARRYSTRENGTH existiert nicht.\n",
-									"TPlayer::AcceptTrade: Skill CARRYSTRENGTH does not exist.\n"));
+					error("TPlayer::AcceptTrade: %s\n", t("SKILL_CARRYSTRENGTH_DOES_NOT_EXIST"));
 					throw ERROR;
 				}
 
@@ -1041,14 +1013,12 @@ void TPlayer::ClearProfession(void){
 void TPlayer::SetProfession(uint8 Profession){
 	if(Profession == PROFESSION_PROMOTION){
 		if(this->Profession == PROFESSION_NONE){
-			error(Translate("TPlayer::SetProfession: Spieler hat noch keinen Beruf für Veredelung.\n",
-							"TPlayer::SetProfession: Player does not yet have a profession for refining.\n"));
+			error("TPlayer::SetProfession: %s\n", t("PLAYER_DOES_NOT_YET_HAVE_A_PROFESSION_FOR_REFINING"));
 			return;
 		}
 
 		if(this->Profession >= PROFESSION_PROMOTION){
-			error(Translate("TPlayer::SetProfession: Spieler hat seinen Beruf schon veredelt.\n",
-							"TPlayer::SetProfession: Player has already refined his profession.\n"));
+			error("TPlayer::SetProfession: %s\n", t("PLAYER_HAS_ALREADY_REFINED_HIS_PROFESSION"));
 			return;
 		}
 
@@ -1073,8 +1043,7 @@ void TPlayer::SetProfession(uint8 Profession){
 	}
 
 	if(this->Profession != PROFESSION_NONE){
-		error(Translate("TPlayer::SetProfession: Player '%s' hat bereits einen Beruf!\n",
-						"TPlayer::SetProfession: Player '%s' already has a profession!\n"), this->Name);
+		error("TPlayer::SetProfession: %s\n", t("PLAYER_ALREADY_HAS_A_PROFESSION_S", this->Name));
 		return;
 	}
 
@@ -1123,8 +1092,7 @@ void TPlayer::SetProfession(uint8 Profession){
 		this->Skills[SKILL_AXE           ]->ChangeSkill(1800, 50);
 		this->Skills[SKILL_FIST          ]->ChangeSkill(1500, 50);
 	}else{
-		error(Translate("TPlayer::SetProfession: Beruf %d existiert nicht!\n",
-						"TPlayer::SetProfession: Profession %d does not exist!\n"), Profession);
+		error("TPlayer::SetProfession: %s\n", t("PROFESSION_DOES_NOT_EXIST_D", Profession));
 		return;
 	}
 
@@ -1162,8 +1130,7 @@ bool TPlayer::GetActivePromotion(void){
 
 bool TPlayer::SpellKnown(int SpellNr){
 	if(SpellNr < 0 || SpellNr >= NARRAY(this->SpellList)){
-		error(Translate("TPlayer::SpellKnown: Ungültige Spruchnummer %d.\n",
-						"TPlayer::SpellKnown: Invalid quote number %d.\n"), SpellNr);
+		error("TPlayer::SpellKnown: %s\n", t("INVALID_QUOTE_NUMBER_D", SpellNr));
 		return false;
 	}
 
@@ -1172,14 +1139,12 @@ bool TPlayer::SpellKnown(int SpellNr){
 
 void TPlayer::LearnSpell(int SpellNr){
 	if(SpellNr < 0 || SpellNr >= NARRAY(this->SpellList)){
-		error(Translate("TPlayer::LearnSpell: Ungültige Spruchnummer %d.\n",
-						"TPlayer::LearnSpell: Invalid quote number %d.\n"), SpellNr);
+		error("TPlayer::LearnSpell: %s\n", t("INVALID_QUOTE_NUMBER_D", SpellNr));
 		return;
 	}
 
 	if(this->SpellList[SpellNr] != 0){
-		error(Translate("TPlayer::LearnSpell: Der Spieler kennt den Spruch schon.\n",
-						"TPlayer::LearnSpell: The player already knows the saying.\n"));
+		error("TPlayer::LearnSpell: %s\n", t("THE_PLAYER_ALREADY_KNOWS_THE_SAYING"));
 		return;
 	}
 
@@ -1188,27 +1153,21 @@ void TPlayer::LearnSpell(int SpellNr){
 
 int TPlayer::GetQuestValue(int QuestNr){
 	if(QuestNr < 0 || QuestNr >= NARRAY(this->QuestValues)){
-		error(Translate("TPlayer::GetQuestValue: Ungültige Nummer %d.\n",
-						"TPlayer::GetQuestValue: Invalid number %d.\n"), QuestNr);
+		error("TPlayer::GetQuestValue: %s\n", t("INVALID_NUMBER_D", QuestNr));
 		return 0;
 	}
 
-	print(3, Translate("Wert der Questvariablen %d von %s: %d.\n",
-					   "Value of quest variable %d of %s: %d.\n"),
-			QuestNr, this->Name, this->QuestValues[QuestNr]);
+	print(3, "%s\n", t("VALUE_OF_QUEST_VARIABLE_OF_D_S_D", QuestNr, this->Name, this->QuestValues[QuestNr]));
 	return this->QuestValues[QuestNr];
 }
 
 void TPlayer::SetQuestValue(int QuestNr, int Value){
 	if(QuestNr < 0 || QuestNr >= NARRAY(this->QuestValues)){
-		error(Translate("TPlayer::SetQuestValue: Ungültige Nummer %d.\n",
-						"TPlayer::SetQuestValue: Invalid number %d.\n"), QuestNr);
+		error("TPlayer::SetQuestValue: %s\n", t("INVALID_NUMBER_D", QuestNr));
 		return;
 	}
 
-	print(3, Translate("Neuer Wert für Questvariable %d von %s: %d.\n",
-					   "New value for quest variable %d of %s: %d.\n"),
-			QuestNr, this->Name, Value);
+	print(3, "%s\n", t("NEW_VALUE_FOR_QUEST_VARIABLE_OF_D_S_D", QuestNr, this->Name, Value));
 	this->QuestValues[QuestNr] = Value;
 }
 
@@ -1295,15 +1254,13 @@ void TPlayer::CheckState(void){
 
 void TPlayer::AddBuddy(const char *Name){
 	if(Name == NULL){
-		error(Translate("TPlayer::AddBuddy: Name ist NULL.\n",
-						"TPlayer::AddBuddy: Name is NULL.\n"));
+		error("TPlayer::AddBuddy: %s\n", t("NAME_IS_NULL"));
 		return;
 	}
 
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::AddBuddy: PlayerData ist NULL.\n",
-						"TPlayer::AddBuddy: PlayerData is NULL.\n"));
+		error("TPlayer::AddBuddy: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -1360,8 +1317,7 @@ void TPlayer::AddBuddy(const char *Name){
 void TPlayer::RemoveBuddy(uint32 CharacterID){
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::RemoveBuddy: PlayerData ist NULL.\n",
-						"TPlayer::RemoveBuddy: PlayerData is NULL.\n"));
+		error("TPlayer::RemoveBuddy: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -1385,8 +1341,7 @@ void TPlayer::RemoveBuddy(uint32 CharacterID){
 void TPlayer::SendBuddies(void){
 	TPlayerData *PlayerData = this->PlayerData;
 	if(PlayerData == NULL){
-		error(Translate("TPlayer::SendBuddies: PlayerData ist NULL.\n",
-						"TPlayer::SendBuddies: PlayerData is NULL.\n"));
+		error("TPlayer::SendBuddies: %s\n", t("PLAYERDATA_IS_NULL"));
 		return;
 	}
 
@@ -1416,14 +1371,12 @@ void TPlayer::Regenerate(void){
 	}
 
 	if(Bed == NONE){
-		error(Translate("TPlayer::Regenerate: Bett nicht gefunden.\n",
-						"TPlayer::Regenerate: Bed not found.\n"));
+		error("TPlayer::Regenerate: %s\n", t("BED_NOT_FOUND"));
 		return;
 	}
 
 	if(!Bed.getObjectType().getFlag(TEXT)){
-		error(Translate("TPlayer::Regenerate: Bett trägt keinen Text.\n",
-						"TPlayer::Regenerate: Bed has no text.\n"));
+		error("TPlayer::Regenerate: %s\n", t("BED_HAS_NO_TEXT"));
 		return;
 	}
 
@@ -1452,8 +1405,7 @@ void TPlayer::Regenerate(void){
 	try{
 		UseObjects(0, Bed, Bed);
 	}catch(RESULT r){
-		error(Translate("TPlayer::Regenerate: Exception %d beim Aufräumen des Bettes.\n",
-						"TPlayer::Regenerate: Exception %d while making the bed.\n"), r);
+		error("TPlayer::Regenerate: %s\n", t("EXCEPTION_WHILE_MAKING_THE_BED_D", r));
 	}
 }
 
@@ -1484,8 +1436,7 @@ bool TPlayer::IsAggressor(bool CheckFormer){
 bool TPlayer::IsAttackJustified(uint32 VictimID){
 	TPlayer *Victim = GetPlayer(VictimID);
 	if(Victim == NULL){
-		error(Translate("TPlayer::IsAttackJustified: Opfer existiert nicht.\n",
-						"TPlayer::IsAttackJustified: Victim does not exist.\n"));
+		error("TPlayer::IsAttackJustified: %s\n", t("VICTIM_DOES_NOT_EXIST"));
 		return true;
 	}
 
@@ -1513,8 +1464,7 @@ void TPlayer::RecordAttack(uint32 VictimID){
 
 	TPlayer *Victim = GetPlayer(VictimID);
 	if(Victim == NULL){
-		error(Translate("TPlayer::RecordAttack: Opfer existiert nicht.\n",
-						"TPlayer::RecordAttack: Victim does not exist.\n"));
+		error("TPlayer::RecordAttack: %s\n", t("VICTIM_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -1523,8 +1473,7 @@ void TPlayer::RecordAttack(uint32 VictimID){
 			&& !this->IsAttacker(VictimID, false)){
 		*this->AttackedPlayers.at(this->NumberOfAttackedPlayers) = VictimID;
 		this->NumberOfAttackedPlayers += 1;
-		print(3, Translate("Spieler %s ist Angreifer für Spieler %s.\n",
-						   "Player %s is attacker for player %s.\n"), this->Name, Victim->Name);
+		print(3, "%s\n", t("PLAYER_IS_ATTACKER_FOR_PLAYER_S_S", this->Name, Victim->Name));
 		if(Victim->Connection != NULL
 		&& Victim->Connection->KnownCreature(this->ID, false) == KNOWNCREATURE_UPTODATE){
 			SendCreatureSkull(Victim->Connection, this->ID);
@@ -1533,8 +1482,7 @@ void TPlayer::RecordAttack(uint32 VictimID){
 
 	if(!this->IsAttackJustified(VictimID) && !this->Aggressor){
 		this->Aggressor = true;
-		print(3, Translate("Spieler %s ist Aggressor.\n",
-							"Player %s is aggressor.\n"), this->Name);
+		print(3, "%s\n", t("PLAYER_IS_AGGRESSOR_S", this->Name));
 		AnnounceChangedCreature(this->ID, CREATURE_SKULL_CHANGED);
 	}
 }
@@ -1547,13 +1495,11 @@ void TPlayer::RecordMurder(uint32 VictimID){
 
 	TPlayer *Victim = GetPlayer(VictimID);
 	if(Victim == NULL){
-		error(Translate("TPlayer::RecordMurder: Opfer existiert nicht.\n",
-						"TPlayer::RecordMurder: Victim does not exist.\n"));
+		error("TPlayer::RecordMurder: %s\n", t("VICTIM_DOES_NOT_EXIST"));
 		return;
 	}
 
-	print(3, Translate("Ungerechtfertigter Mord von %s an %s.\n",
-					   "Unjustified murder of %s by %s.\n"), this->Name, Victim->Name);
+	print(3, "%s\n", t("UNJUSTIFIED_MURDER_OF_BY_S_S", this->Name, Victim->Name));
 
 	int Now = (int)time(NULL);
 
@@ -1573,8 +1519,7 @@ void TPlayer::RecordMurder(uint32 VictimID){
 		int OldPlayerkillerEnd = PlayerData->PlayerkillerEnd;
 		PlayerData->PlayerkillerEnd = Now + 2592000; // 30 days
 		if(OldPlayerkillerEnd == 0){
-			print(3, Translate("Spieler %s ist Playerkiller.\n",
-							   "Player %s is Playerkiller.\n"), this->Name);
+			print(3, "%s\n", t("PLAYER_IS_PLAYERKILLER_S", this->Name));
 			AnnounceChangedCreature(this->ID, CREATURE_SKULL_CHANGED);
 		}
 
@@ -1662,8 +1607,7 @@ void TPlayer::ClearAttacker(uint32 VictimID){
 }
 
 void TPlayer::ClearPlayerkillingMarks(void){
-	print(3, Translate("Lösche Markierungen von Spieler %s.\n",
-					   "Deleting tags from player %s.\n"), this->Name);
+	print(3, "%s\n", t("DELETING_TAGS_FROM_PLAYER_S", this->Name));
 
 	for(int i = 0; i < this->NumberOfAttackedPlayers; i += 1){
 		*this->FormerAttackedPlayers.at(i) = *this->AttackedPlayers.at(i);
@@ -1676,15 +1620,13 @@ void TPlayer::ClearPlayerkillingMarks(void){
 
 	if(this->Aggressor){
 		this->Aggressor = false;
-		print(3, Translate("Spieler %s ist kein Aggressor mehr.\n",
-						   "Player %s is no longer an aggressor.\n"), this->Name);
+		print(3, "%s\n", t("PLAYER_IS_NO_LONGER_AN_AGGRESSOR_S", this->Name));
 		AnnounceChangedCreature(this->ID, CREATURE_SKULL_CHANGED);
 	}else{
 		for(int i = 0; i < this->NumberOfFormerAttackedPlayers; i += 1){
 			TPlayer *Victim = GetPlayer(*this->FormerAttackedPlayers.at(i));
 			if(Victim != NULL){
-				print(3, Translate("Spieler %s ist kein Angreifer mehr für Spieler %s.\n",
-								   "Player %s is no longer an attacker for player %s.\n"), this->Name, Victim->Name);
+				print(3, "%s\n", t("PLAYER_IS_NO_LONGER_AN_ATTACKER_FOR_PLAYER_S_S", this->Name, Victim->Name));
 				if(Victim->Connection != NULL
 				&& Victim->Connection->KnownCreature(this->ID, false) == KNOWNCREATURE_UPTODATE){
 					SendCreatureSkull(Victim->Connection, this->ID);
@@ -1698,8 +1640,7 @@ void TPlayer::ClearPlayerkillingMarks(void){
 		if(Player != NULL){
 			Player->ClearAttacker(this->ID);
 		}else{
-			error(Translate("TPlayer::ClearPlayerkillingMarks: Spieler %d existiert nicht.\n",
-							"TPlayer::ClearPlayerkillingMarks: Player %d does not exist.\n"), i);
+			error("TPlayer::ClearPlayerkillingMarks: %s\n", t("PLAYER_DOES_NOT_EXIST_D", i));
 		}
 	}
 }
@@ -1707,8 +1648,7 @@ void TPlayer::ClearPlayerkillingMarks(void){
 int TPlayer::GetPlayerkillingMark(TPlayer *Observer){
 	if(WorldType == NORMAL){
 		if(Observer == NULL){
-			error(Translate("TPlayer::GetPlayerkillingMark: Beobachter existiert nicht.\n",
-							"TPlayer::GetPlayerkillingMark: Observer does not exist.\n"));
+			error("TPlayer::GetPlayerkillingMark: %s\n", t("OBSERVER_DOES_NOT_EXIST"));
 			return SKULL_NONE;
 		}
 
@@ -1762,8 +1702,7 @@ void TPlayer::LeaveParty(void){
 
 int TPlayer::GetPartyMark(TPlayer *Observer){
 	if(Observer == NULL){
-		error(Translate("TPlayer::GetPartyMark: Beobachter existiert nicht.\n",
-						"TPlayer::GetPartyMark: Observer does not exist.\n"));
+		error("TPlayer::GetPartyMark: %s\n", t("OBSERVER_DOES_NOT_EXIST"));
 		return PARTY_SHIELD_NONE;
 	}
 
@@ -1847,8 +1786,7 @@ int GetNumberOfPlayers(void){
 TPlayer *GetPlayer(uint32 CharacterID){
 	TCreature *Creature = GetCreature(CharacterID);
 	if(Creature != NULL && Creature->Type != PLAYER){
-		error(Translate("GetPlayer: Kreatur ist kein Spieler.\n",
-						"GetPlayer: Creature is not a player.\n"));
+		error("GetPlayer: %s\n", t("CREATURE_IS_NOT_A_PLAYER"));
 		Creature = NULL;
 	}
 	return (TPlayer*)Creature;
@@ -1877,14 +1815,12 @@ bool IsPlayerOnline(const char *Name){
 
 int IdentifyPlayer(const char *Name, bool ExactMatch, bool IgnoreGamemasters, TPlayer **OutPlayer){
 	if(Name == NULL){
-		error(Translate("IdentifyPlayer: Name ist NULL.\n",
-						"IdentifyPlayer: Name is NULL.\n"));
+		error("IdentifyPlayer: %s\n", t("NAME_IS_NULL"));
 		return -1; // NOTFOUND ?
 	}
 
 	if(Name[0] == 0){
-		error(Translate("IdentifyPlayer: Name ist leer.\n",
-						"IdentifyPlayer: Name is empty.\n"));
+		error("IdentifyPlayer: %s\n", t("NAME_IS_EMPTY"));
 		return -1; // NOTFOUND ?
 	}
 
@@ -1925,16 +1861,14 @@ int IdentifyPlayer(const char *Name, bool ExactMatch, bool IgnoreGamemasters, TP
 }
 
 void LogoutAllPlayers(void){
-	print(1, Translate("LogoutAllPlayers: Werde alle Spieler ausloggen!\n",
-					   "LogoutAllPlayers: Will log out all players!\n"));
+	print(1, "LogoutAllPlayers: %s\n", t("WILL_LOG_OUT_ALL_PLAYERS"));
 	for(int Index = 0; Index < FirstFreePlayer; Index += 1){
 		TPlayer *Player = *PlayerList.at(Index);
 
 		// TODO(fusion): Should we be checking if `Player` is NULL, because
 		// `GetPlayer` and `IdentifyPlayer` do not.
 		if(Player == NULL){
-			error(Translate("LogoutAllPlayers: Eintrag %d in der Playerlist ist NULL.\n",
-							"LogoutAllPlayers: Entry %d in the PlayerList is NULL.\n"), Index);
+			error("LogoutAllPlayers: %s\n", t("ENTRY_IN_THE_PLAYERLIST_IS_NULL_D", Index));
 			continue;
 		}
 
@@ -1950,8 +1884,7 @@ void CloseProcessedRequests(uint32 CharacterID){
 	for(int Index = 0; Index < FirstFreePlayer; Index += 1){
 		TPlayer *Player = *PlayerList.at(Index);
 		if(Player == NULL){
-			error(Translate("CloseProcessedRequests: Spieler %d existiert nicht.\n",
-							"CloseProcessedRequests: Player %d does not exist.\n"), Index);
+			error("CloseProcessedRequests: %s\n", t("PLAYER_DOES_NOT_EXIST_D", Index));
 			continue;
 		}
 
@@ -1964,8 +1897,7 @@ void CloseProcessedRequests(uint32 CharacterID){
 
 void NotifyBuddies(uint32 CharacterID, const char *Name, bool Login){
 	if(Name == NULL || Name[0] == 0){
-		error(Translate("NotifyBuddies: Name existiert nicht.\n",
-						"NotifyBuddies: Name does not exist.\n"));
+		error("NotifyBuddies: %s\n", t("NAME_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2038,26 +1970,22 @@ void PrintPlayerPositions(void){
 
 void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	if(PlayerData == NULL){
-		error(Translate("LoadDepot: PlayerData ist NULL.\n",
-						"LoadDepot: PlayerData is NULL.\n"));
+		error("LoadDepot: %s\n", t("PLAYERDATA_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(!Con.exists()){
-		error(Translate("LoadDepot: Übergebener Container existiert nicht.\n",
-						"LoadDepot: Transferred container does not exist.\n"));
+		error("LoadDepot: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
 	if(!Con.getObjectType().getFlag(CONTAINER)){
-		error(Translate("LoadDepot: Übergebenes Objekt ist kein Container.\n",
-						"LoadDepot: Passed object is not a Container.\n"));
+		error("LoadDepot: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER"));
 		throw ERROR;
 	}
 
 	if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
-		error(Translate("LoadDepot: Ungültige Depotnummer %d.\n",
-						"LoadDepot: Invalid DepotNummer %d.\n"), DepotNr);
+		error("LoadDepot: %s\n", t("INVALID_DEPOTNUMMER_D", DepotNr));
 		throw ERROR;
 	}
 
@@ -2070,8 +1998,7 @@ void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 					PlayerData->DepotSize[DepotNr]);
 			LoadObjects(&ReadBuffer, Con);
 		}catch(const char *str){
-			error(Translate("LoadDepot: Kann Depot nicht lesen (%s).\n",
-							"LoadDepot: Cannot read depot (%s).\n"), str);
+			error("LoadDepot: %s\n", t("CANNOT_READ_DEPOT_S", str));
 			throw ERROR;
 		}
 	}
@@ -2079,26 +2006,22 @@ void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 
 void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	if(PlayerData == NULL){
-		error(Translate("SaveDepot: PlayerData ist NULL.\n",
-						"SaveDepot: PlayerData is NULL.\n"));
+		error("SaveDepot: %s\n", t("PLAYERDATA_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(!Con.exists()){
-		error(Translate("SaveDepot: Übergebener Container existiert nicht.\n",
-						"SaveDepot: Transferred container does not exist.\n"));
+		error("SaveDepot: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
 	if(!Con.getObjectType().getFlag(CONTAINER)){
-		error(Translate("SaveDepot: Übergebenes Objekt ist kein Container.\n",
-						"SaveDepot: Passed object is not a Container.\n"));
+		error("SaveDepot: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER"));
 		throw ERROR;
 	}
 
 	if(DepotNr < 0 || DepotNr >= MAX_DEPOTS){
-		error(Translate("SaveDepot: Ungültige Depotnummer %d.\n",
-						"SaveDepot: Invalid DepotNummer %d.\n"), DepotNr);
+		error("SaveDepot: %s\n", t("INVALID_DEPOTNUMMER_D", DepotNr));
 		throw ERROR;
 	}
 
@@ -2118,8 +2041,7 @@ void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 			memcpy(PlayerData->Depot[DepotNr], HelpBuffer.Data, DepotSize);
 		}
 	}catch(const char *str){
-		error(Translate("SaveDepot: Kann Depot nicht schreiben (%s).\n",
-						"SaveDepot: Cannot write depot (%s).\n"), str);
+		error("SaveDepot: %s\n", t("CANNOT_WRITE_DEPOT_S", str));
 		PlayerData->Depot[DepotNr] = NULL;
 		PlayerData->DepotSize[DepotNr] = 0;
 	}
@@ -2158,8 +2080,7 @@ void GetProfessionName(char *Buffer, int Profession, bool Article, bool Capitals
 
 void SendExistingRequests(TConnection *Connection){
 	if(Connection == NULL){
-		error(Translate("SendExistingRequests: Verbindung ist NULL.\n",
-						"SendExistingRequests: Connection is NULL.\n"));
+		error("SendExistingRequests: %s\n", t("CONNECTION_IS_NULL"));
 		return;
 	}
 
@@ -2171,8 +2092,7 @@ void SendExistingRequests(TConnection *Connection){
 	for(int Index = 0; Index < FirstFreePlayer; Index += 1){
 		TPlayer *Player = *PlayerList.at(Index);
 		if(Player == NULL){
-			error(Translate("SendExistingRequests: Spieler %d existiert nicht.\n",
-							"SendExistingRequests: Player %d does not exist.\n"), Index);
+			error("SendExistingRequests: %s\n", t("PLAYER_DOES_NOT_EXIST_D", Index));
 			continue;
 		}
 
@@ -2216,14 +2136,12 @@ bool PlayerDataExists(uint32 CharacterID){
 
 bool LoadPlayerData(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("LoadPlayerData: Slot ist NULL.\n",
-						"LoadPlayerData: Slot is NULL.\n"));
+		error("LoadPlayerData: %s\n", t("SLOT_IS_NULL"));
 		return false;
 	}
 
 	if(Slot->CharacterID == 0){
-		error(Translate("LoadPlayerData: Slot enthält keinen Charakter.\n",
-						"LoadPlayerData: Slot contains no character.\n"));
+		error("LoadPlayerData: %s\n", t("SLOT_CONTAINS_NO_CHARACTER"));
 		return false;
 	}
 
@@ -2465,15 +2383,10 @@ bool LoadPlayerData(TPlayerData *Slot){
 		Script.close();
 		Result = true;
 	}catch(const char *str){
-		error(Translate("LoadPlayerData: Kann Gegenstände des Spielers %u nicht laden.\n",
-						"LoadPlayerData: Cannot load player's items %and.\n"),
-				Slot->CharacterID);
-		error(Translate("# Fehler: %s\n",
-						"# Error: %s\n"), str);
+		error("LoadPlayerData: %s\n", t("CANNOT_LOAD_PLAYER_S_ITEMS_AND", Slot->CharacterID));
+		error("%s\n", t("ERROR_S", str));
 	}catch(const std::bad_alloc &e){
-		error(Translate("LoadPlayerData: Kein Speicher frei beim Laden von Spieler %u.\n",
-						"LoadPlayerData: No memory free while loading player %u.\n"),
-				Slot->CharacterID);
+		error("LoadPlayerData: %s\n", t("NO_MEMORY_FREE_WHILE_LOADING_PLAYER_U", Slot->CharacterID));
 	}
 
 	if(!Result){
@@ -2493,14 +2406,12 @@ bool LoadPlayerData(TPlayerData *Slot){
 
 void SavePlayerData(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("SavePlayerData: Slot ist NULL.\n",
-						"SavePlayerData: Slot is NULL.\n"));
+		error("SavePlayerData: %s\n", t("SLOT_IS_NULL"));
 		return;
 	}
 
 	if(Slot->CharacterID == 0){
-		error(Translate("SavePlayerData: Slot enthält keinen Charakter.\n",
-						"SavePlayerData: Slot contains no character.\n"));
+		error("SavePlayerData: %s\n", t("SLOT_CONTAINS_NO_CHARACTER"));
 		return;
 	}
 
@@ -2699,10 +2610,8 @@ void SavePlayerData(TPlayerData *Slot){
 		Script.close();
 
 	}catch(const char *str){
-		error(Translate("SavePlayerData: Kann Gegenstände des Spielers %u nicht schreiben.\n",
-						"SavePlayerData: Cannot write items belonging to player %u.\n"), Slot->CharacterID);
-		error(Translate("# Fehler: %s\n",
-						"# Error: %s\n"), str);
+		error("SavePlayerData: %s\n", t("CANNOT_WRITE_ITEMS_BELONGING_TO_PLAYER_U", Slot->CharacterID));
+		error("%s\n", t("ERROR_S", str));
 		unlink(FileName);
 	}
 }
@@ -2717,8 +2626,7 @@ void UnlinkPlayerData(uint32 CharacterID){
 // =============================================================================
 void SavePlayerPoolSlot(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("SavePlayerPoolSlot: Slot existiert nicht.\n",
-						"SavePlayerPoolSlot: Slot does not exist.\n"));
+		error("SavePlayerPoolSlot: %s\n", t("SLOT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2730,26 +2638,22 @@ void SavePlayerPoolSlot(TPlayerData *Slot){
 
 void FreePlayerPoolSlot(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("FreePlayerPoolSlot: Slot ist NULL.\n",
-						"FreePlayerPoolSlot: Slot is NULL.\n"));
+		error("FreePlayerPoolSlot: %s\n", t("SLOT_IS_NULL"));
 		return;
 	}
 
-	print(3, Translate("Gebe Slot von Charakter %u frei.\n",
-					   "Freeing slot of character %u.\n"), Slot->CharacterID);
+	print(3, "%s\n", t("FREEING_SLOT_OF_CHARACTER_U", Slot->CharacterID));
 	if(Slot->CharacterID == 0){
 		return;
 	}
 
 	if(Slot->Sticky > 0){
-		error(Translate("FreePlayerPoolSlot: Slot wird noch benötigt; darf nicht freigegeben werden.\n",
-						"FreePlayerPoolSlot: Slot is still required; may not be released.\n"));
+		error("FreePlayerPoolSlot: %s\n", t("SLOT_IS_STILL_REQUIRED_MAY_NOT_BE_RELEASED"));
 		return;
 	}
 
 	if(Slot->Locked != 0 && Slot->Locked != gettid()){
-		error(Translate("FreePlayerPoolSlot: Slot ist von einem anderen Thread gesperrt.\n",
-						"FreePlayerPoolSlot: Slot is locked by another thread.\n"));
+		error("FreePlayerPoolSlot: %s\n", t("SLOT_IS_LOCKED_BY_ANOTHER_THREAD"));
 		return;
 	}
 
@@ -2768,8 +2672,7 @@ void FreePlayerPoolSlot(TPlayerData *Slot){
 
 TPlayerData *GetPlayerPoolSlot(uint32 CharacterID){
 	if(CharacterID == 0){
-		error(Translate("GetPlayerPoolSlot: CharacterID ist Null.\n",
-						"GetPlayerPoolSlot: CharacterID is Null.\n"));
+		error("GetPlayerPoolSlot: %s\n", t("CHARACTERID_IS_NULL"));
 		return NULL;
 	}
 
@@ -2785,13 +2688,11 @@ TPlayerData *GetPlayerPoolSlot(uint32 CharacterID){
 
 TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 	if(CharacterID == 0){
-		error(Translate("AssignPlayerPoolSlot: CharacterID ist Null.\n",
-						"AssignPlayerPoolSlot: CharacterID is Null.\n"));
+		error("AssignPlayerPoolSlot: %s\n", t("CHARACTERID_IS_NULL"));
 		return NULL;
 	}
 
-	print(3, Translate("Reserviere Slot für Charakter %u.\n",
-					   "Reserving slot for character %u.\n"), CharacterID);
+	print(3, "%s\n", t("RESERVING_SLOT_FOR_CHARACTER_U", CharacterID));
 
 	// TODO(fusion): `PlayerDataPoolMutex` usage here could be improved, perhaps
 	// with some guard class.
@@ -2859,8 +2760,7 @@ TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 
 	if(Slot == NULL){
 		PlayerDataPoolMutex.up();
-		error(Translate("AssignPlayerPoolSlot: Kein Slot mehr frei.\n",
-						"AssignPlayerPoolSlot: No more slots available.\n"));
+		error("AssignPlayerPoolSlot: %s\n", t("NO_MORE_SLOTS_AVAILABLE"));
 		return NULL;
 	}
 
@@ -2869,12 +2769,10 @@ TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 	Slot->Locked = gettid();
 	PlayerDataPoolMutex.up();
 
-	print(3, Translate("Lade Daten für Spieler %u.\n",
-					   "Loading data for player %u.\n"), CharacterID);
+	print(3, "%s\n", t("LOADING_DATA_FOR_PLAYER_U", CharacterID));
 
 	if(!PlayerDataExists(CharacterID)){
-		Log("game", Translate("Spieler %u loggt sich zum ersten Mal ein.\n",
-							  "Player %u logs in for the first time.\n"), CharacterID);
+		Log("game", "%s\n", t("PLAYER_LOGS_IN_FOR_THE_FIRST_TIME_U", CharacterID));
 	}
 
 	if(!LoadPlayerData(Slot)){
@@ -2888,13 +2786,11 @@ TPlayerData *AssignPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 
 TPlayerData *AttachPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 	if(CharacterID == 0){
-		error(Translate("AttachPlayerPoolSlot: CharacterID ist Null.\n",
-						"AttachPlayerPoolSlot: CharacterID is Null.\n"));
+		error("AttachPlayerPoolSlot: %s\n", t("CHARACTERID_IS_NULL"));
 		return NULL;
 	}
 
-	print(3, Translate("Attache Slot von Spieler %u.\n",
-					   "Attach slot from player %u.\n"), CharacterID);
+	print(3, "%s\n", t("ATTACH_SLOT_FROM_PLAYER_U", CharacterID));
 
 	// TODO(fusion): Same as `AssignPlayerPoolSlot`.
 
@@ -2904,8 +2800,7 @@ TPlayerData *AttachPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 		Slot = GetPlayerPoolSlot(CharacterID);
 		if(Slot == NULL){
 			PlayerDataPoolMutex.up();
-			error(Translate("AttachPlayerPoolSlot: Daten des Charakters sind nicht vorhanden.\n",
-							"AttachPlayerPoolSlot: Character data is not available.\n"));
+			error("AttachPlayerPoolSlot: %s\n", t("CHARACTER_DATA_IS_NOT_AVAILABLE"));
 			return NULL;
 		}
 
@@ -2927,13 +2822,11 @@ TPlayerData *AttachPlayerPoolSlot(uint32 CharacterID, bool DontWait){
 
 void AttachPlayerPoolSlot(TPlayerData *Slot, bool DontWait){
 	if(Slot == NULL){
-		error(Translate("AttachPlayerPoolSlot: Slot ist NULL.\n",
-						"AttachPlayerPoolSlot: Slot is NULL.\n"));
+		error("AttachPlayerPoolSlot: %s\n", t("SLOT_IS_NULL"));
 		return;
 	}
 
-	print(3, Translate("Attache Slot von Spieler %u.\n",
-					   "Attache slot of player %u.\n"), Slot->CharacterID);
+	print(3, "%s\n", t("ATTACHE_SLOT_OF_PLAYER_U", Slot->CharacterID));
 	while(true){
 		PlayerDataPoolMutex.down();
 		if(Slot->Locked == 0){
@@ -2954,8 +2847,7 @@ void AttachPlayerPoolSlot(TPlayerData *Slot, bool DontWait){
 
 void IncreasePlayerPoolSlotSticky(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("IncreasePlayerPoolSlotSticky: Slot ist NULL.\n",
-						"IncreasePlayerPoolSlotSticky: Slot is NULL.\n"));
+		error("IncreasePlayerPoolSlotSticky: %s\n", t("SLOT_IS_NULL"));
 		return;
 	}
 
@@ -2966,8 +2858,7 @@ void IncreasePlayerPoolSlotSticky(TPlayerData *Slot){
 
 void DecreasePlayerPoolSlotSticky(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("DecreasePlayerPoolSlotSticky: Slot ist NULL.\n",
-						"DecreasePlayerPoolSlotSticky: Slot is NULL.\n"));
+		error("DecreasePlayerPoolSlotSticky: %s\n", t("SLOT_IS_NULL"));
 		return;
 	}
 
@@ -2978,8 +2869,7 @@ void DecreasePlayerPoolSlotSticky(TPlayerData *Slot){
 
 void DecreasePlayerPoolSlotSticky(uint32 CharacterID){
 	if(CharacterID == 0){
-		error(Translate("DecreasePlayerPoolSlotSticky: CharacterID ist Null.\n",
-						"DecreasePlayerPoolSlotSticky: CharacterID is Null.\n"));
+		error("DecreasePlayerPoolSlotSticky: %s\n", t("CHARACTERID_IS_NULL"));
 		return;
 	}
 
@@ -2988,30 +2878,25 @@ void DecreasePlayerPoolSlotSticky(uint32 CharacterID){
 	if(Slot != NULL){
 		Slot->Sticky -= 1;
 	}else{
-		error(Translate("DecreasePlayerPoolSlotSticky: Slot von Spieler %u nicht gefunden.\n",
-						"DecreasePlayerPoolSlotSticky: Slot of player %u not found.\n"), CharacterID);
+		error("DecreasePlayerPoolSlotSticky: %s\n", t("SLOT_OF_PLAYER_NOT_FOUND_U", CharacterID));
 	}
 	PlayerDataPoolMutex.up();
 }
 
 void ReleasePlayerPoolSlot(TPlayerData *Slot){
 	if(Slot == NULL){
-		error(Translate("ReleasePlayerPoolSlot: Slot ist NULL.\n",
-						"ReleasePlayerPoolSlot: Slot is NULL.\n"));
+		error("ReleasePlayerPoolSlot: %s\n", t("SLOT_IS_NULL"));
 		return;
 	}
 
-	print(3, Translate("Gebe Slot von Spieler %u frei.\n",
-					   "Release slot from player %u.\n"), Slot->CharacterID);
+	print(3, "%s\n", t("RELEASE_SLOT_FROM_PLAYER_U", Slot->CharacterID));
 	if(Slot->Locked == 0){
-		error(Translate("ReleasePlayerPoolSlot: Slot ist nicht gesperrt.\n",
-						"ReleasePlayerPoolSlot: Slot is not locked.\n"));
+		error("ReleasePlayerPoolSlot: %s\n", t("SLOT_IS_NOT_LOCKED"));
 		return;
 	}
 
 	if(Slot->Locked != gettid()){
-		error(Translate("ReleasePlayerPoolSlot: Slot ist von einem anderen Thread gesperrt.\n",
-						"ReleasePlayerPoolSlot: Slot is locked by another thread.\n"));
+		error("ReleasePlayerPoolSlot: %s\n", t("SLOT_IS_LOCKED_BY_ANOTHER_THREAD"));
 		return;
 	}
 
@@ -3020,8 +2905,7 @@ void ReleasePlayerPoolSlot(TPlayerData *Slot){
 
 void SavePlayerPoolSlots(void){
 	time_t Now = time(NULL);
-	print(3, Translate("Speichere alle Spielerdaten...\n",
-					   "Save all player data...\n"));
+	print(3, "%s\n", t("SAVE_ALL_PLAYER_DATA"));
 	for(int i = 0; i < NARRAY(PlayerDataPool); i += 1){
 		TPlayerData *Slot = &PlayerDataPool[i];
 		if(Slot->CharacterID == 0
@@ -3073,16 +2957,14 @@ void ExitPlayerPool(void){
 		FreePlayerPoolSlot(Slot);
 		ReleasePlayerPoolSlot(Slot);
 	}
-	print(1, Translate("Alle Spielerdaten gespeichert.\n",
-					   "All player data saved.\n"));
+	print(1, "%s\n", t("ALL_PLAYER_DATA_SAVED"));
 }
 
 // Player Index
 // =============================================================================
 int GetPlayerIndexEntryNumber(const char *Name, int Position){
 	if(Name == NULL){
-		error(Translate("GetPlayerIndexEntryNumber: Name ist NULL.\n",
-						"GetPlayerindexEntryNumber: Name is NULL.\n"));
+		error("%s\n", t("GETPLAYERINDEXENTRYNUMBER_NAME_IS_NULL"));
 		return 0;
 	}
 
@@ -3101,14 +2983,12 @@ void InsertPlayerIndex(TPlayerIndexInternalNode *Node,
 		int Position, const char *Name, uint32 CharacterID){
 	while(true){
 		if(Node == NULL){
-			error(Translate("InsertPlayerIndex: Node ist NULL.\n",
-							"InsertPlayerindex: Node is NULL.\n"));
+			error("%s\n", t("INSERTPLAYERINDEX_NODE_IS_NULL"));
 			return;
 		}
 
 		if(Name == NULL){
-			error(Translate("InsertPlayerIndex: Name ist NULL.\n",
-							"InsertPlayerindex: Name is NULL.\n"));
+			error("%s\n", t("INSERTPLAYERINDEX_NAME_IS_NULL"));
 			return;
 		}
 
@@ -3170,8 +3050,7 @@ void InsertPlayerIndex(TPlayerIndexInternalNode *Node,
 
 TPlayerIndexEntry *SearchPlayerIndex(const char *Name){
 	if(Name == NULL){
-		error(Translate("SearchPlayerIndex: Name ist NULL.\n",
-						"SearchPlayerindex: Name is NULL.\n"));
+		error("%s\n", t("SEARCHPLAYERINDEX_NAME_IS_NULL"));
 		return NULL;
 	}
 
@@ -3197,8 +3076,7 @@ TPlayerIndexEntry *SearchPlayerIndex(const char *Name){
 
 bool PlayerExists(const char *Name){
 	if(Name == NULL){
-		error(Translate("PlayerExists: Name ist NULL.\n",
-						"PlayerExists: Name is NULL.\n"));
+		error("PlayerExists: %s\n", t("NAME_IS_NULL"));
 		return false;
 	}
 
@@ -3207,8 +3085,7 @@ bool PlayerExists(const char *Name){
 
 uint32 GetCharacterID(const char *Name){
 	if(Name == NULL){
-		error(Translate("GetCharacterID: Name ist NULL.\n",
-						"GetCharacterID: Name is NULL.\n"));
+		error("GetCharacterID: %s\n", t("NAME_IS_NULL"));
 		return 0;
 	}
 
@@ -3222,8 +3099,7 @@ uint32 GetCharacterID(const char *Name){
 
 const char *GetCharacterName(const char *Name){
 	if(Name == NULL){
-		error(Translate("GetCharacterName: Name ist NULL.\n",
-						"GetCharacterName: Name is NULL.\n"));
+		error("GetCharacterName: %s\n", t("NAME_IS_NULL"));
 		return NULL;
 	}
 
@@ -3247,8 +3123,7 @@ void InitPlayerIndex(void){
 	char Names[10000][30];
 	TQueryManagerConnection QueryManager(360007);
 	if(!QueryManager.isConnected()){
-		error(Translate("InitPlayerIndex: Kann nicht zum Query-Manager verbinden.\n",
-						"InitPlayerindex: Cannot connect to Query Manager.\n"));
+		error("%s\n", t("INITPLAYERINDEX_CANNOT_CONNECT_TO_QUERY_MANAGER"));
 		return;
 	}
 
@@ -3258,8 +3133,7 @@ void InitPlayerIndex(void){
 		int Ret = QueryManager.loadPlayers(MinimumCharacterID,
 				&NumberOfPlayers, Names, CharacterIDs);
 		if(Ret != 0){
-			error(Translate("InitPlayerIndex: Kann Spielerdaten nicht ermitteln.\n",
-							"InitPlayerindex: Cannot determine player data.\n"));
+			error("%s\n", t("INITPLAYERINDEX_CANNOT_DETERMINE_PLAYER_DATA"));
 			break;
 		}
 

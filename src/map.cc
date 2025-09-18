@@ -1837,8 +1837,7 @@ Object CreateObject(void){
 
 static void DestroyObject(Object Obj){
 	if(!Obj.exists()){
-		error(Translate("DestroyObject: Übergebenes Objekt existiert nicht.\n",
-						"DestroyObject: Passed object does not exist.\n"));
+		error("DestroyObject: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -1864,8 +1863,7 @@ static void DestroyObject(Object Obj){
 
 	// TODO(fusion): I feel this should be checked up front?
 	if(Obj == NONE){
-		error(Translate("DestroyObject: Ungültige Objektnummer %d.\n",
-						"DestroyObject: Invalid object number %d.\n"), NONE.ObjectID);
+		error("DestroyObject: %s\n", t("INVALID_OBJECT_NUMBER_D", NONE.ObjectID));
 		return;
 	}
 
@@ -1883,8 +1881,7 @@ static void DestroyObject(Object Obj){
 
 void DeleteObject(Object Obj){
 	if(!Obj.exists()){
-		error(Translate("DeleteObject: Übergebenes Objekt existiert nicht.\n",
-						"DeleteObject: Passed object does not exist.\n"));
+		error("DeleteObject: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -1970,8 +1967,7 @@ void ChangeObject(Object Obj, ObjectType NewType){
 
 void ChangeObject(Object Obj, INSTANCEATTRIBUTE Attribute, uint32 Value){
 	if(!Obj.exists()){
-		error(Translate("ChangeObject: Übergebenes Objekt existiert nicht.\n",
-						"ChangeObject: Passed object does not exist.\n"));
+		error("ChangeObject: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2004,8 +2000,7 @@ int GetObjectPriority(Object Obj){
 
 void PlaceObject(Object Obj, Object Con, bool Append){
 	if(!Obj.exists()){
-		error(Translate("PlaceObject: Übergebenes Objekt existiert nicht.\n",
-						"PlaceObject: Passed object does not exist.\n"));
+		error("PlaceObject: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2083,8 +2078,7 @@ void PlaceObject(Object Obj, Object Con, bool Append){
 // NOTE(fusion): This is the opposite of `PlaceObject`.
 void CutObject(Object Obj){
 	if(!Obj.exists()){
-		error(Translate("CutObject: Übergebenes Objekt existiert nicht.\n",
-						"CutObject: Passed object does not exist.\n"));
+		error("CutObject: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2123,8 +2117,7 @@ void MoveObject(Object Obj, Object Con){
 
 Object AppendObject(Object Con, ObjectType Type){
 	if(!Con.exists()){
-		error(Translate("AppendObject: Übergebener Container existiert nicht.\n",
-						"AppendObject: Transferred container does not exist.\n"));
+		error("AppendObject: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
 		return NONE;
 	}
 
@@ -2136,8 +2129,7 @@ Object AppendObject(Object Con, ObjectType Type){
 
 Object SetObject(Object Con, ObjectType Type, uint32 CreatureID){
 	if(!Con.exists()){
-		error(Translate("SetObject: Übergebener Container existiert nicht.\n",
-						"SetObject: Transferred container does not exist.\n"));
+		error("SetObject: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
 		return NONE;
 	}
 
@@ -2160,8 +2152,7 @@ Object CopyObject(Object Con, Object Source){
 	}
 
 	if(!Con.exists()){
-		error(Translate("CopyObject: Zielcontainer existiert nicht.\n",
-						"CopyObject: Target container does not exist.\n"));
+		error("CopyObject: %s\n", t("TARGET_CONTAINER_DOES_NOT_EXIST"));
 		return NONE;
 	}
 
@@ -2202,8 +2193,7 @@ Object CopyObject(Object Con, Object Source){
 
 Object SplitObject(Object Obj, int Count){
 	if(!Obj.exists()){
-		error(Translate("SplitObject: Übergebenes Objekt existiert nicht.\n",
-						"SplitObject: Passed object does not exist.\n"));
+		error("SplitObject: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return NONE;
 	}
 
@@ -2230,8 +2220,7 @@ Object SplitObject(Object Obj, int Count){
 
 void MergeObjects(Object Obj, Object Dest){
 	if(!Obj.exists()){
-		error(Translate("MergeObjects: Übergebenes Objekt existiert nicht.\n",
-						"MergeObjects: Passed object does not exist.\n"));
+		error("MergeObjects: %s\n", t("PASSED_OBJECT_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2248,8 +2237,7 @@ void MergeObjects(Object Obj, Object Dest){
 	}
 
 	if(!ObjType.getFlag(CUMULATIVE)){
-		error(Translate("MergeObjects: Objekttyp %d ist nicht kumulierbar.\n",
-						"MergeObjects: Object type %d is not cumulative.\n"), ObjType.TypeID);
+		error("MergeObjects: %s\n", t("OBJECT_TYPE_IS_NOT_CUMULATIVE_D", ObjType.TypeID));
 		return;
 	}
 

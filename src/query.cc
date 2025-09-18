@@ -67,15 +67,13 @@ void TQueryManagerConnection::connect(void){
 	for(int i = 0; i < NumberOfQueryManagers; i += 1){
 		in_addr_t Addr = inet_addr(QUERY_MANAGER[i].Host);
 		if(Addr == 0xFFFFFFFF && !ResolveHostNameAddress(QUERY_MANAGER[i].Host, &Addr)){
-			print(2, Translate("TQueryManagerConnection::connect: Kann Rechnernamen nicht auflösen.\n",
-							   "TQueryManagerConnection::connect: Cannot resolve computer name.\n"));
+			print(2, "TQueryManagerConnection::connect: %s\n", t("CANNOT_RESOLVE_COMPUTER_NAME"));
 			continue;
 		}
 
 		this->Socket = socket(AF_INET, SOCK_STREAM, 0);
 		if(this->Socket == -1){
-			print(2, Translate("TQueryManagerConnection::connect: Kann Socket nicht öffnen.\n",
-							   "TQueryManagerConnection::connect: Cannot open socket.\n"));
+			print(2, "TQueryManagerConnection::connect: %s\n", t("CANNOT_OPEN_SOCKET"));
 			continue;
 		}
 
@@ -97,8 +95,7 @@ void TQueryManagerConnection::connect(void){
 
 		int Status = this->executeQuery(30, false);
 		if(Status != QUERY_STATUS_OK){
-			print(2, Translate("TQueryManagerConnection::connect: Anmeldung fehlgeschlagen (%d).\n",
-								"TQueryManagerConnection::connect: Login failed (%d).\n"), Status);
+			print(2, "TQueryManagerConnection::connect: %s\n", t("LOGIN_FAILED_D", Status));
 			this->disconnect();
 			continue;
 		}
@@ -107,16 +104,14 @@ void TQueryManagerConnection::connect(void){
 	}
 
 	if(!this->isConnected()){
-		print(2, Translate("TQueryManagerConnection::connect: Kein Query-Manager verfügbar.\n",
-						   "TQueryManagerConnection::connect: No query manager available.\n"));
+		print(2, "TQueryManagerConnection::connect: %s\n", t("NO_QUERY_MANAGER_AVAILABLE"));
 	}
 }
 
 void TQueryManagerConnection::disconnect(void){
 	if(this->Socket != -1){
 		if(close(this->Socket) == -1){
-			error(Translate("TQueryManagerConnection::disconnect: Fehler %d beim Schließen der Socket.\n",
-							"TQueryManagerConnection::disconnect: Error %d closing socket.\n"), errno);
+			error("TQueryManagerConnection::disconnect: %s\n", t("ERROR_CLOSING_SOCKET_D", errno));
 		}
 		this->Socket = -1;
 	}
@@ -303,8 +298,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 	}else{
 		PacketSize += 4;
 		if(PacketSize > this->BufferSize){
-			error(Translate("TQueryManagerConnection::executeQuery: Puffer zu klein.\n",
-							"TQueryManagerConnection::executeQuery: Buffer too small.\n"));
+			error("TQueryManagerConnection::executeQuery: %s\n", t("BUFFER_TOO_SMALL"));
 			return QUERY_STATUS_FAILED;
 		}
 
@@ -314,8 +308,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 	}
 
 	if(!this->QueryOk){
-		error(Translate("TQueryManagerConnection::executeQuery: Fehler beim Zusammenbauen der Anfrage.\n",
-						"TQueryManagerConnection::executeQuery: Error assembling request.\n"));
+		error("TQueryManagerConnection::executeQuery: %s\n", t("ERROR_ASSEMBLING_REQUEST"));
 		return QUERY_STATUS_FAILED;
 	}
 
@@ -344,8 +337,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		if(this->write(this->Buffer, PacketSize) != PacketSize){
 			this->disconnect();
 			if(Attempt >= MaxAttempts){
-				error(Translate("TQueryManagerConnection::executeQuery: Fehler beim Abschicken der Anfrage.\n",
-								"TQueryManagerConnection::executeQuery: Error sending request.\n"));
+				error("TQueryManagerConnection::executeQuery: %s\n", t("ERROR_SENDING_REQUEST"));
 				return QUERY_STATUS_FAILED;
 			}
 			continue;
@@ -374,15 +366,13 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 
 		if(ResponseSize <= 0 || ResponseSize > this->BufferSize){
 			this->disconnect();
-			error(Translate("TQueryManagerConnection::executeQuery: Ungültige Datengröße %d.\n",
-							"TQueryManagerConnection::executeQuery: Invalid data size %d.\n"), ResponseSize);
+			error("TQueryManagerConnection::executeQuery: %s\n", t("INVALID_DATA_SIZE_D", ResponseSize));
 			return QUERY_STATUS_FAILED;
 		}
 
 		if(this->read(this->Buffer, ResponseSize, Timeout) != ResponseSize){
 			this->disconnect();
-			error(Translate("TQueryManagerConnection::executeQuery: Fehler beim Auslesen der Daten.\n",
-							"TQueryManagerConnection::executeQuery: Error reading data.\n"));
+			error("TQueryManagerConnection::executeQuery: %s\n", t("ERROR_READING_DATA"));
 			return QUERY_STATUS_FAILED;
 		}
 
@@ -390,8 +380,7 @@ int TQueryManagerConnection::executeQuery(int Timeout, bool AutoReconnect){
 		this->ReadBuffer.Position = 0;
 		int Status = this->getByte();
 		if(Status == QUERY_STATUS_FAILED){
-			error(Translate("TQueryManagerConnection::executeQuery: Anfrage fehlgeschlagen.\n",
-							"TQueryManagerConnection::executeQuery: Request failed.\n"));
+			error("TQueryManagerConnection::executeQuery: %s\n", t("REQUEST_FAILED"));
 		}
 
 		return Status;
@@ -411,8 +400,7 @@ int TQueryManagerConnection::checkAccountPassword(uint32 AccountID,
 		if(ErrorCode >= 1 && ErrorCode <= 4){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::checkAccountPassword: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::checkAccountPassword: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::checkAccountPassword: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}
 	return Result;
@@ -440,8 +428,7 @@ int TQueryManagerConnection::loginAdmin(uint32 AccountID, bool PrivateWorld,
 		if(ErrorCode == 1){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::loginAdmin: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::loginAdmin: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::loginAdmin: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}
 	return Result;
@@ -705,9 +692,8 @@ int TQueryManagerConnection::loginGame(uint32 AccountID, char *PlayerName,
 
 		int SkipBuddies = 0;
 		if(*NumberOfBuddies > 100){ // MAX_BUDDIES
-			error(Translate("TQueryManagerConnection::loginGame: zu viele Buddys (%d) für %s.\n",
-							"TQueryManagerConnection::loginGame: too many buddies (%d) for %s.\n"),
-					*NumberOfBuddies, PlayerName);
+			error("TQueryManagerConnection::loginGame: %s\n", t("TOO_MANY_BUDDIES_FOR_D_S",
+					*NumberOfBuddies, PlayerName));
 			SkipBuddies = *NumberOfBuddies - 100;
 			*NumberOfBuddies = 100;
 		}
@@ -734,8 +720,7 @@ int TQueryManagerConnection::loginGame(uint32 AccountID, char *PlayerName,
 			if(Right != -1){
 				SetBit(Rights, Right);
 			}else if(!IsAdministrativeRight(RightName)){
-				error(Translate("TQueryManagerConnection::loginGame: Unbekanntes Recht %s.\n",
-								"TQueryManagerConnection::loginGame: Unknown Right %s.\n"), RightName);
+				error("TQueryManagerConnection::loginGame: %s\n", t("UNKNOWN_RIGHT_S", RightName));
 			}
 		}
 
@@ -745,8 +730,7 @@ int TQueryManagerConnection::loginGame(uint32 AccountID, char *PlayerName,
 		if(ErrorCode >= 1 && ErrorCode <= 15){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::loginGame: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::loginGame: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::loginGame: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}
 	return Result;
@@ -782,12 +766,10 @@ int TQueryManagerConnection::setNotation(uint32 GamemasterID, const char *Player
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::setNotation: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::setNotation: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::setNotation: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::setNotation: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::setNotation: Request failed.\n"));
+		error("TQueryManagerConnection::setNotation: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -807,12 +789,10 @@ int TQueryManagerConnection::setNamelock(uint32 GamemasterID, const char *Player
 		if(ErrorCode >= 1 && ErrorCode <= 4){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::setNamelock: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::setNamelock: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::setNamelock: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::setNamelock: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::setNamelock: Request failed.\n"));
+		error("TQueryManagerConnection::setNamelock: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -841,12 +821,10 @@ int TQueryManagerConnection::banishAccount(uint32 GamemasterID, const char *Play
 		if(ErrorCode >= 1 && ErrorCode <= 3){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::banishAccount: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::banishAccount: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::banishAccount: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::banishAccount: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::banishAccount: Request failed.\n"));
+		error("TQueryManagerConnection::banishAccount: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -888,12 +866,10 @@ int TQueryManagerConnection::reportStatement(uint32 ReporterID, const char *Play
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::reportStatement: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::reportStatement: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::reportStatement: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::reportStatement: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::reportStatement: Request failed.\n"));
+		error("TQueryManagerConnection::reportStatement: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -913,12 +889,10 @@ int TQueryManagerConnection::banishIPAddress(uint32 GamemasterID, const char *Pl
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::banishIPAddress: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::banishIPAddress: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::banishIPAddress: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::banishIPAddress: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::banishIPAddress: Request failed.\n"));
+		error("TQueryManagerConnection::banishIPAddress: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -935,8 +909,7 @@ int TQueryManagerConnection::logCharacterDeath(uint32 CharacterID, int Level,
 	int Status = this->executeQuery(90, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::logCharacterDeath: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::logCharacterDeath: Request failed.\n"));
+		error("TQueryManagerConnection::logCharacterDeath: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -948,8 +921,7 @@ int TQueryManagerConnection::addBuddy(uint32 AccountID, uint32 Buddy){
 	int Status = this->executeQuery(90, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::addBuddy: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::addBuddy: Request failed.\n"));
+		error("TQueryManagerConnection::addBuddy: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -961,8 +933,7 @@ int TQueryManagerConnection::removeBuddy(uint32 AccountID, uint32 Buddy){
 	int Status = this->executeQuery(90, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::removeBuddy: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::removeBuddy: Request failed.\n"));
+		error("TQueryManagerConnection::removeBuddy: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -973,8 +944,7 @@ int TQueryManagerConnection::decrementIsOnline(uint32 CharacterID){
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::decrementIsOnline: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::decrementIsOnline: Request failed.\n"));
+		error("TQueryManagerConnection::decrementIsOnline: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -988,9 +958,8 @@ int TQueryManagerConnection::finishAuctions(int *NumberOfAuctions, uint16 *House
 		int MaxNumberOfAuctions = *NumberOfAuctions;
 		*NumberOfAuctions = this->getWord();
 		if(*NumberOfAuctions > MaxNumberOfAuctions){
-			error(Translate("TQueryManagerConnection::finishAuctions: zu viele Auktionen (%d>%d).\n",
-							"TQueryManagerConnection::finishAuctions: too many auctions (%d>%d).\n"),
-					*NumberOfAuctions, MaxNumberOfAuctions);
+			error("TQueryManagerConnection::finishAuctions: %s\n", t("TOO_MANY_AUCTIONS_D_D",
+					*NumberOfAuctions, MaxNumberOfAuctions));
 			return -1;
 		}
 
@@ -1001,8 +970,7 @@ int TQueryManagerConnection::finishAuctions(int *NumberOfAuctions, uint16 *House
 			Bids[i] = (int)this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::finishAuctions: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::finishAuctions: Request failed.\n"));
+		error("TQueryManagerConnection::finishAuctions: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1014,8 +982,7 @@ int TQueryManagerConnection::excludeFromAuctions(uint32 CharacterID, bool Banish
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::excludeFromAuctions: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::excludeFromAuctions: Request failed.\n"));
+		error("TQueryManagerConnection::excludeFromAuctions: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1029,9 +996,8 @@ int TQueryManagerConnection::transferHouses(int *NumberOfTransfers, uint16 *Hous
 		int MaxNumberOfTransfers = *NumberOfTransfers;
 		*NumberOfTransfers = this->getWord();
 		if(*NumberOfTransfers > MaxNumberOfTransfers){
-			error(Translate("TQueryManagerConnection::transferHouses: zu viele Transfers (%d>%d).\n",
-							"TQueryManagerConnection::transferHouses: too many transfers (%d>%d).\n"),
-					*NumberOfTransfers, MaxNumberOfTransfers);
+			error("TQueryManagerConnection::transferHouses: %s\n", t("TOO_MANY_TRANSFERS_D_D",
+					*NumberOfTransfers, MaxNumberOfTransfers));
 			return -1;
 		}
 
@@ -1042,8 +1008,7 @@ int TQueryManagerConnection::transferHouses(int *NumberOfTransfers, uint16 *Hous
 			Prices[i] = (int)this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::transferHouses: Anfrage fehlgeschlagen.\n",
-                                "TQueryManagerConnection::transferHouses: request failed.\n"));
+		error("TQueryManagerConnection::transferHouses: %s\n", t("REQUEST_FAILED_2"));
 	}
 	return Result;
 }
@@ -1054,8 +1019,7 @@ int TQueryManagerConnection::cancelHouseTransfer(uint16 HouseID){
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::cancelHouseTransfer: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::cancelHouseTransfer: Request failed.\n"));
+		error("TQueryManagerConnection::cancelHouseTransfer: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1069,9 +1033,8 @@ int TQueryManagerConnection::evictFreeAccounts(int *NumberOfEvictions,
 		int MaxNumberOfEvictions = *NumberOfEvictions;
 		*NumberOfEvictions = this->getWord();
 		if(*NumberOfEvictions > MaxNumberOfEvictions){
-			error(Translate("TQueryManagerConnection::evictFreeAccounts: zu viele Räumungen (%d>%d).\n",
-							"TQueryManagerConnection::evictFreeAccounts: too many evictions (%d>%d).\n"),
-					*NumberOfEvictions, MaxNumberOfEvictions);
+			error("TQueryManagerConnection::evictFreeAccounts: %s\n", t("TOO_MANY_EVICTIONS_D_D",
+					*NumberOfEvictions, MaxNumberOfEvictions));
 			return -1;
 		}
 
@@ -1080,8 +1043,7 @@ int TQueryManagerConnection::evictFreeAccounts(int *NumberOfEvictions,
 			OwnerIDs[i] = this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::evictFreeAccounts: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::evictFreeAccounts: Request failed.\n"));
+		error("TQueryManagerConnection::evictFreeAccounts: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1094,9 +1056,8 @@ int TQueryManagerConnection::evictDeletedCharacters(int *NumberOfEvictions, uint
 		int MaxNumberOfEvictions = *NumberOfEvictions;
 		*NumberOfEvictions = this->getWord();
 		if(*NumberOfEvictions > MaxNumberOfEvictions){
-			error(Translate("TQueryManagerConnection::evictDeletedCharacters: zu viele Räumungen (%d>%d).\n",
-							"TQueryManagerConnection::evictDeletedCharacters: too many evictions (%d>%d).\n"),
-					*NumberOfEvictions, MaxNumberOfEvictions);
+			error("TQueryManagerConnection::evictDeletedCharacters: %s\n", t("TOO_MANY_EVICTIONS_D_D",
+					*NumberOfEvictions, MaxNumberOfEvictions));
 			return -1;
 		}
 
@@ -1104,8 +1065,7 @@ int TQueryManagerConnection::evictDeletedCharacters(int *NumberOfEvictions, uint
 			HouseIDs[i] = this->getWord();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::evictDeletedCharacters: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::evictDeletedCharacters: Request failed.\n"));
+		error("TQueryManagerConnection::evictDeletedCharacters: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1128,8 +1088,7 @@ int TQueryManagerConnection::evictExGuildleaders(int NumberOfGuildhouses,
 			HouseIDs[i] = this->getWord();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::evictExGuildleaders: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::evictExGuildleaders: Request failed.\n"));
+		error("TQueryManagerConnection::evictExGuildleaders: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1142,8 +1101,7 @@ int TQueryManagerConnection::insertHouseOwner(uint16 HouseID, uint32 OwnerID, in
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::insertHouseOwner: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::insertHouseOwner: Request failed.\n"));
+		error("TQueryManagerConnection::insertHouseOwner: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1156,8 +1114,7 @@ int TQueryManagerConnection::updateHouseOwner(uint16 HouseID, uint32 OwnerID, in
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::updateHouseOwner: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::updateHouseOwner: Request failed.\n"));
+		error("TQueryManagerConnection::updateHouseOwner: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1168,8 +1125,7 @@ int TQueryManagerConnection::deleteHouseOwner(uint16 HouseID){
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::deleteHouseOwner: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::deleteHouseOwner: Request failed.\n"));
+		error("TQueryManagerConnection::deleteHouseOwner: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1183,9 +1139,8 @@ int TQueryManagerConnection::getHouseOwners(int *NumberOfOwners, uint16 *HouseID
 		int MaxNumberOfOwners = *NumberOfOwners;
 		*NumberOfOwners = this->getWord();
 		if(*NumberOfOwners > MaxNumberOfOwners){
-			error(Translate("TQueryManagerConnection::getHouseOwners: zu viele Häuser (%d>%d).\n",
-							"TQueryManagerConnection::getHouseOwners: too many houses (%d>%d).\n"),
-					*NumberOfOwners, MaxNumberOfOwners);
+			error("TQueryManagerConnection::getHouseOwners: %s\n", t("TOO_MANY_HOUSES_D_D",
+					*NumberOfOwners, MaxNumberOfOwners));
 			return -1;
 		}
 
@@ -1196,8 +1151,7 @@ int TQueryManagerConnection::getHouseOwners(int *NumberOfOwners, uint16 *HouseID
 			PaidUntils[i] = (int)this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getHouseOwners: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getHouseOwners: Request failed.\n"));
+		error("TQueryManagerConnection::getHouseOwners: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1210,9 +1164,8 @@ int TQueryManagerConnection::getAuctions(int *NumberOfAuctions, uint16 *HouseIDs
 		int MaxNumberOfAuctions = *NumberOfAuctions;
 		*NumberOfAuctions = this->getWord();
 		if(*NumberOfAuctions > MaxNumberOfAuctions){
-			error(Translate("TQueryManagerConnection::getAuctions: zu viele Auktionen (%d>%d).\n",
-							"TQueryManagerConnection::getAuctions: too many auctions (%d>%d).\n"),
-					*NumberOfAuctions, MaxNumberOfAuctions);
+			error("TQueryManagerConnection::getAuctions: %s\n", t("TOO_MANY_AUCTIONS_D_D",
+					*NumberOfAuctions, MaxNumberOfAuctions));
 			return -1;
 		}
 
@@ -1220,8 +1173,7 @@ int TQueryManagerConnection::getAuctions(int *NumberOfAuctions, uint16 *HouseIDs
 			HouseIDs[i] = this->getWord();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getAuctions: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getAuctions: Request failed.\n"));
+		error("TQueryManagerConnection::getAuctions: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1232,8 +1184,7 @@ int TQueryManagerConnection::startAuction(uint16 HouseID){
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::startAuction: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::startAuction: Request failed.\n"));
+		error("TQueryManagerConnection::startAuction: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1261,8 +1212,7 @@ int TQueryManagerConnection::insertHouses(int NumberOfHouses, uint16 *HouseIDs,
 	int Status = this->executeQuery(60, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::insertHouses: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::insertHouses: Request failed.\n"));
+		error("TQueryManagerConnection::insertHouses: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1274,8 +1224,7 @@ int TQueryManagerConnection::clearIsOnline(int *NumberOfAffectedPlayers){
 	if(Status == QUERY_STATUS_OK){
 		*NumberOfAffectedPlayers = this->getWord();
 	}else{
-		error(Translate("TQueryManagerConnection::clearIsOnline: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::clearIsOnline: Request failed.\n"));
+		error("TQueryManagerConnection::clearIsOnline: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1300,8 +1249,7 @@ int TQueryManagerConnection::createPlayerlist(int NumberOfPlayers, const char **
 	if(Status == QUERY_STATUS_OK){
 		*NewRecord = this->getFlag();
 	}else{
-		error(Translate("TQueryManagerConnection::createPlayerlist: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::createPlayerlist: Request failed.\n"));
+		error("TQueryManagerConnection::createPlayerlist: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1320,8 +1268,7 @@ int TQueryManagerConnection::logKilledCreatures(int NumberOfRaces, const char **
 	int Status = this->executeQuery(240, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::logKilledCreatures: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::logKilledCreatures: Request failed.\n"));
+		error("TQueryManagerConnection::logKilledCreatures: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1342,8 +1289,7 @@ int TQueryManagerConnection::loadPlayers(uint32 MinimumCharacterID, int *NumberO
 			CharacterIDs[i] = this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::loadPlayers: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::loadPlayers: Request failed.\n"));
+		error("TQueryManagerConnection::loadPlayers: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1361,8 +1307,7 @@ int TQueryManagerConnection::getKeptCharacters(uint32 MinimumCharacterID,
 			CharacterIDs[i] = this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getKeptCharacters: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getKeptCharacters: Request failed.\n"));
+		error("TQueryManagerConnection::getKeptCharacters: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1380,8 +1325,7 @@ int TQueryManagerConnection::getDeletedCharacters(uint32 MinimumCharacterID,
 			CharacterIDs[i] = this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getKeptCharacters: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getKeptCharacters: Request failed.\n"));
+		error("TQueryManagerConnection::getKeptCharacters: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1392,8 +1336,7 @@ int TQueryManagerConnection::deleteOldCharacter(uint32 CharacterID){
 	int Status = this->executeQuery(30, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::deleteOldCharacter: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::deleteOldCharacter: Request failed.\n"));
+		error("TQueryManagerConnection::deleteOldCharacter: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1411,8 +1354,7 @@ int TQueryManagerConnection::getHiddenCharacters(uint32 MinimumCharacterID,
 			CharacterIDs[i] = this->getQuad();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getHiddenCharacters: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getHiddenCharacters: Request failed.\n"));
+		error("TQueryManagerConnection::getHiddenCharacters: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1440,8 +1382,7 @@ int TQueryManagerConnection::createHighscores(int NumberOfPlayers, uint32 *Chara
 	int Status = this->executeQuery(120, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::createHighscores: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::createHighscores: Request failed.\n"));
+		error("TQueryManagerConnection::createHighscores: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1451,8 +1392,7 @@ int TQueryManagerConnection::createCensus(void){
 	int Status = this->executeQuery(600, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::createCensus: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::createCensus: Request failed.\n"));
+		error("TQueryManagerConnection::createCensus: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1462,8 +1402,7 @@ int TQueryManagerConnection::createKillStatistics(void){
 	int Status = this->executeQuery(300, true);
 	int Result = (Status == QUERY_STATUS_OK ? 0 : -1);
 	if(Status != QUERY_STATUS_OK){
-		error(Translate("TQueryManagerConnection::createKillStatistics: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::createKillStatistics: Request failed.\n"));
+		error("TQueryManagerConnection::createKillStatistics: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1479,8 +1418,7 @@ int TQueryManagerConnection::getPlayersOnline(int *NumberOfWorlds, char (*Names)
 			Players[i] = this->getWord();
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getPlayersOnline: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getPlayersOnline: Request failed.\n"));
+		error("TQueryManagerConnection::getPlayersOnline: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1495,8 +1433,7 @@ int TQueryManagerConnection::getWorlds(int *NumberOfWorlds, char (*Names)[30]){
 			this->getString(Names[i], 30);
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getWorlds: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getWorlds: Request failed.\n"));
+		error("TQueryManagerConnection::getWorlds: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1516,8 +1453,7 @@ int TQueryManagerConnection::getServerLoad(const char *World, int Period, int *D
 			}
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::getServerLoad: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::getServerLoad: Request failed.\n"));
+		error("TQueryManagerConnection::getServerLoad: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1555,12 +1491,10 @@ int TQueryManagerConnection::insertPaymentDataOld(uint32 PurchaseNr, uint32 Refe
 		if(ErrorCode == 1){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::insertPaymentDataOld: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::insertPaymentDataOld: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::insertPaymentDataOld: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::insertPaymentDataOld: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::insertPaymentDataOld: Request failed.\n"));
+		error("TQueryManagerConnection::insertPaymentDataOld: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1581,12 +1515,10 @@ int TQueryManagerConnection::addPaymentOld(uint32 AccountID, const char *Descrip
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::addPaymentOld: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::addPaymentOld: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::addPaymentOld: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::addPaymentOld: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::addPaymentOld: Request failed.\n"));
+		error("TQueryManagerConnection::addPaymentOld: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1607,12 +1539,10 @@ int TQueryManagerConnection::cancelPaymentOld(uint32 PurchaseNr, uint32 Referenc
 		if(ErrorCode >= 1 && ErrorCode <= 2){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::cancelPaymentOld: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::cancelPaymentOld: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::cancelPaymentOld: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::cancelPaymentOld: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::cancelPaymentOld: Request failed.\n"));
+		error("TQueryManagerConnection::cancelPaymentOld: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1650,12 +1580,10 @@ int TQueryManagerConnection::insertPaymentDataNew(uint32 PurchaseNr, uint32 Refe
 		if(ErrorCode == 1){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::insertPaymentDataNew: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::insertPaymentDataNew: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::insertPaymentDataNew: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::insertPaymentDataNew: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::insertPaymentDataNew: Request failed.\n"));
+		error("TQueryManagerConnection::insertPaymentDataNew: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1677,12 +1605,10 @@ int TQueryManagerConnection::addPaymentNew(const char *PaymentKey, uint32 Paymen
 		if(ErrorCode >= 1 && ErrorCode <= 3){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::addPaymentNew: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::addPaymentNew: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::addPaymentNew: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::addPaymentNew: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::addPaymentNew: Request failed.\n"));
+		error("TQueryManagerConnection::addPaymentNew: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1704,12 +1630,10 @@ int TQueryManagerConnection::cancelPaymentNew(uint32 PurchaseNr, uint32 Referenc
 		if(ErrorCode == 1){
 			Result = ErrorCode;
 		}else{
-			error(Translate("TQueryManagerConnection::cancelPaymentNew: Ungültiger Fehlercode %d.\n",
-							"TQueryManagerConnection::cancelPaymentNew: Invalid ErrorCode %d.\n"), ErrorCode);
+			error("TQueryManagerConnection::cancelPaymentNew: %s\n", t("INVALID_ERRORCODE_D", ErrorCode));
 		}
 	}else{
-		error(Translate("TQueryManagerConnection::cancelPaymentNew: Anfrage fehlgeschlagen.\n",
-						"TQueryManagerConnection::cancelPaymentNew: Request failed.\n"));
+		error("TQueryManagerConnection::cancelPaymentNew: %s\n", t("REQUEST_FAILED"));
 	}
 	return Result;
 }
@@ -1725,8 +1649,7 @@ TQueryManagerConnectionPool::TQueryManagerConnectionPool(int Connections) :
 		QueryManagerConnectionMutex(1)
 {
 	if(Connections <= 0){
-		error(Translate("TQueryManagerConnectionPool::TQueryManagerConnectionPool: Ungültige Verbindungsanzahl %d.\n",
-						"TQueryManagerConnectionPool::TQueryManagerConnectionPool: Invalid connection count %d.\n"), Connections);
+		error("TQueryManagerConnectionPool::TQueryManagerConnectionPool: %s\n", t("INVALID_CONNECTION_COUNT_D", Connections));
 	}
 }
 
@@ -1735,8 +1658,7 @@ void TQueryManagerConnectionPool::init(void){
 	this->QueryManagerConnectionFree = new bool[this->NumberOfConnections];
 	for(int i = 0; i < this->NumberOfConnections; i += 1){
 		if(!this->QueryManagerConnection[i].isConnected()){
-			error(Translate("TQueryManagerConnectionPool::init: Kann nicht zum Query-Manager verbinden.\n",
-							"TQueryManagerConnectionPool::init: Cannot connect to Query Manager.\n"));
+			error("TQueryManagerConnectionPool::init: %s\n", t("CANNOT_CONNECT_TO_QUERY_MANAGER"));
 			throw "cannot connect to query manager";
 		}
 
@@ -1767,8 +1689,7 @@ TQueryManagerConnection *TQueryManagerConnectionPool::getConnection(void){
 	this->QueryManagerConnectionMutex.up();
 
 	if(ConnectionIndex == -1){
-		error(Translate("TQueryManagerConnectionPool::getConnection: Keine freie Verbindung gefunden.\n",
-						"TQueryManagerConnectionPool::getConnection: No free connection found.\n"));
+		error("TQueryManagerConnectionPool::getConnection: %s\n", t("NO_FREE_CONNECTION_FOUND"));
 		return NULL;
 	}
 
@@ -1785,8 +1706,7 @@ void TQueryManagerConnectionPool::releaseConnection(TQueryManagerConnection *Con
 	}
 
 	if(ConnectionIndex == -1){
-		error(Translate("TQueryManagerConnectionPool::releaseConnection: Verbindung nicht gefunden.\n",
-						"TQueryManagerConnectionPool::releaseConnection: Connection not found.\n"));
+		error("TQueryManagerConnectionPool::releaseConnection: %s\n", t("CONNECTION_NOT_FOUND"));
 		return;
 	}
 
@@ -1801,8 +1721,7 @@ TQueryManagerPoolConnection::TQueryManagerPoolConnection(TQueryManagerConnection
 		QueryManagerConnection(NULL)
 {
 	if(this->QueryManagerConnectionPool == NULL){
-		error(Translate("TQueryManagerPoolConnection::TQueryManagerPoolConnection: Pool ist NULL.\n",
-						"TQueryManagerPoolConnection::TQueryManagerPoolConnection: Pool is NULL.\n"));
+		error("TQueryManagerPoolConnection::TQueryManagerPoolConnection: %s\n", t("POOL_IS_NULL"));
 		return;
 	}
 

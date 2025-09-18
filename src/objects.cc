@@ -256,7 +256,7 @@ static const char InstanceAttributeNames[18][30] = {
 // =============================================================================
 void ObjectType::setTypeID(int TypeID){
 	if(!ObjectTypeExists(TypeID)){
-		error("ObjectType: %s\n", t("INVALID_TYPE_D", TypeID));
+		error("ObjectType::setTypeID: %s\n", t("INVALID_TYPE_D", TypeID));
 		TypeID = 0;
 	}
 
@@ -270,7 +270,7 @@ bool ObjectType::getFlag(FLAG Flag){
 
 uint32 ObjectType::getAttribute(TYPEATTRIBUTE Attribute){
 	if(!this->getFlag(TypeAttributeFlags[Attribute])){
-		error("ObjectType: %s\n", t("TYPE_HAS_NO_FLAG_FOR_ATTRIBUTE", this->TypeID, TypeAttributeFlags[Attribute], Attribute));
+		error("ObjectType::getAttribute: %s\n", t("TYPE_HAS_NO_FLAG_FOR_ATTRIBUTE", this->TypeID, TypeAttributeFlags[Attribute], Attribute));
 		return 0;
 	}
 
@@ -292,7 +292,7 @@ int ObjectType::getAttributeOffset(INSTANCEATTRIBUTE Attribute){
 
 const char *ObjectType::getName(int Count){
 	if(this->isCreatureContainer()){
-		error("ObjectType: %s\n", t("CREATURE_TYPE_HAS_NO_NAME"));
+		error("ObjectType::getName: %s\n", t("CREATURE_TYPE_HAS_NO_NAME"));
 		return NULL;
 	}
 

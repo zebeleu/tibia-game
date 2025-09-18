@@ -93,8 +93,7 @@ TReadScriptFile::~TReadScriptFile(void){
 void TReadScriptFile::open(const char *FileName){
 	int Depth = this->RecursionDepth + 1;
 	if((Depth + 1) >= NARRAY(this->File)){
-		::error(Translate("TReadScriptFile::open: Rekursionstiefe zu groß.\n",
-						  "TReadScriptFile::open: Recursion depth too high.\n"));
+		::error("TReadScriptFile::open: %s\n", t("RECURSION_DEPTH_TOO_HIGH"));
 		throw "Recursion depth too high";
 	}
 
@@ -115,10 +114,8 @@ void TReadScriptFile::open(const char *FileName){
 	this->File[Depth] = fopen(this->Filename[Depth], "rb");
 	if(this->File[Depth] == NULL){
 		int ErrCode = errno;
-		::error(Translate("TReadScriptFile::open: Kann Datei %s nicht öffnen.\n",
-						  "TReadScriptFile::open: Cannot open file %s.\n"), this->Filename[Depth]);
-		::error(Translate("Fehler %d: %s.\n",
-						  "Error %d: %s.\n"), ErrCode, strerror(ErrCode));
+		::error("TReadScriptFile::open: %s\n", t("CANNOT_OPEN_FILE_S", this->Filename[Depth]));
+		::error("%s\n", t("ERROR_D_S", ErrCode, strerror(ErrCode)));
 		throw "Cannot open script-file";
 	}
 
@@ -129,8 +126,7 @@ void TReadScriptFile::open(const char *FileName){
 void TReadScriptFile::close(void){
 	int Depth = this->RecursionDepth;
 	if(Depth <= -1){
-		::error(Translate("TReadScriptFile::close: Keine Datei offen.\n",
-						  "TReadScriptFile::close: No file open.\n"));
+		::error("TReadScriptFile::close: %s\n", t("NO_FILE_OPEN"));
 		return;
 	}
 
@@ -173,8 +169,7 @@ void TReadScriptFile::error(const char *Text){
 // TODO(fusion): This needs to be tested to make sure it behaves like the original.
 void TReadScriptFile::nextToken(void){
 	if(this->RecursionDepth == -1){
-		::error(Translate("TReadScriptFile::nextToken: Kein Skript zum Lesen geöffnet.\n",
-						  "TReadScriptFile::nextToken: No script opened for reading.\n"));
+		::error("TReadScriptFile::nextToken: %s\n", t("NO_SCRIPT_OPENED_FOR_READING"));
 		this->Token = ENDOFFILE;
 		return;
 	}
@@ -567,19 +562,16 @@ TWriteScriptFile::TWriteScriptFile(void){
 
 TWriteScriptFile::~TWriteScriptFile(void){
 	if(this->File != NULL){
-		::error(Translate("TWriteScriptFile::~TWriteScriptFile: Datei %s ist noch offen.\n",
-						  "TWriteScriptFile::~TWriteScriptFile: File %s is still open.\n"), this->Filename);
+		::error("TWriteScriptFile::~TWriteScriptFile: %s\n", t("FILE_IS_STILL_OPEN_S", this->Filename));
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteScriptFile::~TWriteScriptFile: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteScriptFile::~TWriteScriptFile: Error %d closing file.\n"), errno);
+			::error("TWriteScriptFile::~TWriteScriptFile: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 	}
 }
 
 void TWriteScriptFile::open(const char *FileName){
 	if(this->File != NULL){
-		::error(Translate("TWriteScriptFile::open: Altes Skript ist noch offen.\n",
-						  "TWriteScriptFile::open: Old script is still open.\n"));
+		::error("TWriteScriptFile::open: %s\n", t("OLD_SCRIPT_IS_STILL_OPEN"));
 		if(fclose(this->File) != 0){
 			::error("TWriteScriptFile::open: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
@@ -589,10 +581,8 @@ void TWriteScriptFile::open(const char *FileName){
 	this->File = fopen(FileName, "wb");
 	if(this->File == NULL){
 		int ErrCode = errno;
-		::error(Translate("TWriteScriptFile: Kann Datei %s nicht anlegen.\n",
-						  "TWriteScriptFile: Cannot create file %s.\n"), FileName);
-		::error(Translate("Fehler %d: %s.\n",
-						  "Error %d: %s.\n"), ErrCode, strerror(ErrCode));
+		::error("TWriteScriptFile: %s\n", t("CANNOT_CREATE_FILE_S", FileName));
+		::error("%s\n", t("ERROR_D_S", ErrCode, strerror(ErrCode)));
 		throw "Cannot create script-file";
 	}
 
@@ -602,8 +592,7 @@ void TWriteScriptFile::open(const char *FileName){
 
 void TWriteScriptFile::close(void){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::close: Kein Skript offen.\n",
-						  "TWriteScriptFile::close: No script open.\n"));
+		::error("TWriteScriptFile::close: %s\n", t("NO_SCRIPT_OPEN"));
 		return;
 	}
 
@@ -630,8 +619,7 @@ void TWriteScriptFile::error(const char *Text){
 
 void TWriteScriptFile::writeLn(void){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::writeLn: Kein Skript zum Schreiben geöffnet.\n",
-						  "TWriteScriptFile::writeLn: No script open for writing.\n"));
+		::error("TWriteScriptFile::writeLn: %s\n", t("NO_SCRIPT_OPEN_FOR_WRITING"));
 		throw "Cannot write linefeed";
 	}
 
@@ -640,14 +628,12 @@ void TWriteScriptFile::writeLn(void){
 
 void TWriteScriptFile::writeText(const char *Text){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::writeText: Kein Skript zum Schreiben geöffnet.\n",
-						  "TWriteScriptFile::writeText: No script open for writing.\n"));
+		::error("TWriteScriptFile::writeText: %s\n", t("NO_SCRIPT_OPEN_FOR_WRITING"));
 		throw "Cannot write text";
 	}
 
 	if(Text == NULL){
-		::error(Translate("TWriteScriptFile::writeText: Text ist NULL.\n",
-						  "TWriteScriptFile::writeText: Text is NULL.\n"));
+		::error("TWriteScriptFile::writeText: %s\n", t("TEXT_IS_NULL"));
 		throw "Cannot write text";
 	}
 
@@ -658,8 +644,7 @@ void TWriteScriptFile::writeText(const char *Text){
 
 void TWriteScriptFile::writeNumber(int Number){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::writeNumber: Kein Skript zum Schreiben geöffnet.\n",
-						  "TWriteScriptFile::writeNumber: No script open for writing.\n"));
+		::error("TWriteScriptFile::writeNumber: %s\n", t("NO_SCRIPT_OPEN_FOR_WRITING"));
 		throw "Cannot write number";
 	}
 
@@ -670,14 +655,12 @@ void TWriteScriptFile::writeNumber(int Number){
 
 void TWriteScriptFile::writeString(const char *Text){
 	if(this->File == NULL){
-		::error(Translate("TWriteScriptFile::writeString: Kein Skript zum Schreiben geöffnet.\n",
-						  "TWriteScriptFile::writeString: No script open for writing.\n"));
+		::error("TWriteScriptFile::writeString: %s\n", t("NO_SCRIPT_OPEN_FOR_WRITING"));
 		throw "Cannot write string";
 	}
 
 	if(Text == NULL){
-		::error(Translate("TWriteScriptFile::writeString: Text ist NULL.\n",
-						  "TWriteScriptFile::writeString: Text is NULL.\n"));
+		::error("TWriteScriptFile::writeString: %s\n", t("TEXT_IS_NULL"));
 		throw "Cannot write string";
 	}
 
@@ -877,8 +860,7 @@ void TReadBinaryFile::skip(int Count){
 
 TReadBinaryFile::~TReadBinaryFile(void){
 	if(this->File != NULL){
-		::error(Translate("TReadBinaryFile::~TReadBinaryFile: Datei %s ist noch offen.\n",
-						  "TReadBinaryFile::~TReadBinaryFile: File %s is still open.\n"), this->Filename);
+		::error("TReadBinaryFile::~TReadBinaryFile: %s\n", t("FILE_IS_STILL_OPEN_S", this->Filename));
 		if(fclose(this->File) != 0){
 			::error("TReadBinaryFile::~TReadBinaryFile: %s\n", t("ERROR_CLOSING_FILE", errno));
 		}
@@ -899,10 +881,8 @@ void TWriteBinaryFile::open(const char *FileName){
 	this->File = fopen(FileName, "wb");
 	if(this->File == NULL){
 		int ErrCode = errno;
-		::error(Translate("TWriteBinaryFile::open: Kann Datei %s nicht anlegen.\n",
-						  "TWriteBinaryFile::open: Cannot create file %s.\n"), FileName);
-		::error(Translate("Fehler %d: %s.\n",
-						  "Error %d: %s.\n"), ErrCode, strerror(ErrCode));
+		::error("TWriteBinaryFile::open: %s\n", t("CANNOT_CREATE_FILE_S", FileName));
+		::error("%s\n", t("ERROR_D_S", ErrCode, strerror(ErrCode)));
 
 		snprintf(ErrorString, sizeof(ErrorString),
 				"Cannot create file %s.", FileName);
@@ -917,11 +897,9 @@ void TWriteBinaryFile::close(void){
 	// TODO(fusion): Check if file is NULL?
 	if(fclose(this->File) != 0){
 		int ErrCode = errno;
-		::error(Translate("TWriteBinaryFile::close: Fehler beim Schließen der Datei.\n",
-						  "TWriteBinaryFile::close: Error closing file.\n"));
-		::error(Translate("# Datei: %s, Fehlercode: %d (%s)\n",
-						  "# File: %s, Error code: %d (%s)\n"),
-				this->Filename, ErrCode, strerror(ErrCode));
+		::error("TWriteBinaryFile::close: %s\n", t("ERROR_CLOSING_FILE"));
+		::error("%s\n", t("FILE_ERROR_CODE_S_D_S",
+				this->Filename, ErrCode, strerror(ErrCode)));
 	}
 	this->File = NULL;
 }
@@ -929,8 +907,7 @@ void TWriteBinaryFile::close(void){
 void TWriteBinaryFile::error(const char *Text){
 	if(this->File != NULL){
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteBinaryFile::error: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteBinaryFile::error: Error %d closing file.\n"), errno);
+			::error("TWriteBinaryFile::error: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 	}
@@ -946,16 +923,13 @@ void TWriteBinaryFile::writeByte(uint8 Byte){
 	int Result = (int)fwrite(&Byte, 1, 1, this->File);
 	if(Result != 1){
 		int ErrCode = errno;
-		::error(Translate("TWriteBinaryFile::writeByte: Fehler beim Schreiben eines Bytes\n",
-						  "TWriteBinaryFile::writeByte: Error writing a byte\n"));
-		::error(Translate("# Datei: %s, Rückgabewert: %d, Fehlercode: %d (%s)\n",
-						  "# File: %s, Return value: %d, Error code: %d (%s)\n"),
-				this->Filename, Result, ErrCode, strerror(ErrCode));
+		::error("TWriteBinaryFile::writeByte: %s\n", t("ERROR_WRITING_A_BYTE"));
+		::error("%s\n", t("FILE_RETURN_VALUE_ERROR_CODE_S_D_D_S",
+				this->Filename, Result, ErrCode, strerror(ErrCode)));
 
 		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteBinaryFile::writeByte: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteBinaryFile::writeByte: Error %d closing file.\n"), errno);
+			::error("TWriteBinaryFile::writeByte: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 		SaveFile(this->Filename);
@@ -968,16 +942,13 @@ void TWriteBinaryFile::writeBytes(const uint8 *Buffer, int Count){
 	int Result = (int)fwrite(Buffer, 1, Count, this->File);
 	if(Result != Count){
 		int ErrCode = errno;
-		::error(Translate("TWriteBinaryFile::writeBytes: Fehler beim Schreiben von %d Bytes\n",
-						  "TWriteBinaryFile::writeBytes: Error writing %d bytes\n"), Count);
-		::error(Translate("# Datei: %s, Rückgabewert: %d, Fehlercode: %d (%s)\n",
-						  "# File: %s, Return value: %d, Error code: %d (%s)\n"),
-				this->Filename, Result, ErrCode, strerror(ErrCode));
+		::error("TWriteBinaryFile::writeBytes: %s\n", t("ERROR_WRITING_BYTES_D", Count));
+		::error("%s\n", t("FILE_RETURN_VALUE_ERROR_CODE_S_D_D_S",
+				this->Filename, Result, ErrCode, strerror(ErrCode)));
 
 		// NOTE(fusion): Close file and make a backup, possibly for further inspection.
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteBinaryFile::writeBytes: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteBinaryFile::writeBytes: Error %d closing file.\n"), errno);
+			::error("TWriteBinaryFile::writeBytes: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 		this->File = NULL;
 		SaveFile(this->Filename);
@@ -988,11 +959,9 @@ void TWriteBinaryFile::writeBytes(const uint8 *Buffer, int Count){
 
 TWriteBinaryFile::~TWriteBinaryFile(void){
 	if(this->File != NULL){
-		::error(Translate("TWriteBinaryFile::~TWriteBinaryFile: Datei %s ist noch offen.\n",
-						  "TWriteBinaryFile::~TWriteBinaryFile: File %s is still open.\n"), this->Filename);
+		::error("TWriteBinaryFile::~TWriteBinaryFile: %s\n", t("FILE_IS_STILL_OPEN_S", this->Filename));
 		if(fclose(this->File) != 0){
-			::error(Translate("TWriteBinaryFile::~TWriteBinaryFile: Fehler %d beim Schließen der Datei.\n",
-							  "TWriteBinaryFile::~TWriteBinaryFile: Error %d closing file.\n"), errno);
+			::error("TWriteBinaryFile::~TWriteBinaryFile: %s\n", t("ERROR_CLOSING_FILE_D", errno));
 		}
 	}
 }

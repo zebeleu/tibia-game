@@ -90,8 +90,7 @@ THouseArea *GetHouseArea(uint16 ID){
 	}
 
 	if(Result == NULL){
-		error(Translate("GetHouseArea: Gebiet mit ID %d nicht gefunden.\n",
-						"GetHouseArea: Territory with ID %d not found.\n"), ID);
+		error("GetHouseArea: %s\n", t("TERRITORY_WITH_ID_NOT_FOUND_D", ID));
 	}
 
 	return Result;
@@ -99,14 +98,12 @@ THouseArea *GetHouseArea(uint16 ID){
 
 int CheckAccessRight(const char *Rule, TPlayer *Player){
 	if(Rule == NULL){
-		error(Translate("CheckAccessRight: Regel ist NULL.\n",
-						"CheckAccessRight: Rule is NULL.\n"));
+		error("CheckAccessRight: %s\n", t("RULE_IS_NULL"));
 		return 0; // NOT_APPLICABLE ?
 	}
 
 	if(Player == NULL){
-		error(Translate("CheckAccessRight: pl ist NULL.\n",
-						"CheckAccessRight: Player is NULL.\n"));
+		error("CheckAccessRight: %s\n", t("PLAYER_IS_NULL"));
 		return 0; // NOT_APPLICABLE ?
 	}
 
@@ -161,8 +158,7 @@ THouse *GetHouse(uint16 ID){
 	}
 
 	if(Result == NULL){
-		error(Translate("GetHouse: Haus mit ID %d nicht gefunden.\n",
-						"GetHouse: House with ID %d not found.\n"), ID);
+		error("GetHouse: %s\n", t("HOUSE_WITH_ID_NOT_FOUND_D", ID));
 	}
 
 	return Result;
@@ -171,14 +167,12 @@ THouse *GetHouse(uint16 ID){
 bool IsOwner(uint16 HouseID, TPlayer *Player){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("IsOwner: Haus mit ID %d existiert nicht.\n",
-						"IsOwner: House with ID %d does not exist.\n"), HouseID);
+		error("IsOwner: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return false;
 	}
 
 	if(Player == NULL){
-		error(Translate("IsOwner: pl ist NULL.\n",
-						"IsOwner: Player is NULL.\n"));
+		error("IsOwner: %s\n", t("PLAYER_IS_NULL"));
 		return false;
 	}
 
@@ -188,14 +182,12 @@ bool IsOwner(uint16 HouseID, TPlayer *Player){
 bool IsSubowner(uint16 HouseID, TPlayer *Player, int TimeStamp){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("IsSubowner: Haus mit ID %d existiert nicht.\n",
-						"IsSubowner: House with ID %d does not exist.\n"), HouseID);
+		error("IsSubowner: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return false;
 	}
 
 	if(Player == NULL){
-		error(Translate("IsSubowner: pl ist NULL.\n",
-						"IsSubowner: Player is NULL.\n"));
+		error("IsSubowner: %s\n", t("PLAYER_IS_NULL"));
 		return false;
 	}
 
@@ -220,14 +212,12 @@ bool IsSubowner(uint16 HouseID, TPlayer *Player, int TimeStamp){
 bool IsGuest(uint16 HouseID, TPlayer *Player, int TimeStamp){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("IsGuest: Haus mit ID %d existiert nicht.\n",
-						"IsGuest: House with ID %d does not exist.\n"), HouseID);
+		error("IsGuest: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return false;
 	}
 
 	if(Player == NULL){
-		error(Translate("IsGuest: pl ist NULL.\n",
-						"IsGuest: Player is NULL.\n"));
+		error("IsGuest: %s\n", t("PLAYER_IS_NULL"));
 		return false;
 	}
 
@@ -251,8 +241,7 @@ bool IsGuest(uint16 HouseID, TPlayer *Player, int TimeStamp){
 
 bool IsInvited(uint16 HouseID, TPlayer *Player, int TimeStamp){
 	if(Player == NULL){
-		error(Translate("IsInvited: pl ist NULL.\n",
-						"IsInvited: Player is NULL.\n"));
+		error("IsInvited: %s\n", t("PLAYER_IS_NULL"));
 		return false;
 	}
 
@@ -264,8 +253,7 @@ bool IsInvited(uint16 HouseID, TPlayer *Player, int TimeStamp){
 const char *GetHouseName(uint16 HouseID){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("GetHouseName: Haus mit ID %d existiert nicht.\n",
-						"GetHouseName: House with ID %d does not exist.\n"), HouseID);
+		error("GetHouseName: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return NULL;
 	}
 
@@ -275,8 +263,7 @@ const char *GetHouseName(uint16 HouseID){
 const char *GetHouseOwner(uint16 HouseID){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("GetHouseOwner: Haus mit ID %d existiert nicht.\n",
-						"GetHouseOwner: House with ID %d does not exist.\n"), HouseID);
+		error("GetHouseOwner: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return NULL;
 	}
 
@@ -287,20 +274,17 @@ const char *GetHouseOwner(uint16 HouseID){
 void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("ShowSubownerList: Haus mit ID %d existiert nicht.\n",
-						"ShowSubownerList: House with ID %d does not exist.\n"), HouseID);
+		error("ShowSubownerList: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		throw ERROR;
 	}
 
 	if(Player == NULL){
-		error(Translate("ShowSubownerList: pl ist NULL.\n",
-						"ShowSubownerList: Player is NULL.\n"));
+		error("ShowSubownerList: %s\n", t("PLAYER_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Buffer == NULL){
-		error(Translate("ShowSubownerList: Buffer ist NULL.\n",
-						"ShowSubownerList: Buffer is NULL.\n"));
+		error("ShowSubownerList: %s\n", t("BUFFER_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -308,8 +292,7 @@ void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer){
 		throw NOTACCESSIBLE;
 	}
 
-	print(3, Translate("Editiere Untermieterliste von Haus %d.\n",
-					   "Editing subtenant list of house %d.\n"), HouseID);
+	print(3, "%s\n", t("EDITING_SUBTENANT_LIST_OF_HOUSE_D", HouseID));
 	sprintf(Buffer, "# Subowners of %s\n", House->Name);
 	for(int i = 0; i < House->Subowners; i += 1){
 		strcat(Buffer, House->Subowner.at(i)->Name);
@@ -321,20 +304,17 @@ void ShowSubownerList(uint16 HouseID, TPlayer *Player, char *Buffer){
 void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("ShowGuestList: Haus mit ID %d existiert nicht.\n",
-						"ShowGuestList: House with ID %d does not exist.\n"), HouseID);
+		error("ShowGuestList: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		throw ERROR;
 	}
 
 	if(Player == NULL){
-		error(Translate("ShowGuestList: pl ist NULL.\n",
-						"ShowGuestList: Player is NULL.\n"));
+		error("ShowGuestList: %s\n", t("PLAYER_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Buffer == NULL){
-		error(Translate("ShowGuestList: Buffer ist NULL.\n",
-						"ShowGuestList: Buffer is NULL.\n"));
+		error("ShowGuestList: %s\n", t("BUFFER_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -343,8 +323,7 @@ void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer){
 		throw NOTACCESSIBLE;
 	}
 
-	print(3, Translate("Editiere Gästeliste von Haus %d.\n",
-					   "Editing guest list of house %d.\n"), HouseID);
+	print(3, "%s\n", t("EDITING_GUEST_LIST_OF_HOUSE_D", HouseID));
 	sprintf(Buffer, "# Guests of %s\n", House->Name);
 	for(int i = 0; i < House->Guests; i += 1){
 		strcat(Buffer, House->Guest.at(i)->Name);
@@ -355,20 +334,17 @@ void ShowGuestList(uint16 HouseID, TPlayer *Player, char *Buffer){
 void ChangeSubowners(uint16 HouseID, TPlayer *Player, const char *Buffer){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("ChangeSubowners: Haus mit ID %d existiert nicht.\n",
-						"ChangeSubowners: House with ID %d does not exist.\n"), HouseID);
+		error("ChangeSubowners: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		throw ERROR;
 	}
 
 	if(Player == NULL){
-		error(Translate("ChangeSubowners: pl ist NULL.\n",
-						"ChangeSubowners: Player is NULL.\n"));
+		error("ChangeSubowners: %s\n", t("PLAYER_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Buffer == NULL){
-		error(Translate("ChangeSubowners: Buffer ist NULL.\n",
-						"ChangeSubowners: Buffer is NULL.\n"));
+		error("ChangeSubowners: %s\n", t("BUFFER_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -376,8 +352,7 @@ void ChangeSubowners(uint16 HouseID, TPlayer *Player, const char *Buffer){
 		throw NOTACCESSIBLE;
 	}
 
-	Log("houses", Translate("%s ändert Liste der Untermieter von Haus %d.\n",
-							"%s changes list of subtenants of house %d.\n"), Player->Name, HouseID);
+	Log("houses", "%s\n", t("CHANGES_LIST_OF_SUBTENANTS_OF_HOUSE_S_D", Player->Name, HouseID));
 
 	House->Subowners = 0;
 	for(int ReadPos = 0; Buffer[ReadPos] != 0;){
@@ -416,20 +391,17 @@ void ChangeSubowners(uint16 HouseID, TPlayer *Player, const char *Buffer){
 void ChangeGuests(uint16 HouseID, TPlayer *Player, const char *Buffer){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("ChangeGuests: Haus mit ID %d existiert nicht.\n",
-						"ChangeGuests: House with ID %d does not exist.\n"), HouseID);
+		error("ChangeGuests: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		throw ERROR;
 	}
 
 	if(Player == NULL){
-		error(Translate("ChangeGuests: pl ist NULL.\n",
-						"ChangeGuests: Player is NULL.\n"));
+		error("ChangeGuests: %s\n", t("PLAYER_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Buffer == NULL){
-		error(Translate("ChangeGuests: Buffer ist NULL.\n",
-						"ChangeGuests: Buffer is NULL.\n"));
+		error("ChangeGuests: %s\n", t("BUFFER_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -438,8 +410,7 @@ void ChangeGuests(uint16 HouseID, TPlayer *Player, const char *Buffer){
 		throw NOTACCESSIBLE;
 	}
 
-	Log("houses", Translate("%s ändert Liste der Gäste von Haus %d.\n",
-							"%s is changing the list of guests of house %d.\n"), Player->Name, HouseID);
+	Log("houses", "%s\n", t("IS_CHANGING_THE_LIST_OF_GUESTS_OF_HOUSE_S_D", Player->Name, HouseID));
 
 	House->Guests = 0;
 	for(int ReadPos = 0; Buffer[ReadPos] != 0;){
@@ -478,8 +449,7 @@ void ChangeGuests(uint16 HouseID, TPlayer *Player, const char *Buffer){
 void GetExitPosition(uint16 HouseID, int *x, int *y, int *z){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("GetExitPosition: Haus mit ID %d existiert nicht.\n",
-						"GetExitPosition: House with ID %d does not exist.\n"), HouseID);
+		error("GetExitPosition: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return;
 	}
 
@@ -491,14 +461,12 @@ void GetExitPosition(uint16 HouseID, int *x, int *y, int *z){
 void KickGuest(uint16 HouseID, TPlayer *Guest){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("KickGuest(houses 1): Haus mit ID %d existiert nicht.\n",
-						"KickGuest(houses 1): House with ID %d does not exist.\n"), HouseID);
+		error("KickGuest(houses 1): %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		throw ERROR;
 	}
 
 	if(Guest == NULL){
-		error(Translate("KickGuest(houses 1): Guest ist NULL.\n",
-						"KickGuest(houses 1): Guest is NULL.\n"));
+		error("KickGuest(houses 1): %s\n", t("GUEST_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -515,13 +483,11 @@ void KickGuest(uint16 HouseID, TPlayer *Guest){
 	}
 
 	if(Bed != NONE && Bed.getAttribute(TEXTSTRING) != 0){
-		print(3, Translate("Spieler steht auf einem Bett, während er aus dem Haus gekickt wird.\n",
-							"Player stands on a bed while being kicked out of the house.\n"));
+		print(3, "%s\n", t("PLAYER_STANDS_ON_A_BED_WHILE_BEING_KICKED_OUT_OF_THE_HOUSE"));
 		try{
 			UseObjects(0, Bed, Bed);
 		}catch(RESULT r){
-			error(Translate("KickGuest: Exception %d beim Aufräumen des Bettes.\n",
-							"KickGuest: Exception %d while making the bed.\n"), r);
+			error("KickGuest: %s\n", t("EXCEPTION_WHILE_MAKING_THE_BED_D", r));
 		}
 	}
 
@@ -533,20 +499,17 @@ void KickGuest(uint16 HouseID, TPlayer *Guest){
 void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("KickGuest(houses 2): Haus mit ID %d existiert nicht.\n",
-						"KickGuest(houses 2): House with ID %d does not exist.\n"), HouseID);
+		error("KickGuest(houses 2): %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		throw ERROR;
 	}
 
 	if(Host == NULL){
-		error(Translate("KickGuest(houses 2): Host ist NULL.\n",
-						"KickGuest(houses 2): Host is NULL.\n"));
+		error("KickGuest(houses 2): %s\n", t("HOST_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Guest == NULL){
-		error(Translate("KickGuest(houses 2): Guest ist NULL.\n",
-						"KickGuest(houses 2): Guest is NULL.\n"));
+		error("KickGuest(houses 2): %s\n", t("GUEST_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -574,8 +537,7 @@ void KickGuest(uint16 HouseID, TPlayer *Host, TPlayer *Guest){
 void KickGuests(uint16 HouseID){
 	THouse *House = GetHouse(HouseID);
 	if(House == NULL){
-		error(Translate("KickGuests: Haus mit ID %d existiert nicht.\n",
-						"KickGuests: House with ID %d does not exist.\n"), HouseID);
+		error("KickGuests: %s\n", t("HOUSE_WITH_ID_DOES_NOT_EXIST_D", HouseID));
 		return;
 	}
 
@@ -599,21 +561,18 @@ void KickGuests(uint16 HouseID){
 
 bool MayOpenDoor(Object Door, TPlayer *Player){
 	if(!Door.exists()){
-		error(Translate("MayOpenDoor: Tür existiert nicht.\n",
-						"MayOpenDoor: Door does not exist.\n"));
+		error("MayOpenDoor: %s\n", t("DOOR_DOES_NOT_EXIST"));
 		return false;
 	}
 
 	if(Player == NULL){
-		error(Translate("MayOpenDoor: pl ist NULL.\n",
-						"MayOpenDoor: Player is NULL.\n"));
+		error("MayOpenDoor: %s\n", t("PLAYER_IS_NULL"));
 		return false;
 	}
 
 	ObjectType DoorType = Door.getObjectType();
 	if(!DoorType.getFlag(NAMEDOOR) || !DoorType.getFlag(TEXT)){
-		error(Translate("MayOpenDoor: Tür ist keine NameDoor.\n",
-						"MayOpenDoor: Door is not a NameDoor.\n"));
+		error("MayOpenDoor: %s\n", t("DOOR_IS_NOT_A_NAMEDOOR"));
 		return false;
 	}
 
@@ -662,20 +621,17 @@ bool MayOpenDoor(Object Door, TPlayer *Player){
 // TODO(fusion): This function is unsafe like `strcpy`.
 void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer){
 	if(!Door.exists()){
-		error(Translate("ShowNameDoor: Tür existiert nicht.\n",
-						"ShowNameDoor: Door does not exist.\n"));
+		error("ShowNameDoor: %s\n", t("DOOR_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
 	if(Player == NULL){
-		error(Translate("ShowNameDoor: pl ist NULL.\n",
-						"ShowNameDoor: Player is NULL.\n"));
+		error("ShowNameDoor: %s\n", t("PLAYER_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Buffer == NULL){
-		error(Translate("ShowNameDoor: Buffer ist NULL.\n",
-						"ShowNameDoor: Buffer is NULL.\n"));
+		error("ShowNameDoor: %s\n", t("BUFFER_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -683,27 +639,23 @@ void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer){
 	GetObjectCoordinates(Door, &DoorX, &DoorY, &DoorZ);
 	uint16 HouseID = GetHouseID(DoorX, DoorY, DoorZ);
 	if(HouseID == 0){
-		error(Translate("ShowNameDoor: Tür auf Koordinate [%d,%d,%d] gehört zu keinem Haus.\n",
-						"ShowNameDoor: Door at coordinate [%d,%d,%d] does not belong to any house.\n"),
-				DoorX, DoorY, DoorZ);
+		error("ShowNameDoor: %s\n", t("DOOR_AT_COORDINATE_DOES_NOT_BELONG_TO_ANY_HOUSE_D_D_D",
+				DoorX, DoorY, DoorZ));
 		throw ERROR;
 	}
 
 	if(!IsOwner(HouseID, Player)){
-		print(3, Translate("Spieler %s ist nicht Mieter des Hauses %d.\n",
-							"Player %s is not a tenant of the house %d.\n"),
-				Player->Name, HouseID);
+		print(3, "%s\n", t("PLAYER_IS_NOT_A_TENANT_OF_THE_HOUSE_S_D",
+				Player->Name, HouseID));
 		throw NOTACCESSIBLE;
 	}
 
-	print(3, Translate("Editiere NameDoor.\n",
-					   "Edit NameDoor.\n"));
+	print(3, "%s\n", t("EDIT_NAMEDOOR"));
 
 	// TODO(fusion): Check for `NAMEDOOR` flag as well?
 	if(Door.getObjectType().getFlag(TEXT)){
-		error(Translate("ShowNameDoor: Tür auf Koordinate [%d,%d,%d] enthält keinen Text.\n",
-						"ShowNameDoor: Door at coordinate [%d,%d,%d] contains no text.\n"),
-				DoorX, DoorY, DoorZ);
+		error("ShowNameDoor: %s\n", t("DOOR_AT_COORDINATE_CONTAINS_NO_TEXT_D_D_D",
+				DoorX, DoorY, DoorZ));
 		throw ERROR;
 	}
 
@@ -717,20 +669,17 @@ void ShowNameDoor(Object Door, TPlayer *Player, char *Buffer){
 
 void ChangeNameDoor(Object Door, TPlayer *Player, const char *Buffer){
 	if(!Door.exists()){
-		error(Translate("ChangeNameDoor: Tür existiert nicht.\n",
-						"ChangeNameDoor: Door does not exist.\n"));
+		error("ChangeNameDoor: %s\n", t("DOOR_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
 	if(Player == NULL){
-		error(Translate("ChangeNameDoor: pl ist NULL.\n",
-						"ChangeNameDoor: Player is NULL.\n"));
+		error("ChangeNameDoor: %s\n", t("PLAYER_IS_NULL"));
 		throw ERROR;
 	}
 
 	if(Buffer == NULL){
-		error(Translate("ChangeNameDoor: Buffer ist NULL.\n",
-						"ChangeNameDoor: Buffer is NULL.\n"));
+		error("ChangeNameDoor: %s\n", t("BUFFER_IS_NULL"));
 		throw ERROR;
 	}
 
@@ -738,9 +687,8 @@ void ChangeNameDoor(Object Door, TPlayer *Player, const char *Buffer){
 	GetObjectCoordinates(Door, &DoorX, &DoorY, &DoorZ);
 	uint16 HouseID = GetHouseID(DoorX, DoorY, DoorZ);
 	if(HouseID == 0){
-		error(Translate("ChangeNameDoor: Tür auf Koordinate [%d,%d,%d] gehört zu keinem Haus.\n",
-						"ChangeNameDoor: Door at coordinate [%d,%d,%d] does not belong to any house.\n"),
-				DoorX, DoorY, DoorZ);
+		error("ChangeNameDoor: %s\n", t("DOOR_AT_COORDINATE_DOES_NOT_BELONG_TO_ANY_HOUSE_D_D_D",
+				DoorX, DoorY, DoorZ));
 		throw ERROR;
 	}
 
@@ -750,15 +698,13 @@ void ChangeNameDoor(Object Door, TPlayer *Player, const char *Buffer){
 
 	// TODO(fusion): Check for `NAMEDOOR` flag as well?
 	if(!Door.getObjectType().getFlag(TEXT)){
-		error(Translate("ChangeNameDoor: Tür auf Koordinate [%d,%d,%d] enthält keinen Text.\n",
-						"ChangeNameDoor: Door at coordinate [%d,%d,%d] contains no text.\n"),
-				DoorX, DoorY, DoorZ);
+		error("ChangeNameDoor: %s\n", t("DOOR_AT_COORDINATE_CONTAINS_NO_TEXT_D_D_D",
+				DoorX, DoorY, DoorZ));
 		throw ERROR;
 	}
 
-	Log("houses", Translate("%s ändert NameDoor von Haus %d auf Koordinate [%d,%d,%d].\n",
-							"%s changes NameDoor of house %d at coordinate [%d,%d,%d].\n"),
-			Player->Name, HouseID, DoorX, DoorY, DoorZ);
+	Log("houses", "%s\n", t("CHANGES_NAMEDOOR_OF_HOUSE_AT_COORDINATE_S_D_D_D_D",
+			Player->Name, HouseID, DoorX, DoorY, DoorZ));
 
 	DeleteDynamicString(Door.getAttribute(TEXTSTRING));
 	Change(Door, TEXTSTRING, AddDynamicString(Buffer));
@@ -865,8 +811,7 @@ static void DeleteContainerObjects(Object Con){
 
 void CleanField(int x, int y, int z, Object Depot){
 	if(Depot == NONE){
-		error(Translate("CleanField: Depot-Box existiert nicht.\n",
-						"CleanField: Depot-Box does not exist.\n"));
+		error("CleanField: %s\n", t("DEPOT_BOX_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -909,14 +854,12 @@ void CleanField(int x, int y, int z, Object Depot){
 
 void CleanHouse(THouse *House, TPlayerData *PlayerData){
 	if(House == NULL){
-		error(Translate("CleanHouse: house ist NULL.\n",
-						"CleanHouse: house is NULL.\n"));
+		error("CleanHouse: %s\n", t("HOUSE_IS_NULL"));
 		return;
 	}
 
 	if(House->OwnerID == 0){
-		error(Translate("CleanHouse: Haus %d hat keinen Besitzer.\n",
-						"CleanHouse: House %d has no owner.\n"), House->ID);
+		error("CleanHouse: %s\n", t("HOUSE_HAS_NO_OWNER_D", House->ID));
 		return;
 	}
 
@@ -924,8 +867,7 @@ void CleanHouse(THouse *House, TPlayerData *PlayerData){
 	if(PlayerData == NULL){
 		PlayerData = AssignPlayerPoolSlot(House->OwnerID, false);
 		if(PlayerData == NULL){
-			error(Translate("CleanHouse: Kann keinen Slot für Spielerdaten zuweisen.\n",
-							"CleanHouse: Cannot assign a slot for player data.\n"));
+			error("CleanHouse: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA"));
 			return;
 		}
 
@@ -979,8 +921,7 @@ void ClearHouse(THouse *House){
 }
 
 bool FinishAuctions(void){
-	Log("houses", Translate("Bearbeite beendete Auktionen...\n",
-							"Edit completed auctions...\n"));
+	Log("houses", "%s\n", t("EDIT_COMPLETED_AUCTIONS"));
 
 	// TODO(fusion): It could be worse.
 	int NumberOfAuctions       = Houses;
@@ -991,8 +932,7 @@ bool FinishAuctions(void){
 	int Ret = QueryManagerConnection->finishAuctions(&NumberOfAuctions,
 							HouseIDs, CharacterIDs, CharacterNames, Bids);
 	if(Ret != 0){
-		error(Translate("FinishAuctions: Kann Versteigerungen nicht ermitteln.\n",
-						"FinishAuctions: Cannot identify auctions.\n"));
+		error("FinishAuctions: %s\n", t("CANNOT_IDENTIFY_AUCTIONS"));
 		return false;
 	}
 
@@ -1009,46 +949,39 @@ bool FinishAuctions(void){
 		const char *CharacterName = CharacterNames[AuctionNr];
 		int Bid = Bids[AuctionNr];
 
-		Log("houses", Translate("Auktion für Haus %d beendet: Ersteigert von %s für %d Gold.\n",
-								"Auction for house %d finished: Won by %s for %d gold.\n"),
-				HouseID, CharacterName, Bid);
-		Log("houses", Translate("bei Reset: INSERT INTO HouseAssignments VALUES ('%s',%d,%d,%d);\n",
-								"On reset: INSERT INTO HouseAssignments VALUES ('%s',%d,%d,%d);\n"),
-				HelpWorld, HouseID, CharacterID, Bid);
+		Log("houses", "%s\n", t("AUCTION_FOR_HOUSE_FINISHED_WON_BY_FOR_GOLD_D_S_D",
+				HouseID, CharacterName, Bid));
+		Log("houses", "%s\n", t("ON_RESET_INSERT_INTO_HOUSEASSIGNMENTS_VALUES_S_D_D_D",
+				HelpWorld, HouseID, CharacterID, Bid));
 
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error(Translate("FinishAuctions: Haus mit Nummer %d existiert nicht.\n",
-							"House with number %d does not exist.\n"),
-					HouseID);
+			error("%s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D",
+					HouseID));
 			continue;
 		}
 
 		if(House->OwnerID != 0){
-			error(Translate("FinishAuctions: Haus mit Nummer %d gehört schon Charakter %u.\n",
-							"FinishAuctions: House with number %d already belongs to character %u.\n"),
-					HouseID, House->OwnerID);
+			error("FinishAuctions: %s\n", t("HOUSE_WITH_NUMBER_ALREADY_BELONGS_TO_CHARACTER_D_U",
+					HouseID, House->OwnerID));
 			continue;
 		}
 
 		TPlayerData *PlayerData = AssignPlayerPoolSlot(CharacterID, false);
 		if(PlayerData == NULL){
-			error(Translate("FinishAuctions: Kann keinen Slot für Spielerdaten zuweisen.\n",
-							"FinishAuctions: Cannot assign a slot for player data.\n"));
+			error("FinishAuctions: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA"));
 			continue;
 		}
 
 		LoadDepot(PlayerData, House->DepotNr, TempDepot);
 		int DepotMoney = CountMoney(GetFirstContainerObject(TempDepot));
 		if(DepotMoney < (House->Rent + Bid)){
-			Log("houses", Translate("Ersteigerer hat nicht genügend Geld.\n",
-									"Bidder does not have enough money.\n"));
+			Log("houses", "%s\n", t("BIDDER_DOES_NOT_HAVE_ENOUGH_MONEY"));
 			House->OwnerID = CharacterID;
 			strcpy(House->OwnerName, CharacterName);
 			House->PaidUntil = 0;
 		}else{
-			Log("houses", Translate("Ersteigerer hat genügend Geld.\n",
-									"Bidder has enough money.\n"));
+			Log("houses", "%s\n", t("BIDDER_HAS_ENOUGH_MONEY"));
 			DeleteMoney(TempDepot, (House->Rent + Bid));
 
 			char WelcomeMessage[500];
@@ -1083,8 +1016,7 @@ bool FinishAuctions(void){
 		THouse *H = House.at(HouseNr);
 		if(H->PaidUntil == 0 && H->OwnerID != 0){
 			if(QueryManagerConnection->excludeFromAuctions(H->OwnerID, true) != 0){
-				error(Translate("FinishAuctions: Kann Ersteigerer nicht verbannen.\n",
-								"FinishAuctions: Cannot ban bidders.\n"));
+				error("FinishAuctions: %s\n", t("CANNOT_BAN_BIDDERS"));
 			}
 
 			ClearHouse(H);
@@ -1095,8 +1027,7 @@ bool FinishAuctions(void){
 }
 
 bool TransferHouses(void){
-	Log("houses", Translate("Bearbeite freiwillige Kündigungen...\n",
-							"Process voluntary terminations...\n"));
+	Log("houses", "%s\n", t("PROCESS_VOLUNTARY_TERMINATIONS"));
 	int NumberOfTransfers     = Houses;
 	uint16 *HouseIDs          = (uint16*)alloca(NumberOfTransfers * sizeof(uint16));
 	uint32 *NewOwnerIDs       = (uint32*)alloca(NumberOfTransfers * sizeof(uint32));
@@ -1105,8 +1036,7 @@ bool TransferHouses(void){
 	int Ret = QueryManagerConnection->transferHouses(&NumberOfTransfers,
 							HouseIDs, NewOwnerIDs, NewOwnerNames, Prices);
 	if(Ret != 0){
-		error(Translate("CollectRents: Kann Kündigungen nicht ermitteln.\n",
-						"CollectRents: Unable to detect cancellations.\n"));
+		error("CollectRents: %s\n", t("UNABLE_TO_DETECT_CANCELLATIONS"));
 		return false;
 	}
 
@@ -1123,27 +1053,23 @@ bool TransferHouses(void){
 
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error(Translate("CollectRents: Haus mit Nummer %d existiert nicht.\n",
-							"CollectRents: House with number %d does not exist.\n"), HouseID);
+			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
 			continue;
 		}
 
 		if(NewOwnerID != 0 && TransferPrice > 0){
-			Log("houses", Translate("Verkaufe Haus %d an %u für %d Gold.\n",
-									"Selling house %d to %u for %d gold.\n"),
-					HouseID, NewOwnerID, TransferPrice);
+			Log("houses", "%s\n", t("SELLING_HOUSE_TO_FOR_GOLD_D_U_D",
+					HouseID, NewOwnerID, TransferPrice));
 			TPlayerData *PlayerData = AssignPlayerPoolSlot(NewOwnerID, false);
 			if(PlayerData == NULL){
-				error(Translate("CollectRents: Kann keinen Slot für Spielerdaten zuweisen (1a).\n",
-								"CollectRents: Cannot assign a slot for player data (1a).\n"));
+				error("CollectRents: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA_1A"));
 				continue;
 			}
 
 			LoadDepot(PlayerData, House->DepotNr, TempDepot);
 			int DepotMoney = CountMoney(GetFirstContainerObject(TempDepot));
 			if(DepotMoney < TransferPrice){
-				Log("houses", Translate("Käufer hat nicht genügend Geld.\n",
-										"Buyer does not have enough money.\n"));
+				Log("houses", "%s\n", t("BUYER_DOES_NOT_HAVE_ENOUGH_MONEY"));
 
 				char WarningMessage[500];
 				snprintf(WarningMessage, sizeof(WarningMessage),
@@ -1159,9 +1085,8 @@ bool TransferHouses(void){
 				DeleteContainerObjects(TempDepot);
 				ReleasePlayerPoolSlot(PlayerData);
 
-				Log("houses", Translate("bei Reset: UPDATE HouseOwners SET Termination=null,NewOwner=null,Accepted=0,Price=null WHERE World=\'%s\' AND HouseID=%d;\n",
-										"On reset: UPDATE HouseOwners SET Termination=null,NewOwner=null,Accepted=0,Price=null WHERE World=\'%s\' AND HouseID=%d;\n"),
-						HelpWorld, HouseID);
+				Log("houses", "%s\n", t("ON_RESET_UPDATE_HOUSEOWNERS_SET_TERMINATION_NULL_NEWOWNER_62ec36",
+						HelpWorld, HouseID));
 				QueryManagerConnection->cancelHouseTransfer(HouseID);
 				continue;
 			}
@@ -1173,8 +1098,7 @@ bool TransferHouses(void){
 
 			PlayerData = AssignPlayerPoolSlot(House->OwnerID, false);
 			if(PlayerData == NULL){
-				error(Translate("CollectRents: Kann keinen Slot für Spielerdaten zuweisen (1b).\n",
-								"CollectRents: Cannot assign a slot for player data (1b).\n"));
+				error("CollectRents: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA_1B"));
 				continue;
 			}
 
@@ -1187,8 +1111,7 @@ bool TransferHouses(void){
 
 		// TODO(fusion): The old owner needs to manually move out when transfering
 		// to a new owner?
-		Log("houses", Translate("Räume Haus %d von %u.\n",
-								"Vacating house %d from %u.\n"), HouseID, House->OwnerID);
+		Log("houses", "%s\n", t("VACATING_HOUSE_FROM_D_U", HouseID, House->OwnerID));
 		if(NewOwnerID == 0){
 			CleanHouse(House, NULL);
 		}
@@ -1197,18 +1120,15 @@ bool TransferHouses(void){
 		House->Help = 1;
 
 		if(NewOwnerID != 0){
-			Log("houses", Translate("Übertrage Haus %d an %u.\n",
-									"Transferring house %d to %u.\n"), HouseID, NewOwnerID);
+			Log("houses", "%s\n", t("TRANSFERRING_HOUSE_TO_D_U", HouseID, NewOwnerID));
 			House->OwnerID = NewOwnerID;
 			strcpy(House->OwnerName, NewOwnerName);
 			House->LastTransition = TimeStamp;
-			Log("houses", Translate("bei Reset: UPDATE HouseOwners SET Termination=%d,NewOwner=%u,Accepted=1,Price=%d WHERE World='%s' AND HouseID=%d;\n",
-									"On reset: UPDATE HouseOwners SET Termination=%d,NewOwner=%u,Accepted=1,Price=%d WHERE World='%s' AND HouseID=%d;\n"),
-					TimeStamp, NewOwnerID, TransferPrice, HelpWorld, HouseID);
+			Log("houses", "%s\n", t("ON_RESET_UPDATE_HOUSEOWNERS_SET_TERMINATION_NEWOWNER_ACCE_831382",
+					TimeStamp, NewOwnerID, TransferPrice, HelpWorld, HouseID));
 		}else{
-			Log("houses", Translate("bei Reset: UPDATE HouseOwners SET Termination=%d,NewOwner=null,Accepted=0,Price=0 WHERE World=\'%s\' AND HouseID=%d;\n",
-									"On reset: UPDATE HouseOwners SET Termination=%d,NewOwner=null,Accepted=0,Price=0 WHERE World=\'%s\' AND HouseID=%d;\n"),
-					TimeStamp, HelpWorld, HouseID);
+			Log("houses", "%s\n", t("ON_RESET_UPDATE_HOUSEOWNERS_SET_TERMINATION_NEWOWNER_NULL_4a9a42",
+					TimeStamp, HelpWorld, HouseID));
 		}
 	}
 
@@ -1222,8 +1142,7 @@ bool EvictFreeAccounts(void){
 	uint32 *OwnerIDs      = (uint32*)alloca(NumberOfEvictions * sizeof(uint32));
 	int Ret = QueryManagerConnection->evictFreeAccounts(&NumberOfEvictions, HouseIDs, OwnerIDs);
 	if(Ret != 0){
-		error(Translate("CollectRents: Kann Zahlungsdaten nicht ermitteln.\n",
-						"CollectRents: Cannot determine payment details.\n"));
+		error("CollectRents: %s\n", t("CANNOT_DETERMINE_PAYMENT_DETAILS"));
 		return false;
 	}
 
@@ -1233,16 +1152,13 @@ bool EvictFreeAccounts(void){
 
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error(Translate("CollectRents: Haus mit Nummer %d existiert nicht.\n",
-							"CollectRents: House with number %d does not exist.\n"), HouseID);
+			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
 			continue;
 		}
 
-		Log("houses", Translate("Account von Haus %d ist nicht mehr bezahlt.\n",
-								"Account of house %d is no longer paid.\n"), HouseID);
+		Log("houses", "%s\n", t("ACCOUNT_OF_HOUSE_IS_NO_LONGER_PAID_D", HouseID));
 		if(OwnerID != House->OwnerID){
-			Log("houses", Translate("... aber Haus wurde eben noch übertragen.\n",
-									"... but the house was just transferred.\n"));
+			Log("houses", "%s\n", t("BUT_THE_HOUSE_WAS_JUST_TRANSFERRED"));
 			continue;
 		}
 
@@ -1259,8 +1175,7 @@ bool EvictDeletedCharacters(void){
 	uint16 *HouseIDs      = (uint16*)alloca(NumberOfEvictions * sizeof(uint16));
 	int Ret = QueryManagerConnection->evictDeletedCharacters(&NumberOfEvictions, HouseIDs);
 	if(Ret != 0){
-		error(Translate("CollectRents: Kann gelöschte Charaktere nicht ermitteln.\n",
-						"CollectRents: Cannot detect deleted characters.\n"));
+		error("CollectRents: %s\n", t("CANNOT_DETECT_DELETED_CHARACTERS"));
 		return false;
 	}
 
@@ -1268,13 +1183,11 @@ bool EvictDeletedCharacters(void){
 		uint16 HouseID = HouseIDs[EvictionNr];
 		THouse *House = GetHouse(HouseID);
 		if(House == NULL){
-			error(Translate("CollectRents: Haus mit Nummer %d existiert nicht.\n",
-							"CollectRents: House with number %d does not exist.\n"), HouseID);
+			error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
 			continue;
 		}
 
-		Log("houses", Translate("Besitzer von Haus %d ist gelöscht.\n",
-								"Owner of house %d is deleted.\n"), HouseID);
+		Log("houses", "%s\n", t("OWNER_OF_HOUSE_IS_DELETED_D", HouseID));
 		CleanHouse(House, NULL);
 		ClearHouse(House);
 		House->Help = 1;
@@ -1301,8 +1214,7 @@ bool EvictExGuildLeaders(void){
 		int Ret = QueryManagerConnection->evictExGuildleaders(
 				NumberOfGuildHouses, &NumberOfEvictions, HouseIDs, GuildLeaders);
 		if(Ret != 0){
-			error(Translate("CollectRents: Kann Gildenränge nicht ermitteln.\n",
-							"CollectRents: Cannot determine guild ranks.\n"));
+			error("CollectRents: %s\n", t("CANNOT_DETERMINE_GUILD_RANKS"));
 			return false;
 		}
 
@@ -1310,13 +1222,11 @@ bool EvictExGuildLeaders(void){
 			uint16 HouseID = HouseIDs[EvictionNr];
 			THouse *House = GetHouse(HouseID);
 			if(House == NULL){
-				error(Translate("CollectRents: Haus mit Nummer %d existiert nicht.\n",
-								"CollectRents: House with number %d does not exist.\n"), HouseID);
+				error("CollectRents: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_D_2", HouseID));
 				continue;
 			}
 
-			Log("houses", Translate("Mieter von Gildenhaus %d ist kein Gildenführer mehr.\n",
-									"Tenant of guild house %d is no longer a guild leader.\n"), HouseID);
+			Log("houses", "%s\n", t("TENANT_OF_GUILD_HOUSE_IS_NO_LONGER_A_GUILD_LEADER_D", HouseID));
 			CleanHouse(House, NULL);
 			ClearHouse(House);
 			House->Help = 1;
@@ -1327,8 +1237,7 @@ bool EvictExGuildLeaders(void){
 }
 
 void CollectRent(void){
-	Log("houses", Translate("Treibe Mieten ein...\n",
-							"Collect rent...\n"));
+	Log("houses", "%s\n", t("COLLECT_RENT"));
 	int TimeStamp = (int)time(NULL);
 	Object TempDepot = CreateTempDepot();
 	for(int HouseNr = 0; HouseNr < Houses; HouseNr += 1){
@@ -1337,8 +1246,7 @@ void CollectRent(void){
 			continue;
 		}
 
-		Log("houses", Translate("Treibe Miete für Haus %d von %u ein.\n",
-								"Collect rent for house %d from %u.\n"), H->ID, H->OwnerID);
+		Log("houses", "%s\n", t("COLLECT_RENT_FOR_HOUSE_FROM_D_U", H->ID, H->OwnerID));
 
 		int Deadline = H->PaidUntil + (7 * 24 * 60 * 60); // 1 week notice
 		// TODO(fusion): How is `PaymentExtension` set? This doesn't make a lot of sense.
@@ -1348,8 +1256,7 @@ void CollectRent(void){
 
 		TPlayerData *PlayerData = AssignPlayerPoolSlot(H->OwnerID, false);
 		if(PlayerData == NULL){
-			error(Translate("CollectRents: Kann keinen Slot für Spielerdaten zuweisen (2).\n",
-							"CollectRents: Cannot assign a slot for player data (2).\n"));
+			error("CollectRents: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA_2"));
 			continue;
 		}
 
@@ -1357,8 +1264,7 @@ void CollectRent(void){
 		int DepotMoney = CountMoney(GetFirstContainerObject(TempDepot));
 		if(DepotMoney < H->Rent){
 			if(TimeStamp < Deadline){
-				Log("houses", Translate("Mieter erhält Mahnung.\n",
-										"Tenant receives reminder.\n"));
+				Log("houses", "%s\n", t("TENANT_RECEIVES_REMINDER"));
 
 				char WarningMessage[500];
 				int DaysLeft = 1 + ((Deadline - TimeStamp - 3600) / 86400);
@@ -1375,20 +1281,17 @@ void CollectRent(void){
 				ChangeObject(WarningLetter, TEXTSTRING, AddDynamicString(WarningMessage));
 				SaveDepot(PlayerData, H->DepotNr, TempDepot);
 			}else{
-				Log("houses", Translate("Mieter wird hinausgeworfen.\n",
-										"Tenant is evicted.\n"));
+				Log("houses", "%s\n", t("TENANT_IS_EVICTED"));
 
 				if(QueryManagerConnection->excludeFromAuctions(H->OwnerID, false) != 0){
-					error(Translate("CollectRents: Kann Mieter nicht verbannen.\n",
-									"CollectRents: Cannot ban tenants.\n"));
+					error("CollectRents: %s\n", t("CANNOT_BAN_TENANTS"));
 				}
 
 				CleanHouse(H, PlayerData);
 				ClearHouse(H);
 			}
 		}else{
-			Log("houses", Translate("Mieter hat genügend Geld.\n",
-									"Tenant has enough money.\n"));
+			Log("houses", "%s\n", t("TENANT_HAS_ENOUGH_MONEY"));
 			DeleteMoney(TempDepot, H->Rent);
 			SaveDepot(PlayerData, H->DepotNr, TempDepot);
 			H->PaidUntil += 30 * 24 * 60 * 60; // one month
@@ -1420,8 +1323,7 @@ void ProcessRent(void){
 		THouse *H = House.at(HouseNr);
 		if(H->Help == 1){
 			if(QueryManagerConnection->deleteHouseOwner(H->ID) != 0){
-				error(Translate("CollectRents: Kann Haus %d nicht aus HouseOwners austragen.\n",
-								"CollectRents: Cannot remove house %d from HouseOwners.\n"), H->ID);
+				error("CollectRents: %s\n", t("CANNOT_REMOVE_HOUSE_FROM_HOUSEOWNERS_D", H->ID));
 			}
 		}
 	}
@@ -1430,15 +1332,13 @@ void ProcessRent(void){
 }
 
 bool StartAuctions(void){
-	Log("houses", Translate("Starte neue Versteigerungen...\n",
-							"Start new auctions...\n"));
+	Log("houses", "%s\n", t("START_NEW_AUCTIONS"));
 
 	int NumberOfAuctions = Houses;
 	uint16 *HouseIDs     = (uint16*)alloca(NumberOfAuctions * sizeof(uint16));
 	int Ret = QueryManagerConnection->getAuctions(&NumberOfAuctions, HouseIDs);
 	if(Ret != 0){
-		error(Translate("StartAuctions: Kann laufende Versteigerungen nicht ermitteln.\n",
-						"StartAuctions: Cannot find ongoing auctions.\n"));
+		error("StartAuctions: %s\n", t("CANNOT_FIND_ONGOING_AUCTIONS"));
 		return false;
 	}
 
@@ -1449,8 +1349,7 @@ bool StartAuctions(void){
 	for(int AuctionNr = 0; AuctionNr < NumberOfAuctions; AuctionNr += 1){
 		THouse *House = GetHouse(HouseIDs[AuctionNr]);
 		if(House == NULL){
-			error(Translate("StartAuctions: Haus mit Nummer %d existiert nicht (1).\n",
-							"StartAuctions: House with number %d does not exist (1).\n"), HouseIDs[AuctionNr]);
+			error("StartAuctions: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_1_D", HouseIDs[AuctionNr]));
 			continue;
 		}
 
@@ -1462,14 +1361,11 @@ bool StartAuctions(void){
 	for(int HouseNr = 0; HouseNr < Houses; HouseNr += 1){
 		THouse *H = House.at(HouseNr);
 		if(H->OwnerID == 0 && H->Help == 0 && !H->NoAuction){
-			Log("houses", Translate("Trage Haus %d zur Versteigerung ein.\n",
-									"Enter house %d for auction.\n"), H->ID);
-			Log("houses", Translate("bei Reset: DELETE FROM Auctions WHERE World=\'%s\' AND HouseID=%d;\n",
-									"On reset: DELETE FROM Auctions WHERE World=\'%s\' AND HouseID=%d;\n"),
-					HelpWorld, H->ID);
+			Log("houses", "%s\n", t("ENTER_HOUSE_FOR_AUCTION_D", H->ID));
+			Log("houses", "%s\n", t("ON_RESET_DELETE_FROM_AUCTIONS_WHERE_WORLD_AND_HOUSEID_S_D",
+					HelpWorld, H->ID));
 			if(QueryManagerConnection->startAuction(H->ID) != 0){
-				error(Translate("StartAuctions: Kann Haus %d nicht zur Versteigerung eintragen.\n",
-								"StartAuctions: Cannot list house %d for auction.\n"), H->ID);
+				error("StartAuctions: %s\n", t("CANNOT_LIST_HOUSE_FOR_AUCTION_D", H->ID));
 			}
 		}
 	}
@@ -1486,8 +1382,7 @@ bool UpdateHouseOwners(void){
 	int Ret = QueryManagerConnection->getHouseOwners(&NumberOfOwners,
 						HouseIDs, OwnerIDs, OwnerNames, PaidUntils);
 	if(Ret != 0){
-		error(Translate("StartAuctions: Kann eingetragene vermietete Häuser nicht ermitteln.\n",
-						"StartAuctions: Cannot identify registered rented houses.\n"));
+		error("StartAuctions: %s\n", t("CANNOT_IDENTIFY_REGISTERED_RENTED_HOUSES"));
 		return false;
 	}
 
@@ -1498,8 +1393,7 @@ bool UpdateHouseOwners(void){
 	for(int OwnerNr = 0; OwnerNr < NumberOfOwners; OwnerNr += 1){
 		THouse *House = GetHouse(HouseIDs[OwnerNr]);
 		if(House == NULL){
-			error(Translate("StartAuctions: Haus mit Nummer %d existiert nicht (2).\n",
-							"StartAuctions: House with number %d does not exist (2).\n"), HouseIDs[OwnerNr]);
+			error("StartAuctions: %s\n", t("HOUSE_WITH_NUMBER_DOES_NOT_EXIST_2_D", HouseIDs[OwnerNr]));
 			continue;
 		}
 
@@ -1510,35 +1404,28 @@ bool UpdateHouseOwners(void){
 		}
 	}
 
-	Log("houses", Translate("Aktualisiere Liste der Mieter...\n",
-							"Update list of tenants...\n"));
+	Log("houses", "%s\n", t("UPDATE_LIST_OF_TENANTS"));
 	for(int HouseNr = 0; HouseNr < Houses; HouseNr += 1){
 		THouse *H = House.at(HouseNr);
 
 		if(H->OwnerID == 0 && H->Help != 0){
-			Log("houses", Translate("Trage nicht mehr vermietetes Haus %d aus.\n",
-									"Remove house %d that is no longer rented.\n"), H->ID);
+			Log("houses", "%s\n", t("REMOVE_HOUSE_THAT_IS_NO_LONGER_RENTED_D", H->ID));
 			if(QueryManagerConnection->deleteHouseOwner(H->ID) != 0){
-				error(Translate("StartAuctions: Kann nicht mehr vermietetes Haus %d nicht austragen.\n",
-								"StartAuctions: Cannot remove house %d that is no longer rented.\n"), H->ID);
+				error("StartAuctions: %s\n", t("CANNOT_REMOVE_HOUSE_THAT_IS_NO_LONGER_RENTED_D", H->ID));
 			}
 		}
 
 		if(H->OwnerID != 0 && H->Help == 0){
-			Log("houses", Translate("Trage vermietetes Haus %d ein.\n",
-									"Enter rented house %d.\n"), H->ID);
+			Log("houses", "%s\n", t("ENTER_RENTED_HOUSE_D", H->ID));
 			if(QueryManagerConnection->insertHouseOwner(H->ID, H->OwnerID, H->PaidUntil) != 0){
-				error(Translate("StartAuctions: Kann vermietetes Haus %d nicht eintragen.\n",
-								"StartAuctions: Cannot enter rented house %d.\n"), H->ID);
+				error("StartAuctions: %s\n", t("CANNOT_ENTER_RENTED_HOUSE_D", H->ID));
 			}
 		}
 
 		if(H->Help == 2){
-			Log("houses", Translate("Aktualisiere vermietetes Haus %d.\n",
-									"Updating rented house %d.\n"), H->ID);
+			Log("houses", "%s\n", t("UPDATING_RENTED_HOUSE_D", H->ID));
 			if(QueryManagerConnection->updateHouseOwner(H->ID, H->OwnerID, H->PaidUntil) != 0){
-				error(Translate("StartAuctions: Kann Daten des vermieteten Hauses %d nicht aktualisieren.\n",
-								"StartAuctions: Cannot update data of rented house %d.\n"), H->ID);
+				error("StartAuctions: %s\n", t("CANNOT_UPDATE_DATA_OF_RENTED_HOUSE_D", H->ID));
 			}
 		}
 	}
@@ -1555,8 +1442,7 @@ void FinishHouseCleanup(void){
 		THelpDepot *Help = HelpDepot.at(HelpDepotNr);
 		TPlayerData *PlayerData = AssignPlayerPoolSlot(Help->CharacterID, false);
 		if(PlayerData == NULL){
-			error(Translate("FinishHouseCleanup: Kann keinen Slot für Spielerdaten zuweisen.\n",
-							"FinishHouseCleanup: Cannot assign a slot for player data.\n"));
+			error("FinishHouseCleanup: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA"));
 			continue;
 		}
 
@@ -1596,8 +1482,7 @@ void CleanHouseField(int x, int y, int z){
 	}
 
 	if(HouseID == 0){
-		error(Translate("CleanHouseField: Kein Haus zu Feld [%d,%d,%d] gefunden.\n",
-						"CleanHouseField: No house found for field [%d,%d,%d].\n"), x, y, z);
+		error("CleanHouseField: %s\n", t("NO_HOUSE_FOUND_FOR_FIELD_D_D_D", x, y, z));
 		return;
 	}
 
@@ -1618,8 +1503,7 @@ void CleanHouseField(int x, int y, int z){
 	if(HelpDepotNr >= HelpDepots){
 		TPlayerData *PlayerData = AssignPlayerPoolSlot(House->OwnerID, false);
 		if(PlayerData == NULL){
-			error(Translate("CleanHouseField: Kann keinen Slot für Spielerdaten zuweisen.\n",
-							"CleanHouseField: Cannot assign a slot for player data.\n"));
+			error("CleanHouseField: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA"));
 			return;
 		}
 
@@ -1638,14 +1522,12 @@ void CleanHouseField(int x, int y, int z){
 }
 
 void LoadHouseAreas(void){
-	Log("houses", Translate("Lade Daten der Häusergebiete...\n",
-							"Loading data of housing areas...\n"));
+	Log("houses", "%s\n", t("LOADING_DATA_OF_HOUSING_AREAS"));
 
 	char FileName[4096];
 	snprintf(FileName, sizeof(FileName), "%s/houseareas.dat", DATAPATH);
 	if(!FileExists(FileName)){
-		Log("houses", Translate("Keine Daten für Häusergebiete gefunden.\n",
-								"No data found for residential areas.\n"));
+		Log("houses", "%s\n", t("NO_DATA_FOUND_FOR_RESIDENTIAL_AREAS"));
 		return;
 	}
 
@@ -1681,8 +1563,7 @@ void LoadHouseAreas(void){
 }
 
 void LoadHouses(void){
-	Log("houses", Translate("Lade Häuserdaten...\n",
-							"Loading house data...\n"));
+	Log("houses", "%s\n", t("LOADING_HOUSE_DATA"));
 
 	Houses = 0;
 	MaxHouseX = 0;
@@ -1691,8 +1572,7 @@ void LoadHouses(void){
 	char FileName[4096];
 	snprintf(FileName, sizeof(FileName), "%s/houses.dat", DATAPATH);
 	if(!FileExists(FileName)){
-		Log("houses", Translate("Keine Häuserdaten gefunden.\n",
-								"No house data found.\n"));
+		Log("houses", "%s\n", t("NO_HOUSE_DATA_FOUND"));
 		return;
 	}
 
@@ -1713,14 +1593,12 @@ void LoadHouses(void){
 		Script.readSymbol('=');
 		uint16 HouseID = (uint16)Script.readNumber();
 		if(HouseID == 0){
-			error(Translate("LoadHouses: Ungültige ID %d.\n",
-							"LoadHouses: Invalid ID %d.\n"), HouseID);
+			error("LoadHouses: %s\n", t("INVALID_ID_D", HouseID));
 			throw "cannot load houses";
 		}
 
 		if(Houses > 0 && HouseID <= House.at(Houses - 1)->ID){
-			error(Translate("LoadHouses: IDs nicht aufsteigend sortiert (ID=%d).\n",
-							"LoadHouses: IDs not sorted in ascending order (ID=%d).\n"), HouseID);
+			error("LoadHouses: %s\n", t("IDS_NOT_SORTED_IN_ASCENDING_ORDER_ID_D", HouseID));
 			throw "cannot load houses";
 		}
 
@@ -1744,8 +1622,7 @@ void LoadHouses(void){
 		uint16 AreaID = (uint16)Script.readNumber();
 		THouseArea *Area = GetHouseArea(AreaID);
 		if(Area == NULL){
-			error(Translate("LoadHouses: Gebiet für Haus %d existiert nicht.\n",
-							"LoadHouses: Territory for house %d does not exist.\n"), HouseID);
+			error("LoadHouses: %s\n", t("TERRITORY_FOR_HOUSE_DOES_NOT_EXIST_D", HouseID));
 			throw "cannot load houses";
 		}
 		H->DepotNr = Area->DepotNr;
@@ -1760,8 +1637,7 @@ void LoadHouses(void){
 		Script.readSymbol('=');
 		Script.readCoordinate(&H->ExitX, &H->ExitY, &H->ExitZ);
 		if(H->ExitX == 0){
-			error(Translate("LoadHouses: Ausgang für Haus %d nicht gesetzt.\n",
-							"LoadHouses: Exit for house %d not set.\n"), HouseID);
+			error("LoadHouses: %s\n", t("EXIT_FOR_HOUSE_NOT_SET_D", HouseID));
 		}
 
 		Script.readIdentifier(); // "center"
@@ -1769,8 +1645,7 @@ void LoadHouses(void){
 		Script.readCoordinate(&H->CenterX, &H->CenterY, &H->CenterZ);
 		if(H->CenterX == 0){
 			// TODO(fusion): Same error message as above?
-			error(Translate("LoadHouses: Ausgang für Haus %d nicht gesetzt.\n",
-							"LoadHouses: Exit for house %d not set.\n"), HouseID);
+			error("LoadHouses: %s\n", t("EXIT_FOR_HOUSE_NOT_SET_D", HouseID));
 		}
 
 		Script.readIdentifier(); // "fields"
@@ -1847,14 +1722,12 @@ void LoadHouses(void){
 	int Ret = QueryManagerConnection->insertHouses(Houses, HouseIDs, Names, Rents,
 			Descriptions, Sizes, PositionsX, PositionsY, PositionsZ, Towns, Guildhouses);
 	if(Ret != 0){
-		error(Translate("LoadHouses: Kann Stammdaten der Häuser nicht eintragen.\n",
-						"LoadHouses: Cannot enter master data of the houses.\n"));
+		error("LoadHouses: %s\n", t("CANNOT_ENTER_MASTER_DATA_OF_THE_HOUSES"));
 	}
 }
 
 void LoadOwners(void){
-	Log("houses", Translate("Lade Mieterdaten...\n",
-							"Loading tenant data...\n"));
+	Log("houses", "%s\n", t("LOADING_TENANT_DATA"));
 
 	PaymentExtension = 0;
 	bool ClearGuests = false;
@@ -1863,8 +1736,7 @@ void LoadOwners(void){
 	char FileName[4096];
 	snprintf(FileName, sizeof(FileName), "%s/owners.dat", DATAPATH);
 	if(!FileExists(FileName)){
-		Log("houses", Translate("Keine Mieterdaten gefunden.\n",
-								"No tenant data found.\n"));
+		Log("houses", "%s\n", t("NO_TENANT_DATA_FOUND"));
 		return;
 	}
 
@@ -1890,8 +1762,7 @@ void LoadOwners(void){
 			uint16 HouseID = (uint16)Script.readNumber();
 			THouse *House = GetHouse(HouseID);
 			if(House == NULL){
-				error(Translate("LoadOwners: Haus zu ID %d existiert nicht.\n",
-								"LoadOwners: House for ID %d does not exist.\n"), HouseID);
+				error("LoadOwners: %s\n", t("HOUSE_FOR_ID_DOES_NOT_EXIST_D", HouseID));
 				throw "Cannot load owners";
 			}
 
@@ -1957,16 +1828,14 @@ void LoadOwners(void){
 	int Ret = QueryManagerConnection->getHouseOwners(&NumberOfOwners,
 						HouseIDs, OwnerIDs, OwnerNames, PaidUntils);
 	if(Ret != 0){
-		error(Translate("LoadOwners: Kann Namen der Mieter nicht ermitteln.\n",
-						"LoadOwners: Cannot determine tenant names.\n"));
+		error("LoadOwners: %s\n", t("CANNOT_DETERMINE_TENANT_NAMES"));
 		throw "Cannot load owners";
 	}
 
 	for(int OwnerNr = 0; OwnerNr < NumberOfOwners; OwnerNr += 1){
 		THouse *House = GetHouse(HouseIDs[OwnerNr]);
 		if(House == NULL){
-			error(Translate("LoadOwners: Haus %d existiert nicht.\n",
-							"LoadOwners: House %d does not exist.\n"), HouseIDs[OwnerNr]);
+			error("LoadOwners: %s\n", t("HOUSE_DOES_NOT_EXIST_D", HouseIDs[OwnerNr]));
 			continue;
 		}
 
@@ -1976,8 +1845,7 @@ void LoadOwners(void){
 	}
 
 	if(ClearBeds){
-		print(1, Translate("Räume alle Betten...\n",
-							"Clear all beds...\n"));
+		print(1, "%s\n", t("CLEAR_ALL_BEDS"));
 
 		for(int HouseNr = 0; HouseNr < Houses; HouseNr += 1){
 			THouse *H = House.at(HouseNr);
@@ -2002,8 +1870,7 @@ void LoadOwners(void){
 					try{
 						UseObjects(0, Bed, Bed);
 					}catch(RESULT r){
-						error(Translate("LoadOwners: Exception %d beim Aufräumen eines Bettes.\n",
-										"LoadOwners: Exception %d while tidying a bed.\n"), r);
+						error("LoadOwners: %s\n", t("EXCEPTION_WHILE_TIDYING_A_BED_D", r));
 					}
 				}
 			}

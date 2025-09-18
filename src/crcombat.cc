@@ -845,7 +845,7 @@ void TCombat::DistanceAttack(TCreature *Target){
 		}
 	}catch(RESULT r){
 		if(r != DESTROYED){
-			error("TCombat::RangeAttack: %s\n", t("COULD_NOT_MOVE_DELETE_AMMO"), r, DropX, DropY, DropZ);
+			error("TCombat::RangeAttack: %s\n", t("COULD_NOT_MOVE_DELETE_AMMO", r, DropX, DropY, DropZ));
 		}
 	}
 
@@ -927,7 +927,7 @@ void TCombat::DistributeExperiencePoints(uint32 Exp){
 			}
 
 			Amount = ((MaxLevel - AttackerLevel) * Amount) / MasterLevel;
-			print(3, "%s\n", t("RECEIVES_EXP"), Attacker->Name, Amount);
+			print(3, "%s\n", t("RECEIVES_EXP", Attacker->Name, Amount));
 		}
 
 		if(Amount > 0){
