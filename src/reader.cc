@@ -131,7 +131,7 @@ void ProcessLoadCharacterOrder(uint32 CharacterID){
 	while(true){
 		TPlayerData *Slot = AssignPlayerPoolSlot(CharacterID, true);
 		if(Slot == NULL){
-			error("ProcessLoadCharacterOrder: %s\n", t("CANNOT_ALLOCATE_A_SLOT_FOR_PLAYER_DATA"));
+			error("ProcessLoadCharacterOrder: %s\n", t("CANNOT_ASSIGN_A_SLOT_FOR_PLAYER_DATA"));
 			break;
 		}
 

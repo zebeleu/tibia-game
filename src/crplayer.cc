@@ -1130,7 +1130,7 @@ bool TPlayer::GetActivePromotion(void){
 
 bool TPlayer::SpellKnown(int SpellNr){
 	if(SpellNr < 0 || SpellNr >= NARRAY(this->SpellList)){
-		error("TPlayer::SpellKnown: %s\n", t("INVALID_QUOTE_NUMBER_D", SpellNr));
+		error("TPlayer::SpellKnown: %s\n", t("INVALID_SPELL_NUMBER_D", SpellNr));
 		return false;
 	}
 
@@ -1139,7 +1139,7 @@ bool TPlayer::SpellKnown(int SpellNr){
 
 void TPlayer::LearnSpell(int SpellNr){
 	if(SpellNr < 0 || SpellNr >= NARRAY(this->SpellList)){
-		error("TPlayer::LearnSpell: %s\n", t("INVALID_QUOTE_NUMBER_D", SpellNr));
+		error("TPlayer::LearnSpell: %s\n", t("INVALID_SPELL_NUMBER_D", SpellNr));
 		return;
 	}
 
@@ -1975,7 +1975,7 @@ void LoadDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	}
 
 	if(!Con.exists()){
-		error("LoadDepot: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("LoadDepot: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -2011,7 +2011,7 @@ void SaveDepot(TPlayerData *PlayerData, int DepotNr, Object Con){
 	}
 
 	if(!Con.exists()){
-		error("SaveDepot: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("SaveDepot: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -2826,7 +2826,7 @@ void AttachPlayerPoolSlot(TPlayerData *Slot, bool DontWait){
 		return;
 	}
 
-	print(3, "%s\n", t("ATTACHE_SLOT_OF_PLAYER_U", Slot->CharacterID));
+	print(3, "%s\n", t("ATTACH_SLOT_FROM_PLAYER_U", Slot->CharacterID));
 	while(true){
 		PlayerDataPoolMutex.down();
 		if(Slot->Locked == 0){

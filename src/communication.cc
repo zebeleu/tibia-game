@@ -708,7 +708,7 @@ TPlayerData *PerformRegistration(TConnection *Connection, char *PlayerName,
 		}
 
 		case 1:{
-			print(3, "%s\n", t("PLAYER_DOESNT_EXIST"));
+			print(3, "%s\n", t("PLAYER_DOES_NOT_EXIST"));
 			SendLoginMessage(Connection, LOGIN_MESSAGE_ERROR,
 					"Character doesn't exist.\n"
 					"Create a new character on the Tibia website\n"

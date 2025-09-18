@@ -809,7 +809,7 @@ bool IsAggressiveSpell(int SpellNr){
 void MassCombat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 		int Damage, int Effect, int Radius, int DamageType, int Animation){
 	if(!Target.exists()){
-		error("MassCombat: %s\n", t("TARGET_DOES_NOT_EXIST"));
+		error("MassCombat: %s\n", t("PASSED_TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -854,7 +854,7 @@ void AngleCombat(TCreature *Actor, int ManaPoints, int SoulPoints,
 void Combat(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints,
 		int Damage, int Effect, int Animation, int DamageType){
 	if(!Target.exists()){
-		error("Combat: %s\n", t("TARGET_DOES_NOT_EXIST"));
+		error("Combat: %s\n", t("PASSED_TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -2124,7 +2124,7 @@ void MassHeal(TCreature *Actor, Object Target, int ManaPoints, int SoulPoints, i
 	}
 
 	if(!Target.exists()){
-		error("MassHeal: %s\n", t("TARGET_DOES_NOT_EXIST"));
+		error("MassHeal: %s\n", t("PASSED_TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -2356,7 +2356,7 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 	}
 
 	if(!Target.exists()){
-		error("CancelInvisibility: %s\n", t("TARGET_DOES_NOT_EXIST"));
+		error("CancelInvisibility: %s\n", t("PASSED_TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 

@@ -2107,7 +2107,7 @@ void MoveObject(Object Obj, Object Con){
 	}
 
 	if(!Con.exists()){
-		error("MoveObject: %s\n", t("DESTINATION_CONTAINER_DOES_NOT_EXIST"));
+		error("MoveObject: %s\n", t("TARGET_CONTAINER_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -2117,7 +2117,7 @@ void MoveObject(Object Obj, Object Con){
 
 Object AppendObject(Object Con, ObjectType Type){
 	if(!Con.exists()){
-		error("AppendObject: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("AppendObject: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		return NONE;
 	}
 
@@ -2129,7 +2129,7 @@ Object AppendObject(Object Con, ObjectType Type){
 
 Object SetObject(Object Con, ObjectType Type, uint32 CreatureID){
 	if(!Con.exists()){
-		error("SetObject: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("SetObject: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		return NONE;
 	}
 

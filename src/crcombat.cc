@@ -337,7 +337,7 @@ void TCombat::SetAttackMode(uint8 AttackMode){
 
 void TCombat::SetChaseMode(uint8 ChaseMode){
 	if(ChaseMode != CHASE_MODE_NONE && ChaseMode != CHASE_MODE_CLOSE){
-		error("TCombat::SetChaseMode: %s\n", t("INVALID_TRACKING_MODE", ChaseMode));
+		error("TCombat::SetChaseMode: %s\n", t("INVALID_CHASE_MODE_D", ChaseMode));
 		return;
 	}
 

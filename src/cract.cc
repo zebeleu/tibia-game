@@ -1504,7 +1504,7 @@ void TCreature::NotifyChangeInventory(void){
 	}
 
 	if(!this->CrObject.exists()){
-		error("TCreature::NotifyChangeInventory: %s\n", t("CREATURE_OBJECT_DOES_NOT_EXIST"));
+		error("TCreature::NotifyChangeInventory: %s\n", t("CREATUREOBJECT_DOES_NOT_EXIST"));
 		error("%s\n", t("CREATURE_POSITION_S_D_D_D", this->Name, this->posx, this->posy, this->posz));
 		return;
 	}

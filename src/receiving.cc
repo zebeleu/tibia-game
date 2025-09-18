@@ -1114,7 +1114,7 @@ void CSetTactics(TConnection *Connection, TReadBuffer *Buffer){
 
 	if(ChaseMode != CHASE_MODE_NONE
 			&& ChaseMode != CHASE_MODE_CLOSE){
-		print(3, "CSetTactics: %s\n", t("INVALID_PURSUIT_MODE_D", ChaseMode));
+		print(3, "CSetTactics: %s\n", t("INVALID_CHASE_MODE_D", ChaseMode));
 		return;
 	}
 

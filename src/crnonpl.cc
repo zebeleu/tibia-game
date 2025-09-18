@@ -2052,7 +2052,7 @@ TMonster::TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID) :
 
 					// NOTE(fusion): Prevent items from being dropped onto the map.
 					if(Item.getContainer().getObjectType().isMapContainer()){
-						error("TMonster::TMonster: %s\n", t("MONSTER_MONSTER_OBJECT_FALLS_ONTO_THE_MAP_INCREASE_CARRY__da81cc", Race));
+						error("TMonster::TMonster: %s\n", t("OBJECT_DROPS_ONTO_THE_MAP_INCREASE_CARRYSTRENGTH_FOR_RACE_D", Race));
 						Delete(Item, -1);
 					}
 				}

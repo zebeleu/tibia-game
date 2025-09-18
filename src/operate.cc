@@ -655,7 +655,7 @@ void CheckDepotSpace(uint32 CreatureID, Object Source, Object Destination, int C
 	}
 
 	if(Destination == NONE){
-		error("CheckDepotSpace: %s\n", t("TARGET_DOES_NOT_EXIST"));
+		error("CheckDepotSpace: %s\n", t("PASSED_TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -1059,7 +1059,7 @@ void NotifyDepot(uint32 CreatureID, Object Obj, int Count){
 
 void CloseContainer(Object Con, bool Force){
 	if(!Con.exists()){
-		error("CloseContainer: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("CloseContainer: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -1215,7 +1215,7 @@ Object Create(Object Con, ObjectType Type, uint32 Value){
 
 Object Copy(Object Con, Object Source){
 	if(!Con.exists()){
-		error("Copy: %s\n", t("TARGET_DOES_NOT_EXIST"));
+		error("Copy: %s\n", t("PASSED_TARGET_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -1743,7 +1743,7 @@ void Delete(Object Obj, int Count){
 
 void Empty(Object Con, int Remainder){
 	if(!Con.exists()){
-		error("Empty: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("Empty: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -1754,7 +1754,7 @@ void Empty(Object Con, int Remainder){
 
 	ObjectType ConType = Con.getObjectType();
 	if(!ConType.getFlag(CONTAINER)){
-		error("Empty: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER_2"));
+		error("Empty: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER"));
 		throw ERROR;
 	}
 
@@ -3869,7 +3869,7 @@ bool IsInvitedToParty(uint32 GuestID, uint32 HostID){
 void DisbandParty(uint32 LeaderID){
 	TParty *P = GetParty(LeaderID);
 	if(P == NULL){
-		error("DisbandParty: %s\n", t("PARTY_OF_LEADER_ND_NOT_FOUND_U", LeaderID));
+		error("DisbandParty: %s\n", t("PARTY_LEADER_NOT_FOUND_U", LeaderID));
 		return;
 	}
 
@@ -4217,7 +4217,7 @@ void LeaveParty(uint32 MemberID, bool Forced){
 
 	uint32 LeaderID = Member->GetPartyLeader(false);
 	if(LeaderID == 0){
-		error("LeaveParty: %s\n", t("PLAYER_IS_NOT_A_MEMBER_OF_A_HUNTING_GROUP"));
+		error("LeaveParty: %s\n", t("PLAYER_IS_NOT_A_MEMBER_OF_A_HUNTING_PARTY"));
 		return;
 	}
 

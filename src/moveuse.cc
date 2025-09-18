@@ -466,7 +466,7 @@ void MoveOneObject(Object Obj, Object Con){
 	}
 
 	if(!Con.exists()){
-		error("MoveOneObject: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("MoveOneObject: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		return;
 	}
 
@@ -630,7 +630,7 @@ void LoadDepotBox(uint32 CreatureID, int Nr, Object Con){
 	}
 
 	if(!Con.getObjectType().getFlag(CONTAINER)){
-		error("moveuse::LoadDepotBox: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER_2"));
+		error("moveuse::LoadDepotBox: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER"));
 		return;
 	}
 
@@ -668,7 +668,7 @@ void SaveDepotBox(uint32 CreatureID, int Nr, Object Con){
 	}
 
 	if(!Con.getObjectType().getFlag(CONTAINER)){
-		error("moveuse::SaveDepotBox: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER_2"));
+		error("moveuse::SaveDepotBox: %s\n", t("PASSED_OBJECT_IS_NOT_A_CONTAINER"));
 		return;
 	}
 
@@ -1704,7 +1704,7 @@ void UseLiquidContainer(uint32 CreatureID, Object Obj, Object Dest){
 	}
 
 	if(!ObjType.getFlag(LIQUIDCONTAINER)){
-		error("UseLiquidContainer: %s\n", t("THE_PASSED_OBJECT_IS_NOT_A_LIQUID_CONTAINER"));
+		error("UseLiquidContainer: %s\n", t("PASSED_OBJECT_IS_NOT_A_LIQUID_CONTAINER"));
 		throw ERROR;
 	}
 
@@ -2294,7 +2294,7 @@ void SeparationEvent(Object Obj, Object Start){
 	}
 
 	if(!Start.exists()){
-		error("SeparationEvent: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("SeparationEvent: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
@@ -2359,7 +2359,7 @@ void CollisionEvent(Object Obj, Object Dest){
 	}
 
 	if(!Dest.exists()){
-		error("CollisionEvent: %s\n", t("TRANSFERRED_CONTAINER_DOES_NOT_EXIST"));
+		error("CollisionEvent: %s\n", t("PASSED_CONTAINER_DOES_NOT_EXIST"));
 		throw ERROR;
 	}
 
