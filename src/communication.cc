@@ -23,7 +23,12 @@
 #define MAX_COMMUNICATION_THREADS 1100
 #define COMMUNICATION_THREAD_STACK_SIZE ((int)KB(64))
 
+#if TIBIA772
+static const int TERMINALVERSION[] = {772, 772, 772};
+#else
 static const int TERMINALVERSION[] = {770, 770, 770};
+#endif
+
 static int TCPSocket;
 static ThreadHandle AcceptorThread;
 static pid_t AcceptorThreadID;
@@ -918,10 +923,24 @@ bool HandleLogin(TConnection *Connection){
 	char PlayerName[30];
 	char PlayerPassword[30];
 	try{
+#if TIBIA772
+		// IMPORTANT(fusion): With 7.72, the terminal type and version are brought
+		// outside the asymmetric data. This is probably to maintain some level of
+		// backwards compatibility with versions before 7.7, given that it was the
+		// first encrypted protocol.
+		TerminalType = (int)InputBuffer.readWord();
+		TerminalVersion = (int)InputBuffer.readWord();
+#endif
+
+		// IMPORTANT(fusion): Without a checksum, there is no way of validating the
+		// asymmetric data. The best we can do is to verify that the first plaintext
+		// byte is ZERO, but that alone isn't enough.
+		// TODO(fusion): Using `SendLoginMessage` before initializing the symmetric
+		// key will result in gibberish being sent back to the client.
 		uint8 AsymmetricData[128];
 		InputBuffer.readBytes(AsymmetricData, 128);
 		RSAMutex.down();
-		if(!PrivateKey.decrypt(AsymmetricData)){
+		if(!PrivateKey.decrypt(AsymmetricData) || AsymmetricData[0] != 0){
 			RSAMutex.up();
 			error("HandleLogin: Fehler beim Entschlüsseln.\n");
 			SendLoginMessage(Connection, LOGIN_MESSAGE_ERROR,
@@ -933,8 +952,10 @@ bool HandleLogin(TConnection *Connection){
 		TReadBuffer ReadBuffer(AsymmetricData, 128);
 		ReadBuffer.readByte(); // always zero
 		Connection->SymmetricKey.init(&ReadBuffer);
+#if !TIBIA772
 		TerminalType = (int)ReadBuffer.readWord();
 		TerminalVersion = (int)ReadBuffer.readWord();
+#endif
 		GamemasterClient = ReadBuffer.readByte() != 0;
 		AccountID = ReadBuffer.readQuad();
 		ReadBuffer.readString(PlayerName, sizeof(PlayerName));
