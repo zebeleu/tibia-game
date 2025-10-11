@@ -389,7 +389,6 @@ void TSummonImpact::handleField(int x, int y, int z){
 	if(Actor != NULL
 			&& IsRaceValid(Race)
 			&& Actor->SummonedCreatures < Maximum){
-		int x, y, z;
 		if(SearchSummonField(&x, &y, &z, 2)){
 			CreateMonster(Race, x, y, z, 0, Actor->ID, true);
 		}
