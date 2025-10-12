@@ -1991,7 +1991,7 @@ TMonster::TMonster(int Race, int x, int y, int z, int Home, uint32 MasterID) :
 			return;
 		}
 
-		if(Master->Type != MONSTER || ((TMonster*)Master)->Master != 0){
+		if(Master->Type != MONSTER || ((TMonster*)Master)->Master == 0){
 			this->LifeEndRound = Master->LifeEndRound;
 			Master->SummonedCreatures += 1;
 			break;
