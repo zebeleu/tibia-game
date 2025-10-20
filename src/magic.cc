@@ -3455,7 +3455,7 @@ static void CastSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512
 		case 19:{
 			int Damage = ComputeDamage(Actor, SpellNr, 30, 10);
 			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
-					EFFECT_FIRE, 4, 45, DAMAGE_FIRE);
+					EFFECT_FIRE_BURST, 4, 45, DAMAGE_FIRE);
 			break;
 		}
 
@@ -3467,21 +3467,21 @@ static void CastSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512
 		case 22:{
 			int Damage = ComputeDamage(Actor, SpellNr, 60, 20);
 			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
-					EFFECT_FIRE_BURST, 5, 0, DAMAGE_ENERGY);
+					EFFECT_FIRE_BLAST, 5, 0, DAMAGE_ENERGY);
 			break;
 		}
 
 		case 23:{
 			int Damage = ComputeDamage(Actor, SpellNr, 120, 80);
 			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
-					EFFECT_FIRE_BURST, 8, 0, DAMAGE_ENERGY);
+					EFFECT_FIRE_BLAST, 8, 0, DAMAGE_ENERGY);
 			break;
 		}
 
 		case 24:{
 			int Damage = ComputeDamage(Actor, SpellNr, 250, 50);
 			MassCombat(Actor, Actor->CrObject, ManaPoints, SoulPoints, Damage,
-					EFFECT_FIRE_EXPLOSION, 6, DAMAGE_PHYSICAL, ANIMATION_FIRE);
+					EFFECT_EXPLOSION, 6, DAMAGE_PHYSICAL, ANIMATION_FIRE);
 			break;
 		}
 
@@ -3599,7 +3599,7 @@ static void CastSpell(uint32 CreatureID, int SpellNr, const char (*SpellStr)[512
 		case 89:{
 			int Damage = ComputeDamage(Actor, SpellNr, 45, 10);
 			AngleCombat(Actor, ManaPoints, SoulPoints, Damage,
-					EFFECT_FIRE, 1, 0, DAMAGE_FIRE);
+					EFFECT_FIRE_BURST, 1, 0, DAMAGE_FIRE);
 			break;
 		}
 
@@ -4124,14 +4124,14 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 
 			case 7:{
 				int Damage = ComputeDamage(Actor, SpellNr, 15, 5);
-				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BURST,
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BLAST,
 						ANIMATION_FIRE, DAMAGE_ENERGY);
 				break;
 			}
 
 			case 8:{
 				int Damage = ComputeDamage(Actor, SpellNr, 30, 10);
-				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BURST,
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BLAST,
 						ANIMATION_FIRE, DAMAGE_ENERGY);
 				break;
 			}
@@ -4152,14 +4152,14 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 
 			case 15:{
 				int Damage = ComputeDamage(Actor, SpellNr, 20, 5);
-				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE,
+				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BURST,
 						3, DAMAGE_FIRE, ANIMATION_FIRE);
 				break;
 			}
 
 			case 16:{
 				int Damage = ComputeDamage(Actor, SpellNr, 50, 15);
-				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE,
+				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_BURST,
 						4, DAMAGE_FIRE, ANIMATION_FIRE);
 				break;
 			}
@@ -4171,7 +4171,7 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 
 			case 18:{
 				int Damage = ComputeDamage(Actor, SpellNr, 60, 40);
-				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_EXPLOSION,
+				MassCombat(Actor, Dest, 0, 0, Damage, EFFECT_EXPLOSION,
 						1, DAMAGE_PHYSICAL, ANIMATION_FIRE);
 				break;
 			}
@@ -4229,7 +4229,7 @@ void UseMagicItem(uint32 CreatureID, Object Obj, Object Dest){
 
 			case 50:{
 				int Damage = ComputeDamage(Actor, SpellNr, 120, 20);
-				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE_HIT,
+				Combat(Actor, Dest, 0, 0, Damage, EFFECT_FIRE,
 						ANIMATION_FIRE, DAMAGE_FIRE_PERIODIC);
 				break;
 			}
