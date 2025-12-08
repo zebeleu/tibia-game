@@ -143,7 +143,7 @@ int toLower(int c){
 
 int toUpper(int c){
 	// TODO(fusion): Same problem as `isAlpha`.
-	if(('A' <= c && c <= 'Z') || (0xE0 <= c && c <= 0xFE && c != 0xF7)){
+	if(('a' <= c && c <= 'z') || (0xE0 <= c && c <= 0xFE && c != 0xF7)){
 		c -= 32;
 	}
 	return c;
