@@ -1949,9 +1949,9 @@ void CreatePlayerList(bool Online){
 				continue;
 			}
 
-			strcpy(&PlayerNames[Index * 30], Player->Name);
-			PlayerLevels[Index] = Player->Skills[SKILL_LEVEL]->Get();
-			PlayerProfessions[Index] = Player->GetActiveProfession();
+			strcpy(&PlayerNames[NumberOfPlayers * 30], Player->Name);
+			PlayerLevels[NumberOfPlayers] = Player->Skills[SKILL_LEVEL]->Get();
+			PlayerProfessions[NumberOfPlayers] = Player->GetActiveProfession();
 			NumberOfPlayers += 1;
 		}
 		Log("load", "%d %d\n", (int)time(NULL), FirstFreePlayer);
