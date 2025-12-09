@@ -2953,17 +2953,9 @@ void RefreshMap(void){
 void RefreshCylinders(void){
 	// TODO(fusion): `RefreshedCylinders` is the number of cylinders we attempt to
 	// refresh in this function, which is called every minute or so by `AdvanceGame`.
-	// We should probably rename it to something more clear.
-
-	// TODO(fusion): This might be on purpose but `RefreshX` and `RefreshY` will be
-	// way below `SectorXMin` and `SectorYMin` the first N times this function is
-	// called and depending on the value of `RefreshedCylinders`, could take a few
-	// hours before we even start refreshing the map.
-	//	If the intent is to delay refreshing cylinders until some time after startup,
-	// we should change how this function is called by `AdvanceGame` instead.
-
-	static int RefreshX = -1;
-	static int RefreshY = -1;
+	// We should probably rename it to something clearer.
+	static int RefreshX = INT_MAX;
+	static int RefreshY = INT_MAX;
 	for(int i = 0; i < RefreshedCylinders; i += 1){
 		if(RefreshX < SectorXMax){
 			RefreshX += 1;
