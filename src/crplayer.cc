@@ -2557,7 +2557,7 @@ void SavePlayerData(TPlayerData *Slot){
 		for(int i = 0; i < NARRAY(Slot->MurderTimestamps); i += 1){
 			// NOTE(fusion): Save murder timestamps for up to a month.
 			if((Now - Slot->MurderTimestamps[i]) < (30 * 24 * 60 * 60)){
-				if(FirstMurder){
+				if(!FirstMurder){
 					Script.writeText(",");
 				}
 				Script.writeNumber(Slot->MurderTimestamps[i]);
