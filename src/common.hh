@@ -101,6 +101,8 @@ STATIC_ASSERT(OS_LINUX);
 //#define MAX_QUESTS 500
 #define MAX_DEPOTS 9
 //#define MAX_OPEN_CONTAINERS 16
+#define MAX_SPELL_SYLLABLES 10
+
 
 // shm.cc
 // =============================================================================

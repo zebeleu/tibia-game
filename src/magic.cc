@@ -8,14 +8,8 @@
 #include <fstream>
 #include <sstream>
 
-struct TCircle {
-	int x[32];
-	int y[32];
-	int Count;
-};
-
 struct TSpellList {
-	uint8 Syllable[10];
+	uint8 Syllable[MAX_SPELL_SYLLABLES];
 	uint8 RuneGr;
 	uint8 RuneNr;
 	const char *Comment;
@@ -25,6 +19,12 @@ struct TSpellList {
 	int Mana;
 	int SoulPoints;
 	int Amount;
+};
+
+struct TCircle {
+	int x[32];
+	int y[32];
+	int Count;
 };
 
 static TSpellList SpellList[256];
@@ -3926,14 +3926,14 @@ int CheckForSpell(uint32 CreatureID, const char *Text){
 	// specially for the minimal processing we're doing here.
 
 	int SyllableCount = 1;
-	uint8 Syllable[10] = { (uint8)SpellType };
-	char SpellStr[10][512] = {};
+	uint8 Syllable[MAX_SPELL_SYLLABLES] = { (uint8)SpellType };
+	char SpellStr[MAX_SPELL_SYLLABLES][512] = {};
 	strcpy(SpellStr[0], SpellSyllable[SpellType]);
 
 	std::istringstream IS(Text);
 	IS.get();
 	IS.get();
-	while(!IS.eof()){
+	while(!IS.eof() && SyllableCount < MAX_SPELL_SYLLABLES){
 		while(isSpace(IS.peek())){
 			IS.get();
 		}
