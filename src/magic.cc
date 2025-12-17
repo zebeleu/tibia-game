@@ -1796,6 +1796,7 @@ void CreateMoney(TCreature *Actor, const char *Param){
 	if(Amount < 1 || Amount > 1000000){
 		SendMessage(Actor->Connection, TALK_FAILURE_MESSAGE,
 				"You may only create 1 to 1,000,000 gold.");
+		return;
 	}
 
 	int Crystal		= (Amount / 10000);
