@@ -2812,6 +2812,7 @@ void SetQuestValue(TCreature *Actor, const char *Param1, const char *Param2){
 		int QuestNumber = atoi(Param1);
 		int QuestValue = atoi(Param2);
 		if(QuestNumber >= 0 && QuestNumber < NARRAY(TPlayer::QuestValues)){
+			((TPlayer*)Actor)->SetQuestValue(QuestNumber, QuestValue);
 			SendMessage(Actor->Connection, TALK_INFO_MESSAGE,
 					"Quest value %d set to %d.", QuestNumber, QuestValue);
 		}else{
