@@ -919,7 +919,7 @@ void TCombat::DistributeExperiencePoints(uint32 Exp){
 			int MasterLevel = Master->Skills[SKILL_LEVEL]->Get();
 			int AttackerLevel = Attacker->Skills[SKILL_LEVEL]->Get();
 			int MaxLevel = (MasterLevel * 11) / 10;
-			if(AttackerLevel <= MaxLevel){
+			if(AttackerLevel >= MaxLevel){
 				continue;
 			}
 

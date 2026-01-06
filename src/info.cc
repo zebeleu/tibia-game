@@ -1366,7 +1366,7 @@ bool CheckBanishmentRight(uint32 CharacterID, int Reason, int Action){
 }
 
 const char *GetBanishmentReason(int Reason){
-	const char *Result;
+	const char *Result = "";
 	switch(Reason){
 		case 0:  Result = "NAME_INSULTING"; break;
 		case 1:  Result = "NAME_SENTENCE"; break;
@@ -1402,7 +1402,6 @@ const char *GetBanishmentReason(int Reason){
 		case 31: Result = "INVALID_PAYMENT"; break;
 		default:{
 			error("GetBanishmentReason: Ungültiger Verbannungsgrund %d.\n", Reason);
-			Result = "";
 			break;
 		}
 	}
