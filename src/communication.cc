@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <signal.h>
 #include <sys/socket.h>
@@ -1289,6 +1290,19 @@ void CommunicationThread(int Socket){
 		return;
 	}
 
+	// NOTE(fusion): In some systems, the accepted socket will inherit TCP_NODELAY
+	// from the acceptor, making this next call redundant then. Nevertheless it is
+	// probably better to set it anyways to be sure.
+	int NoDelay = 1;
+	if(setsockopt(Socket, IPPROTO_TCP, TCP_NODELAY, &NoDelay, sizeof(NoDelay)) == -1){
+		error("ConnectionThread: Failed to set TCP_NODELAY=1 on socket %d.\n", Socket);
+		if(close(Socket) == -1){
+			error("CommunicationThread: Fehler %d beim Schließen der Socket (3.5).\n", errno);
+		}
+		Connection->Free();
+		return;
+	}
+
 	sigset_t SignalSet;
 	sigfillset(&SignalSet);
 	sigprocmask(SIG_SETMASK, &SignalSet, NULL);
@@ -1416,26 +1430,37 @@ bool OpenSocket(void){
 	Linger.l_onoff = 0;
 	Linger.l_linger = 0;
 	if(setsockopt(TCPSocket, SOL_SOCKET, SO_LINGER, &Linger, sizeof(Linger)) == -1){
-		error("LaunchServer: Socket wurde nicht auf LINGER=0 gesetzt.\n");
+		error("LaunchServer: Failed to set SO_LINGER=(0, 0): (%d) %s.\n",
+				errno, strerrordesc_np(errno));
 		return false;
 	}
 
 	int ReuseAddr = 1;
 	if(setsockopt(TCPSocket, SOL_SOCKET, SO_REUSEADDR, &ReuseAddr, sizeof(ReuseAddr)) == -1){
-		error("LaunchServer: Fehler %d bei setsockopt.\n", errno);
+		error("LaunchServer: Failed to set SO_REUSEADDR=1: (%d) %s.\n",
+				errno, strerrordesc_np(errno));
+		return false;
+	}
+
+	int NoDelay = 1;
+	if(setsockopt(TCPSocket, IPPROTO_TCP, TCP_NODELAY, &NoDelay, sizeof(NoDelay)) == -1){
+		error("LaunchServer: Failed to set TCP_NODELAY=1: (%d) %s.\n",
+				errno, strerrordesc_np(errno));
 		return false;
 	}
 
 	struct sockaddr_in ServerAddress = {};
 	ServerAddress.sin_family = AF_INET;
 	ServerAddress.sin_port = htons(GamePort);
+#if BIND_ACCEPTOR_TO_GAME_ADDRESS
 	ServerAddress.sin_addr.s_addr = inet_addr(GameAddress);
+#else
+	ServerAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+#endif
 	if(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(ServerAddress)) == -1){
-		error("LaunchServer: Fehler %d bei bind.\n", errno);
-		print(1, "Bind Error Again -> Begin FloodBind :(\n");
-		while(bind(TCPSocket, (struct sockaddr*)&ServerAddress, sizeof(ServerAddress)) == -1){
-			DelayThread(1, 0);
-		}
+		error("LaunchServer: Failed to bind to acceptor to %s:%d: (%d) %s.\n",
+				inet_ntoa(ServerAddress.sin_addr), GamePort, errno, strerrordesc_np(errno));
+		return false;
 	}
 
 	if(listen(TCPSocket, 512) == -1){
