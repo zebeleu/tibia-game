@@ -1,0 +1,67 @@
+# docker build --target artifact -f Dockerfile.game --build-arg DEBUG=1 --output type=local,dest=.\dist .
+
+FROM debian:bookworm-slim AS builder
+
+# Use non-interactive mode to avoid prompts during automated builds.
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Tools required to build the binary.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       make \
+       g++ \
+       libssl-dev \
+       ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Working directory where the repository will be copied and built.
+WORKDIR /src
+
+# Copy only the files needed for the build to reduce the build context and improve cache stability.
+# Explicit COPY lines make the build faster and avoid sending large or sensitive files to the daemon.
+# Use .dockerignore to exclude other files (see .dockerignore in the repo).
+COPY Makefile ./
+COPY src/ src/
+COPY tools/ tools/
+COPY README.md LICENSE.txt ./
+
+# Allow switching build mode (set DEBUG=1 for debug). `make` produces `build/game`.
+ARG DEBUG=0
+RUN make clean && make DEBUG=$DEBUG
+
+# ------------------------------------------------------------------------------
+
+FROM debian:bookworm-slim AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Runtime dependencies: libcrypto (libssl3) and libstdc++.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       libssl3 \
+       libstdc++6 \
+       ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create the unprivileged user before COPY so --chown can be used.
+RUN useradd -r -u 10001 -m -d /opt/tibia tibia
+
+# Directory where game data/files will be mounted.
+WORKDIR /opt/tibia/game
+VOLUME ["/opt/tibia/game"]
+
+# Copy the compiled binary and set ownership to the tibia user (requires BuildKit).
+COPY --from=builder --chown=tibia:tibia /src/build/game /usr/local/bin/game
+
+# Run as an unprivileged user.
+USER tibia
+
+# Default command: run the game binary. Can be overridden with `docker run`.
+ENTRYPOINT ["/usr/local/bin/game"]
+
+FROM scratch AS artifact
+
+# Export only the binary by default. Copying the whole /build is optional (debug/symbols).
+COPY --from=builder /src/build/game /game
+# COPY --from=builder /src/build /build
