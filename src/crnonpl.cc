@@ -2585,9 +2585,11 @@ void TMonster::IdleStimulus(void){
 				}
 
 				case IMPACT_SUMMON:{
-					int SummonRace = SpellData->ImpactParam1;
-					int MaxSummons = SpellData->ImpactParam2;
-					Impact = new TSummonImpact(this, SummonRace, MaxSummons);
+					if(this->Master == 0){
+						int SummonRace = SpellData->ImpactParam1;
+						int MaxSummons = SpellData->ImpactParam2;
+						Impact = new TSummonImpact(this, SummonRace, MaxSummons);
+					}
 					break;
 				}
 			}
