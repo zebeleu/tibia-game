@@ -1107,7 +1107,7 @@ void TBehaviourDatabase::react(TNPC *Npc, const char *Text, SITUATION Situation)
 					if(FormatNpcResponse(Response, sizeof(Response), Template, Npc, Interlocutor)){
 						Npc->ToDoWait(TalkDelay);
 						Npc->ToDoTalk(TALK_SAY, NULL, Response, false);
-						TalkDelay += 3100 + (int)strlen(Response) * 100;
+						TalkDelay += 3100 + (int)(strlen(Response) / 2) * 100;
 						StartToDo = true;
 					}else{
 						Response[20] = 0;
