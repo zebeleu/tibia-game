@@ -721,7 +721,7 @@ void SendMail(Object Obj){
 		return;
 	}
 
-	print(3,"Versende Post...\n");
+	print(3, "Versende Post...\n");
 
 	uint32 TextAttr = 0;
 	if(ObjType == GetSpecialObject(LETTER_NEW)){
@@ -747,7 +747,6 @@ void SendMail(Object Obj){
 	if(Text == NULL || Text[0] == 0){
 		return;
 	}
-
 
 	char Addressee[256];
 	char Town[256];
