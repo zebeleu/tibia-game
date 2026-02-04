@@ -60,13 +60,13 @@ const char *AddStaticString(const char *String){
 }
 
 uint32 AddDynamicString(const char *String){
-	int StringLen = (int)strlen(String);
-	if((StringLen + 1) > DynamicBlockSize){
-		error("AddDynamicString: String zu lang (%d)\n", StringLen);
+	int StringLen = (String ? (int)strlen(String) : 0);
+	if(StringLen == 0){
 		return 0;
 	}
 
-	if(StringLen == 0){
+	if((StringLen + 1) > DynamicBlockSize){
+		error("AddDynamicString: String zu lang (%d)\n", StringLen);
 		return 0;
 	}
 

@@ -281,8 +281,9 @@ uint32 ObjectType::getAttribute(TYPEATTRIBUTE Attribute){
 
 int ObjectType::getAttributeOffset(INSTANCEATTRIBUTE Attribute){
 	if(!this->getFlag(InstanceAttributeFlags[Attribute])){
-		// TODO(fusion): Review this?
-		if(Attribute != CONTENT || !this->getFlag(CHEST)){
+		// NOTE(fusion): The CONTENT attribute seems to be the only one that maps
+		// to two object flags, which is why we have this extra check here.
+		if(!(Attribute == CONTENT && this->getFlag(CHEST))){
 			return -1;
 		}
 	}
@@ -608,7 +609,7 @@ static void LoadConversionList(void){
 
 	// NOTE(fusion): Creature container.
 	OldGroup[99] = 250;
-	OldNumber[00] = 0;
+	OldNumber[99] = 0;
 	NewType[GetNewTypeIndex(250, 0)] = 99;
 }
 

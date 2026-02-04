@@ -2187,7 +2187,7 @@ Object CopyObject(Object Con, Object Source){
 
 		uint32 Editor = NewObj.getAttribute(EDITOR);
 		if(Editor != 0){
-			Editor = AddDynamicString(GetDynamicString(TextString));
+			Editor = AddDynamicString(GetDynamicString(Editor));
 			NewObj.setAttribute(EDITOR, Editor);
 		}
 	}
