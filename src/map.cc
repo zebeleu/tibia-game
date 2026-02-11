@@ -1476,8 +1476,8 @@ void PatchSector(int SectorX, int SectorY, int SectorZ, bool FullSector,
 
 	// NOTE(fusion): Step 2.
 	//	Patch fields not specified in the input script if `FullSector` is set.
-	// Note that patching in this case is simply deleting a field's objects.
-	// House fields are NOT patched if `SaveHouses` is set.
+	// Note that patching in this case is simply clearing the field. House fields
+	// are NOT patched if `SaveHouses` is set.
 	if(FullSector){
 		for(int OffsetX = 0; OffsetX < 32; OffsetX += 1)
 		for(int OffsetY = 0; OffsetY < 32; OffsetY += 1){
