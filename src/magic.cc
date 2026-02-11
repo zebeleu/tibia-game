@@ -2636,8 +2636,8 @@ void Challenge(TCreature *Actor, int ManaPoints, int SoulPoints, int Radius){
 	}
 
 	int ActorX = Actor->posx;
-	int ActorY = Actor->posx;
-	int ActorZ = Actor->posx;
+	int ActorY = Actor->posy;
+	int ActorZ = Actor->posz;
 	for(int R = 0; R <= Radius; R += 1){
 		int CirclePoints = Circle[R].Count;
 		for(int Point = 0; Point < CirclePoints; Point += 1){
