@@ -535,6 +535,7 @@ enum RIGHT: int {
 	CHANGE_SKILLS						= 79,
 	CLEANUP_FIELDS						= 80,
 	NO_STATISTICS						= 81,
+	GAMEMASTER_INVISIBILITY				= 82,
 };
 
 enum SecureMode: uint8 {
