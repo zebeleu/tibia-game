@@ -72,7 +72,7 @@ static const char SpellSyllable[51][6] = {
 	"isa",
 	"iva",
 	"con",
-	"",
+	"invis",
 	"",
 	"",
 	"",
@@ -83,6 +83,69 @@ static const char SpellSyllable[51][6] = {
 	"",
 	"",
 };
+
+static void HideCreatureFromSpectators(TCreature *Creature){
+	if(Creature == NULL){
+		return;
+	}
+
+	int x = Creature->posx;
+	int y = Creature->posy;
+	int z = Creature->posz;
+
+	for(TKnownCreature *Known = Creature->FirstKnowingConnection;
+			Known != NULL;
+			Known = Known->Next){
+		TConnection *Conn = Known->Connection;
+		if(Conn == NULL || Conn->CharacterID == Creature->ID){
+			continue;
+		}
+
+		if(Known->State != KNOWNCREATURE_FREE && Conn->IsVisible(x, y, z)){
+			// Envie um refresh completo do campo para remover a criatura
+			// invisível do cliente, já que SendDeleteField é ignorado para
+			// criaturas ocultas pela conexão.
+			SkipFlush(Conn);
+			SendFieldData(Conn, x, y, z);
+		}
+		Conn->UnchainKnownCreature(Creature->ID);
+	}
+}
+
+static void ShowCreatureToSpectators(TCreature *Creature){
+	if(Creature == NULL){
+		return;
+	}
+
+	int x = Creature->posx;
+	int y = Creature->posy;
+	int z = Creature->posz;
+
+	// Search nearby players and send a full field refresh so stacking/orders are rebuilt.
+	TFindCreatures Search(16, 14, x, y, FIND_PLAYERS);
+	while(true){
+		uint32 CharacterID = Search.getNext();
+		if(CharacterID == 0){
+			break;
+		}
+
+		if(CharacterID == Creature->ID){
+			continue;
+		}
+
+		TPlayer *Player = GetPlayer(CharacterID);
+		if(Player == NULL || Player->Connection == NULL){
+			continue;
+		}
+
+		TConnection *Conn = Player->Connection;
+		if(!Conn->IsVisible(x, y, z)){
+			continue;
+		}
+
+		SendFieldData(Conn, x, y, z);
+	}
+}
 
 static bool IsAggressionValid(TCreature *Actor, TCreature *Victim){
 	ASSERT(Actor != NULL && Victim != NULL);
@@ -2449,6 +2512,68 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 	}
 }
 
+void GamemasterInvisibility(TCreature *Actor){
+	if(Actor == NULL){
+		error(Translate("GamemasterInvisibility: UngǬltige Kreatur Ǭbergeben.\n",
+						"GamemasterInvisibility: Invalid creature provided.\n"));
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error(Translate("GamemasterInvisibility: Zauberspruch kann nur von Spielern angewendet werden.\n",
+						"GamemasterInvisibility: Spell can only be used by players.\n"));
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, GAMEMASTER_INVISIBILITY)){
+		return;
+	}
+
+	if(Actor->IsInvisible()){
+		return;
+	}
+
+	Actor->DelTimer(SKILL_ILLUSION);
+	Actor->Skills[SKILL_ILLUSION]->Set(1);
+
+	Actor->Outfit = TOutfit::Invisible();
+	HideCreatureFromSpectators(Actor);
+	AnnounceChangedCreature(Actor->ID, CREATURE_OUTFIT_CHANGED);
+	NotifyAllCreatures(Actor->CrObject, OBJECT_CHANGED, NONE);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_MAGIC_BLUE);
+}
+
+void CancelGamemasterInvisibility(TCreature *Actor){
+	if(Actor == NULL){
+		error(Translate("CancelGamemasterInvisibility: UngǬltige Kreatur Ǭbergeben.\n",
+						"CancelGamemasterInvisibility: Invalid creature provided.\n"));
+		throw ERROR;
+	}
+
+	if(Actor->Type != PLAYER){
+		error(Translate("CancelGamemasterInvisibility: Zauberspruch kann nur von Spielern angewendet werden.\n",
+						"CancelGamemasterInvisibility: Spell can only be used by players.\n"));
+		throw ERROR;
+	}
+
+	if(!CheckRight(Actor->ID, GAMEMASTER_INVISIBILITY)){
+		return;
+	}
+
+	if(!Actor->IsInvisible()){
+		return;
+	}
+
+	Actor->DelTimer(SKILL_ILLUSION);
+	Actor->Skills[SKILL_ILLUSION]->Set(0);
+	Actor->Outfit = Actor->OrgOutfit;
+
+	ShowCreatureToSpectators(Actor);
+	AnnounceChangedCreature(Actor->ID, CREATURE_OUTFIT_CHANGED);
+	NotifyAllCreatures(Actor->CrObject, OBJECT_CHANGED, NONE);
+	GraphicalEffect(Actor->posx, Actor->posy, Actor->posz, EFFECT_POFF);
+}
+
 void CreatureIllusion(TCreature *Actor, int ManaPoints, int SoulPoints, const char *RaceName, int Duration){
 	if(Actor == NULL){
 		error("CreatureIllusion: Ungültige Kreatur übergeben.\n");
@@ -3356,6 +3481,8 @@ static void CharacterRightSpell(uint32 CreatureID, int SpellNr, const char (*Spe
 		case 100: ClearQuestValues(Actor); 							break;
 		case 101: KillAllMonsters(Actor, EFFECT_DEATH, 2); 			break;
 		case 102: StartMonsterraid(Actor, SpellStr[4]); 			break;
+		case 103: GamemasterInvisibility(Actor); 					break;
+		case 104: CancelGamemasterInvisibility(Actor); 				break;
 	}
 }
 
@@ -5150,6 +5277,18 @@ static void InitSpells(void){
 	Spell->Level = 0;
 	Spell->Flags = 0;
 	Spell->Comment = "Start Monsterraid";
+
+	Spell = CreateSpell(103, "al", "invis", "");
+	Spell->Mana = 0;
+	Spell->Level = 0;
+	Spell->Flags = 0;
+	Spell->Comment = "Gamemaster Invisibility";
+
+	Spell = CreateSpell(104, "al", "liber", "invis", "");
+	Spell->Mana = 0;
+	Spell->Level = 0;
+	Spell->Flags = 0;
+	Spell->Comment = "Cancel Gamemaster Invisibility";
 }
 
 void InitMagic(void){
