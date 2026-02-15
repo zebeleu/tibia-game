@@ -14,6 +14,64 @@
 static int Skip = -1;
 static TConnection *FirstSendingConnection;
 
+static bool ShouldHideInvisibleCreature(TConnection *Connection, TCreature *Creature){
+	if(Connection == NULL || Creature == NULL){
+		return false;
+	}
+
+	if(!Creature->IsInvisible()){
+		return false;
+	}
+
+	if(!CheckRight(Creature->ID, GAMEMASTER_INVISIBILITY)){
+		return false;
+	}
+
+	return Connection->CharacterID != Creature->ID;
+}
+
+static int GetVisibleObjectIndex(TConnection *Connection, Object Obj){
+	if(!Obj.exists()){
+		return -1;
+	}
+
+	// If the target object is a creature that should be hidden for this
+	// connection (e.g., GamemasterInvisibility), it must be considered
+	// non-visible: return -1 so callers (Delete/Change) do not send
+	// packets referring to an unknown object on the client.
+	{
+		ObjectType ObjType = Obj.getObjectType();
+		if(ObjType.isCreatureContainer()){
+			TCreature *Creature = GetCreature(Obj);
+			if(ShouldHideInvisibleCreature(Connection, Creature)){
+				return -1;
+			}
+		}
+	}
+
+	Object Container = Obj.getContainer();
+	Object Current = GetFirstContainerObject(Container);
+	int Index = 0;
+	while(Current != NONE && Current != Obj){
+		ObjectType Type = Current.getObjectType();
+		if(!Type.isCreatureContainer()){
+			Index += 1;
+		}else{
+			TCreature *Creature = GetCreature(Current);
+			if(!ShouldHideInvisibleCreature(Connection, Creature)){
+				Index += 1;
+			}
+		}
+		Current = Current.getNextObject();
+	}
+
+	if(Current != Obj){
+		return -1;
+	}
+
+	return Index;
+}
+
 void SendAll(void){
 	TConnection *Connection = FirstSendingConnection;
 	FirstSendingConnection = NULL;
@@ -213,6 +271,10 @@ void SendMapObject(TConnection *Connection, Object Obj){
 		error("SendMapObject: Kreatur hat kein Kreatur-Objekt\n");
 		return;
 	}
+	
+	if(ShouldHideInvisibleCreature(Connection, Creature)){
+		return;
+	}
 
 	KNOWNCREATURESTATE KnownState = Connection->KnownCreature(Creature->ID, true);
 	if(KnownState == KNOWNCREATURE_UPTODATE){
@@ -274,6 +336,14 @@ void SendMapPoint(TConnection *Connection, int x, int y, int z){
 		SkipFlush(Connection);
 		int ObjCount = 0;
 		while(Obj != NONE && ObjCount < MAX_OBJECTS_PER_POINT){
+			ObjectType ObjType = Obj.getObjectType();
+			if(ObjType.isCreatureContainer()){
+				TCreature *Creature = GetCreature(Obj);
+				if(ShouldHideInvisibleCreature(Connection, Creature)){
+					Obj = Obj.getNextObject();
+					continue;
+				}
+			}
 			SendMapObject(Connection, Obj);
 			Obj = Obj.getNextObject();
 			ObjCount += 1;
@@ -603,6 +673,14 @@ void SendAddField(TConnection *Connection, int x, int y, int z, Object Obj){
 		error("SendAddField: Übergebenes Objekt existiert nicht.\n");
 		return;
 	}
+	
+	ObjectType ObjType = Obj.getObjectType();
+	if(ObjType.isCreatureContainer()){
+		TCreature *Creature = GetCreature(Obj);
+		if(ShouldHideInvisibleCreature(Connection, Creature)){
+			return;
+		}
+	}
 
 	SendByte(Connection, SV_CMD_ADD_FIELD);
 	SendWord(Connection, (uint16)x);
@@ -622,7 +700,10 @@ void SendChangeField(TConnection *Connection, int x, int y, int z, Object Obj){
 		return;
 	}
 
-	int ObjIndex = GetObjectRNum(Obj);
+	int ObjIndex = GetVisibleObjectIndex(Connection, Obj);
+	if(ObjIndex < 0){
+		return;
+	}
 	if(ObjIndex < MAX_OBJECTS_PER_POINT){
 		SendByte(Connection, SV_CMD_CHANGE_FIELD);
 		SendWord(Connection, (uint16)x);
@@ -644,7 +725,10 @@ void SendDeleteField(TConnection *Connection, int x, int y, int z, Object Obj){
 		return;
 	}
 
-	int ObjIndex = GetObjectRNum(Obj);
+	int ObjIndex = GetVisibleObjectIndex(Connection, Obj);
+	if(ObjIndex < 0){
+		return;
+	}
 	if(ObjIndex < MAX_OBJECTS_PER_POINT){
 		SendByte(Connection, SV_CMD_DELETE_FIELD);
 		SendWord(Connection, (uint16)x);
@@ -670,10 +754,20 @@ void SendMoveCreature(TConnection *Connection,
 	int OrigX = Creature->posx;
 	int OrigY = Creature->posy;
 	int OrigZ = Creature->posz;
-	int OrigIndex = GetObjectRNum(Creature->CrObject);
+	int OrigIndex = GetVisibleObjectIndex(Connection, Creature->CrObject);
 	bool IsVisible = Connection->IsVisible(DestX, DestY, DestZ);
-	bool WasVisible = OrigIndex < MAX_OBJECTS_PER_POINT
+	bool WasVisible = OrigIndex >= 0 && OrigIndex < MAX_OBJECTS_PER_POINT
 			&& Connection->IsVisible(OrigX, OrigY, OrigZ);
+
+	if(ShouldHideInvisibleCreature(Connection, Creature)){
+		KNOWNCREATURESTATE KnownState = Connection->KnownCreature(Creature->ID, false);
+		if(WasVisible && KnownState != KNOWNCREATURE_FREE){
+			SendDeleteField(Connection, OrigX, OrigY, OrigZ, Creature->CrObject);
+			Connection->UnchainKnownCreature(Creature->ID);
+		}
+		return;
+	}
+
 	if(IsVisible && WasVisible){
 		if(BeginSendData(Connection)){
 			SendByte(Connection, SV_CMD_MOVE_CREATURE);
@@ -1016,6 +1110,10 @@ void SendCreatureOutfit(TConnection *Connection, uint32 CreatureID){
 	TCreature *Creature = GetCreature(CreatureID);
 	if(Creature == NULL){
 		error("SendCreatureOutfit: Kreatur %u existiert nicht.\n", CreatureID);
+		return;
+	}
+
+	if(ShouldHideInvisibleCreature(Connection, Creature)){
 		return;
 	}
 
