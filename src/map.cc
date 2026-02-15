@@ -1307,8 +1307,8 @@ void SaveMap(void){
 }
 
 void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
-	// TODO(fusion): `matrix3d::at` will return the first entry if the coordinates
-	// are out of bounds which that is problematic, specially here.
+	// NOTE(fusion): `matrix3d::at` would return the first entry if coordinates
+	// are out of bounds which could be a problem here.
 	if(SectorX < SectorXMin || SectorXMax < SectorX
 			|| SectorY < SectorYMin || SectorYMax < SectorY
 			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
