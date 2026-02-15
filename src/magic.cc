@@ -102,9 +102,9 @@ static void HideCreatureFromSpectators(TCreature *Creature){
 		}
 
 		if(Known->State != KNOWNCREATURE_FREE && Conn->IsVisible(x, y, z)){
-			// Envie um refresh completo do campo para remover a criatura
-			// invisível do cliente, já que SendDeleteField é ignorado para
-			// criaturas ocultas pela conexão.
+            // Send a full refresh of the field to remove the invisible
+            // creature from the client, since SendDeleteField is ignored
+            // for creatures hidden by the connection.
 			SkipFlush(Conn);
 			SendFieldData(Conn, x, y, z);
 		}
