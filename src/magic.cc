@@ -2514,14 +2514,12 @@ void CancelInvisibility(TCreature *Actor, Object Target, int ManaPoints, int Sou
 
 void GamemasterInvisibility(TCreature *Actor){
 	if(Actor == NULL){
-		error(Translate("GamemasterInvisibility: UngǬltige Kreatur Ǭbergeben.\n",
-						"GamemasterInvisibility: Invalid creature provided.\n"));
+		error("GamemasterInvisibility: UngǬltige Kreatur Ǭbergeben.\n");
 		throw ERROR;
 	}
 
 	if(Actor->Type != PLAYER){
-		error(Translate("GamemasterInvisibility: Zauberspruch kann nur von Spielern angewendet werden.\n",
-						"GamemasterInvisibility: Spell can only be used by players.\n"));
+		error("GamemasterInvisibility: Zauberspruch kann nur von Spielern angewendet werden.\n");
 		throw ERROR;
 	}
 
@@ -2545,14 +2543,12 @@ void GamemasterInvisibility(TCreature *Actor){
 
 void CancelGamemasterInvisibility(TCreature *Actor){
 	if(Actor == NULL){
-		error(Translate("CancelGamemasterInvisibility: UngǬltige Kreatur Ǭbergeben.\n",
-						"CancelGamemasterInvisibility: Invalid creature provided.\n"));
+		error("CancelGamemasterInvisibility: UngǬltige Kreatur Ǭbergeben.\n");
 		throw ERROR;
 	}
 
 	if(Actor->Type != PLAYER){
-		error(Translate("CancelGamemasterInvisibility: Zauberspruch kann nur von Spielern angewendet werden.\n",
-						"CancelGamemasterInvisibility: Spell can only be used by players.\n"));
+		error("CancelGamemasterInvisibility: Zauberspruch kann nur von Spielern angewendet werden.\n");
 		throw ERROR;
 	}
 
