@@ -625,6 +625,8 @@ static int GetRightByName(const char *RightName){
 		Result = CLEANUP_FIELDS;
 	}else if(strcmp(RightName, "NO_STATISTICS") == 0){
 		Result = NO_STATISTICS;
+	}else if(strcmp(RightName, "GAMEMASTER_INVISIBILITY") == 0){
+		Result = GAMEMASTER_INVISIBILITY;
 	}
 	return Result;
 }
