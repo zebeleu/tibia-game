@@ -1307,8 +1307,8 @@ void SaveMap(void){
 }
 
 void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
-	// TODO(fusion): `matrix3d::at` will return the first entry if the coordinates
-	// are out of bounds which that is problematic, specially here.
+	// NOTE(fusion): `matrix3d::at` would return the first entry if coordinates
+	// are out of bounds which could be a problem here.
 	if(SectorX < SectorXMin || SectorXMax < SectorX
 			|| SectorY < SectorYMin || SectorYMax < SectorY
 			|| SectorZ < SectorZMin || SectorZMax < SectorZ){
@@ -1319,8 +1319,12 @@ void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
 
 	ASSERT(Sector);
 	TSector *Sec = *Sector->at(SectorX, SectorY, SectorZ);
-	if(Sec && (Sec->MapFlags & 0x01) != 0){
-		print(3, "Refreshe Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+	if(Sec == NULL || (Sec->MapFlags & 0x01) == 0){
+		return;
+	}
+
+	print(3, "Refreshe Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+	try{
 		while(!Stream->eof()){
 			uint8 OffsetX = Stream->readByte();
 			uint8 OffsetY = Stream->readByte();
@@ -1342,6 +1346,8 @@ void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
 				LoadObjects(Stream, Con);
 			}
 		}
+	}catch(const char *str){
+		error("RefreshSector: Fehler beim Auslesen der Daten (%s).\n", str);
 	}
 }
 
