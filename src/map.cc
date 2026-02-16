@@ -1319,8 +1319,12 @@ void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
 
 	ASSERT(Sector);
 	TSector *Sec = *Sector->at(SectorX, SectorY, SectorZ);
-	if(Sec && (Sec->MapFlags & 0x01) != 0){
-		print(3, "Refreshe Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+	if(Sec == NULL || (Sec->MapFlags & 0x01) == 0){
+		return;
+	}
+
+	print(3, "Refreshe Sektor %d/%d/%d ...\n", SectorX, SectorY, SectorZ);
+	try{
 		while(!Stream->eof()){
 			uint8 OffsetX = Stream->readByte();
 			uint8 OffsetY = Stream->readByte();
@@ -1342,6 +1346,8 @@ void RefreshSector(int SectorX, int SectorY, int SectorZ, TReadStream *Stream){
 				LoadObjects(Stream, Con);
 			}
 		}
+	}catch(const char *str){
+		error("RefreshSector: Fehler beim Auslesen der Daten (%s).\n", str);
 	}
 }
 
