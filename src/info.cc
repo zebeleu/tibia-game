@@ -1053,17 +1053,33 @@ bool SearchFlightField(uint32 FugitiveID, uint32 PursuerID, int *x, int *y, int 
 		return false;
 	}
 
-	int Dir[8];
-	Dir[0] = (Fugitive->posy <= Pursuer->posy)                                    ? DIRECTION_NORTH     : DIRECTION_NONE;
-	Dir[1] = (Fugitive->posx >= Pursuer->posx)                                    ? DIRECTION_EAST      : DIRECTION_NONE;
-	Dir[2] = (Fugitive->posy >= Pursuer->posy)                                    ? DIRECTION_SOUTH     : DIRECTION_NONE;
-	Dir[3] = (Fugitive->posx <= Pursuer->posx)                                    ? DIRECTION_WEST      : DIRECTION_NONE;
-	Dir[4] = (Fugitive->posx <= Pursuer->posx && Fugitive->posy >= Pursuer->posy) ? DIRECTION_SOUTHWEST : DIRECTION_NONE;
-	Dir[5] = (Fugitive->posx >= Pursuer->posx && Fugitive->posy >= Pursuer->posy) ? DIRECTION_SOUTHEAST : DIRECTION_NONE;
-	Dir[6] = (Fugitive->posx >= Pursuer->posx && Fugitive->posy <= Pursuer->posy) ? DIRECTION_NORTHEAST : DIRECTION_NONE;
-	Dir[7] = (Fugitive->posx <= Pursuer->posx && Fugitive->posy <= Pursuer->posy) ? DIRECTION_NORTHWEST : DIRECTION_NONE;
-	RandomShuffle(&Dir[0], 4);
-	RandomShuffle(&Dir[4], 4);
+	int Dir[9];
+
+	// NOTE(fusion): Prefer axial direction away from the pursuer.
+	int DistX = std::abs(Fugitive->posx - Pursuer->posx);
+	int DistY = std::abs(Fugitive->posy - Pursuer->posy);
+	if(DistY > DistX){
+		Dir[0] = (Fugitive->posy < Pursuer->posy) ? DIRECTION_NORTH : DIRECTION_SOUTH;
+	}else if (DistX > DistY){
+		Dir[0] = (Fugitive->posx < Pursuer->posx) ? DIRECTION_WEST  : DIRECTION_EAST;
+	}else{
+		Dir[0] = DIRECTION_NONE;
+	}
+
+	// NOTE(fusion): Fallback to random axial direction away from the pursuer.
+	Dir[1] = (Fugitive->posy <= Pursuer->posy) ? DIRECTION_NORTH : DIRECTION_NONE;
+	Dir[2] = (Fugitive->posx >= Pursuer->posx) ? DIRECTION_EAST  : DIRECTION_NONE;
+	Dir[3] = (Fugitive->posy >= Pursuer->posy) ? DIRECTION_SOUTH : DIRECTION_NONE;
+	Dir[4] = (Fugitive->posx <= Pursuer->posx) ? DIRECTION_WEST  : DIRECTION_NONE;
+	RandomShuffle(&Dir[1], 4);
+
+	// NOTE(fusion): Fallback to diagonal direction away from the pursuer.
+	Dir[5] = (Fugitive->posx <= Pursuer->posx && Fugitive->posy >= Pursuer->posy) ? DIRECTION_SOUTHWEST : DIRECTION_NONE;
+	Dir[6] = (Fugitive->posx >= Pursuer->posx && Fugitive->posy >= Pursuer->posy) ? DIRECTION_SOUTHEAST : DIRECTION_NONE;
+	Dir[7] = (Fugitive->posx >= Pursuer->posx && Fugitive->posy <= Pursuer->posy) ? DIRECTION_NORTHEAST : DIRECTION_NONE;
+	Dir[8] = (Fugitive->posx <= Pursuer->posx && Fugitive->posy <= Pursuer->posy) ? DIRECTION_NORTHWEST : DIRECTION_NONE;
+	RandomShuffle(&Dir[5], 4);
+
 	for(int i = 0; i < NARRAY(Dir); i += 1){
 		if(Dir[i] == DIRECTION_NONE){
 			continue;
