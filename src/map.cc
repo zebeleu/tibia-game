@@ -542,7 +542,7 @@ static void ResizeHashTable(void){
 
 	NewType[0] = STATUS_PERMANENT;
 	NewData[0] = HashTableData[0];
-	for(uint32 i = 1; i < NewSize; i += 1){
+	for(uint32 i = 1; i < OldSize; i += 1){
 		if(HashTableType[i] != STATUS_FREE){
 			if(HashTableType[i] == STATUS_SWAPPED){
 				UnswapSector((uintptr)HashTableData[i]);
