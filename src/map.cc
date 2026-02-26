@@ -682,8 +682,6 @@ void SwapSector(void){
 		File.writeQuad((uint32)OldestSectorX);
 		File.writeQuad((uint32)OldestSectorY);
 		File.writeQuad((uint32)OldestSectorZ);
-		// TODO(fusion): I think tiles are stored in column major order but it doesn't
-		// really matter as long as optimize for sequential access.
 		for(int X = 0; X < 32; X += 1){
 			for(int Y = 0; Y < 32; Y += 1){
 				SwapObject(&File, Oldest->MapCon[X][Y], FileNumber);
