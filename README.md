@@ -15,12 +15,24 @@ I had a small *TODO* list with a few things to attempt after the server was up a
 ## Compiling
 The server uses a few Linux specific features so it will **ONLY** compile on Linux. It's possible to port to Windows but it would require a few design changes. Originally it would have no dependencies but with the RSA routines change it now requires OpenSSL's `libcrypto` as its **ONLY** dependency. The makefile is very simple and should work as long as libcrypto is installed. You can add the `-j N` switch to make it compile across N processes.
 ```
-make                        # build in release mode
-make DEBUG=1                # build in debug mode
-make clean                  # remove `build` directory
-make clean && make          # full rebuild in release mode (recommended)
-make clean && make DEBUG=1  # full rebuild in debug mode   (recommended)
+make                # build in release mode
+make DEBUG=1        # build in debug mode
+make clean          # remove `build` directory
+make -B             # full rebuild in release mode (recommended)
+make -B DEBUG=1     # full rebuild in debug mode   (recommended)
 ```
+
+### Extra Features (Advanced)
+There are also some extra features that can be enabled by appending the following definitions to the `CFLAGS` variable in your `Makefile`. They're completely optional but can be useful in specific scenarios.
+
+- `-DTIBIA772=1`
+  - Modify the protocol to match Tibia 7.72. It's not a 1:1 relation so 7.7 clients won't be able to connect.
+
+- `-DALLOW_LOCAL_PROXY=1`
+  - Allow **local** connections to send a proxy header. Ideally we'd have a list of trusted proxies to prevent clients from spoofing their addresses. In reality, it is almost always simpler to have a **local** relay. This is also the only way to get a multi-route proxy without having to drastically change the way connections are handled.
+
+- `-DBIND_ACCEPTOR_TO_GAME_ADDRESS=1`
+  - Make the acceptor socket bind to the interface specified by the game address, rather than all available network interfaces. This is the same address stored in the database and may cause startup issues if no such interface exists, or connection issues if the address is not publicly reachable.
 
 ## Running
 This repository contains only the source code for the game server. After the first decompilation pass, it was clear the server would need a few supporting services. They're fairly simple but each one will have a separate *README* file with a short description on how to compile and run them.
