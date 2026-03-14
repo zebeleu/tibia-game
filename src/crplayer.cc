@@ -2845,7 +2845,7 @@ void AttachPlayerPoolSlot(TPlayerData *Slot, bool DontWait){
 		}
 
 		PlayerDataPoolMutex.up();
-		DelayThread(0,100);
+		DelayThread(0, 100);
 	}
 }
 

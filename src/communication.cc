@@ -1130,7 +1130,12 @@ bool ReceiveCommand(TConnection *Connection){
 	}
 
 	while(!Connection->WaitingForACK){
+#if ALLOW_LOCAL_PROXY
+		uint8 Help[32];
+#else
 		uint8 Help[2];
+#endif
+
 		int BytesRead = ReadFromSocket(Connection, Help, 2);
 		if(BytesRead == 0){
 			// NOTE(fusion): Peer has closed the connection and there was no
@@ -1152,6 +1157,62 @@ bool ReceiveCommand(TConnection *Connection){
 			print(3, "Zu wenig Daten an Socket %d.\n", BytesRead);
 			return false;
 		}
+
+#if ALLOW_LOCAL_PROXY
+		if(Connection->State == CONNECTION_CONNECTED){
+			uint8_t *SourceAddr = NULL;
+			if(Help[0] == 0x0D && Help[1] == 0x0A){
+				// NOTE(fusion): HAProxy-V2 header.
+				static const uint8_t HAProxyV2Signature[] = {
+					0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51,
+					0x55, 0x49, 0x54, 0x0A,
+				};
+
+				if(ReadFromSocket(Connection, Help + 2, 26) != 26){
+					error("Unable to read proxy header from %s (Socket=%d)\n",
+							Connection->IPAddress, Connection->GetSocket());
+					return false;
+				}
+
+				if(memcmp(Help, HAProxyV2Signature, 12) != 0){
+					error("Invalid proxy header from %s (Socket=%d)\n",
+							Connection->IPAddress, Connection->GetSocket());
+					return false;
+				}
+
+				SourceAddr = Help + 16;
+			}else if(Help[0] == 0xD9 && Help[1] == 0xFF){
+				// NOTE(fusion): Our custom proxy header.
+				if(ReadFromSocket(Connection, Help + 2, 4) != 4){
+					error("Unable to read proxy header from %s (Socket=%d)\n",
+							Connection->IPAddress, Connection->GetSocket());
+					return false;
+				}
+
+				SourceAddr = Help + 2;
+			}
+
+			if(SourceAddr != NULL){
+				// NOTE(fusion): Ideally we'd have a list of trusted proxies to
+				// prevent clients from spoofing their addresses. In reality, it
+				// is almost always simpler to have a localhost "receiver". This
+				// is also the only way to get a multi-route proxy without having
+				// to drastically change the way connections are handled.
+				if(strcmp(Connection->IPAddress, "127.0.0.1") != 0){
+					error("Received proxy header (%02X, %02X) from unknown host %s\n",
+							Help[0], Help[1], Connection->IPAddress);
+					return false;
+				}
+
+				// NOTE(fusion): Update connection IP-Address and resume reading.
+				snprintf(Connection->IPAddress, sizeof(Connection->IPAddress),
+						"%d.%d.%d.%d",
+							(int)SourceAddr[0], (int)SourceAddr[1],
+							(int)SourceAddr[2], (int)SourceAddr[3]);
+				continue;
+			}
+		}
+#endif
 
 		// TODO(fusion): Size is encoded as a little endian uint16. We should
 		// have a few helper functions to assist with buffer reading.

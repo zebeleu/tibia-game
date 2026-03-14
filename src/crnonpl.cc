@@ -1760,9 +1760,17 @@ void TNPC::IdleStimulus(void){
 					case 3: DestY += 1; break;
 				}
 
-				if(this->MovePossible(DestX, DestY, DestZ, true, false)){
-					DestFound = true;
-					break;
+				// NOTE(fusion): TNPC::MovePossible in particular doesn't throw
+				// exceptions so we don't need a try-catch block here like in the
+				// case of TMonster::IdleStimulus, nor does the original function
+				// has it. That said, it's still better to be safe.
+				try{
+					if(this->MovePossible(DestX, DestY, DestZ, true, false)){
+						DestFound = true;
+						break;
+					}
+				}catch(RESULT r){
+					// no-op
 				}
 			}
 
@@ -2702,7 +2710,7 @@ void TMonster::IdleStimulus(void){
 				// TODO(fusion): We're doing something similar to `TCombat::CanToDoAttack`
 				// with added random steps around the attacking position. This function is
 				// too convoluted and we should definitely split it into smaller ones. I
-				// don't have a problem with large functions but this it too much.
+				// don't have a problem with large functions but this is too much.
 
 				// NOTE(fusion): Max distance.
 				int Distance = std::max<int>(
@@ -2936,7 +2944,7 @@ bool TMonster::KickCreature(TCreature *Creature){
 
 	print(3, "%s verschiebt %s.\n", this->Name, Creature->Name);
 
-	// TODO(fusion): Declare these here so they can be used within the catch
+	// NOTE(fusion): Declare these here so they can be used within the catch
 	// block to print out what's on the last position we tried to move the
 	// creature to.
 	int DestX = Creature->posx;
